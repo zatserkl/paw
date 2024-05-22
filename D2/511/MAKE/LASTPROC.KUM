@@ -1,0 +1,235 @@
+*** Begin of history file: Wed Jun  4 18:48:45 1997
+x make
+comp
+comp
+comp
+comp
+comp
+comp
+sh
+me
+comp
+alp
+h/l
+plus
+plus 622 822 1000 'F=10.25, 622+822, MBE=1e6'
+bput
+bput 10.25 1000
+sh
+plus 622 822 1000 'D2, F=10.25, MBE=1e6, 622+822, sterr'
+fbdel
+fbdel 10.25 1000
+mess $HTITLE(1000)
+mkerr
+mkerr 1000
+bput 10.25 1000
+h/de 0
+read 222
+bcop 222 1000 'D2, F=8.47, MBE=5e5, sterr'
+mkerr 1000
+bput 8.47 1000
+h/de 0
+read 522
+bcop 522 1000 'D2, F=9.32, MBE=5e5, sterr'
+mkerr 1000
+bput 9.32 1000
+h/de 0
+read 1022
+bcop 1022 1000 'D2, F=11.27, MBE=7e5, sterr'
+mkerr 1000
+bput 11.27 1000
+h/de 0
+read 1222
+bcop 1222 1000 'D2, F=12.28, MBE=5e5, sterr'
+mkerr 1000
+bput 12.28 1000
+h/de 0
+read 1322
+bcop 1322 1000 'D2, F=13.39, MBE=5e5, sterr'
+mkerr 1000
+bput 13.39 1000
+us h/d
+us v/d
+h/de 0
+read 1622
+bcop 1622 1000 'D2, F=14.54, MBE=5e5, sterr'
+mkerr 1000
+bput 14.54 1000
+h/de 0
+read 2022
+bcop 2022 1000 'D2, F=15.85, MBE=1e6, sterr'
+mkerr 1000
+bput 15.85 1000
+h/de 0
+read 2422
+bcop 2422 1000 'D2, F=16.92, MBE=2e6, sterr'
+mkerr 1000
+bput 16.92 1000
+me
+ali
+me
+read 2722
+BCOPmker 2722 1000 'D2, F=17.25, MBE=3e6, sterr'
+bput 17.25 1000
+h/de 0
+read 3022
+BCOPmker 3022 1000 'D2, F=17.60, MBE=4e6, sterr'
+bput 17.60 1000
+h/de 0
+read 3222
+BCOPmker 3222 1000 'D2, F=19.18, MBE=3e6, sterr'
+bput 19.18 1000
+h/de 0
+read 3522
+BCOPmker 3522 1000 'D2, F=20.16, MBE=2e6, sterr'
+bput 20.16 1000
+h/de 0
+read 3622
+BCOPmker 3622 1000 'D2, F=29.26, MBE=2e6, sterr'
+bput 29.26 1000
+h/de 0
+comp
+h/de 0
+alp
+BCOPmker 3622 1000 'D2, F=29.26, MBE=2e6, sterr'
+h/l
+me
+BCOPmker 3622 1000 'D2, F=29.26, MBE=2e6, sterr'
+me
+BCOPmker
+me
+BCOPmker
+h/de 0
+fbdel
+fbdel 29.26 1000
+read 3622
+BCOPmker 3622 1000 'D2, F=29.26, MBE=1e6, sterr'
+bput 29.26 1000
+h/de 0
+he a/l
+a/l f*
+he g/l
+g/l
+g/l m*
+v/l
+he v/l
+v/l i*
+v/cr v
+v/l i*
+v/de v
+v/l
+h/l
+read 322
+BCOPmker 322 2000 'AL, F=8.47, MBE=3e5, sterr'
+bput 8.47 2000
+h/de 0
+read 422
+BCOPmker 422 2000 'AL, F=9.32, MBE=4e5, sterr'
+bput 9.32 2000
+h/de 0
+read 722
+BCOPmker 722 2000 'AL, F=10.25, MBE=5e5, sterr'
+bput 10.25 2000
+h/de 0
+read 1122
+BCOPmker 1122 2000 'AL, F=11.27, MBE=5e5, sterr'
+bput 11.27 2000
+h/de 0
+read 1422
+BCOPmker 1422 2000 'AL, F=13.39, MBE=2e5, sterr'
+bput 13.39 2000
+h/de 0
+read 1722
+BCOPmker 1722 2000 'AL, F=14.54, MBE=5e5, sterr'
+bput 1722 2000
+bput 14.54 2000
+me
+h/de 0
+read 2822
+BCOPmker 2822 2000 'AL, F=17.25, MBE=2e6, sterr'
+bput 17.25 2000
+h/de 0
+read 3322
+BCOPmker 3322 2000 'AL, F=19.18, MBE=3e6, sterr'
+bput 19.18 2000
+h/de 0
+read 3722
+BCOPmker 3722 2000 'AL, F=29.26, MBE=1e6, sterr'
+bput 29.26 2000
+h/de 0
+comp
+alp
+h/de 0
+read 4422
+BCOPmker 4422 3000 'D2+, F=8.47, MBE=4e5, sterr'
+bput 8.47 3000
+h/de 0
+read 4522
+BCOPmker 4522 3000 'D2+, F=12.28, MBE=5e5, sterr'
+bput 12.28 3000
+h/de 0
+read 4822
+BCOPmker 4822 3000 'D2+, F=14.54, MBE=6e5, sterr'
+bput 14.54 3000
+h/de 0
+read 4922
+BCOPmker 4922 3000 'D2+, F=17.25, MBE=1e6, sterr'
+bput 17.25 3000
+h/de 0
+read 4122
+BCOPmker 4122 3000 'D2+, F=19.18, MBE=2e6, sterr'
+bput 19.18 3000
+h/de 0
+AL+
+***
+read 4322
+BCOPmker 4322 4000 'AL+, F=8.47, MBE=4e5, sterr'
+bput 8.47 4000
+h/de 0
+read 4622
+BCOPmker 4622 4000 'AL+, F=12.28, MBE=5e5, sterr'
+bput 12.28 4000
+h/de 0
+me
+bput 12.28 4000
+me
+bput 12.28 4000
+me
+bput 12.28 4000
+me
+read 4722
+BCOPmker 4722 4000 'AL+, F=14.54, MBE=5e5, sterr'
+bput 14.54 4000
+me
+bput 14.54 4000
+h/de 0
+read 5022
+BCOPmker 5022 4000 'AL+, F=17.25, MBE=1e6, sterr'
+bput 17.25 4000
+h/de 0
+read 4222
+BCOPmker 4222 4000 'AL+, F=19.18, MBE=2e6, sterr'
+bput 19.18 4000
+h/de 0
+sh
+read 322
+h/l
+me
+bput 8.47 322
+me
+bput 8.47 322
+me
+sh
+fdir 8.47
+sh
+fdir 8.47
+me
+ali de
+ali cre
+me
+ali de
+ali cr
+me
+sh
+sh
+*** End   of history file: Wed Jun  4 21:54:29 1997

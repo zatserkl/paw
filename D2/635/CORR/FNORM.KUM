@@ -1,0 +1,80 @@
+*                                         @METAGS fnorm
+*--------------- fnorm ---------------
+*
+MACRO fnorm
+exec for
+
+v/cr vx(5) r 3 4 10 16 17
+v/cr vy(5) r 2 4 10 4  2
+sigma vdy=.1*vy
+
+sigma vys=vy/2
+
+np = $VLEN(vx)
+fcall = fumain([np],vx,vys,vdy)
+a = $CALL([fcall])
+
+fu/pl funex(x) 0 20
+h/err vx vys $SIGMA(0*vx) vdy [np]
+ltyp0 = $GRAFINFO('?ltyp')
+set ltyp 2
+fu/pl [a]*funex(x) 0 20 s
+set ltyp [ltyp0]
+mess a=[a]
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+*                                         @METAGS funex
+*                                         10-27-98 12:33pm
+*--------------- funex ---------------
+*
+      function funex(x)
+      funex = (-1./6.)*(x-10.)**2 + 10.
+      END
+
+*                                         @METAGS funorm
+*                                         10-27-98 12:36pm
+*--------------- funorm ---------------
+*
+      function funorm(np,x,y,dy,fun)
+      integer np
+      real x(np),y(np),dy(np)
+      funorm = 0.
+
+      fydy = 0.
+      ffdy = 0.
+      do i=1,np
+         err = y(i)
+         if (err .LE. 0.) err=y(i)
+         if (err .NE. 0.) then
+            fydy = fydy + fun(x(i))*y(i)/err
+            ffdy = ffdy + fun(x(i))**2/err
+         else
+            fydy = fun(x(i))
+            ffdy = fun(x(i))
+         endif
+      enddo
+      if (ffdy .NE. 0.) then
+         anorm = fydy/ffdy
+      else
+         anorm = 0.
+      endif
+      funorm = anorm
+      END
+
+*                                         @METAGS fumain
+*                                         10-27-98 12:44pm
+*--------------- fumain ---------------
+*
+      function fumain(np,x,y,dy)
+      integer np
+      real x(np),y(np),dy(np)
+      external funex
+      fumain = funorm(np,x,y,dy,funex)
+      END
+QUIT
+RETURN

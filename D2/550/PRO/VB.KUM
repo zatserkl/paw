@@ -1,0 +1,212 @@
+*                                         @METAGS vb
+*--------------- vb ---------------
+*
+MACRO vb
+exec acr
+
+v/cr vx(13) r 100 101 103 106 110 115 121 128 136 145 155 166 178
+v/cr vy(12) r 100 110 120 130 140 150 160 170 180 190 200 210
+* uniform
+*sigma vy = array(12)*100
+
+sigma vey = 0.2*vy
+bins 100 'Variable bins' 12 vx
+put/con 100 vy
+put/err 100 vey
+
+* analysis
+ncx = $HINFO(100,'XBINS')
+sigma x0  = array([ncx])*0
+sigma y0  = array([ncx])*0
+sigma ex0 = array([ncx])*0
+sigma ey0 = array([ncx])*0
+rebin 100 x0 y0 ex0 ey0 [ncx]
+
+opt liny
+set dmod 1
+set mtyp 24
+h/pl 100
+h/pl 100 spe
+RETURN
+
+*                                         @METAGS HX
+*--------------- HX ---------------
+*
+MACRO HX id x
+fun = HX([id],$RSIGMA([x]))
+val = $CALL([fun])
+mess [val]
+RETURN
+
+*                                         @METAGS reb
+*--------------- reb ---------------
+*
+MACRO reb id n
+sigma x  = array([n])*0
+sigma ex = array([n])*0
+sigma y  = array([n])*0
+sigma ey = array([n])*0
+rebin [id] x y ex ey [n]
+
+set mtyp 24
+h/pl [id]
+*set mtyp 20
+*graph $VLEN(x) x y sp
+h/err x y ex ey $VLEN(x) 20 ! 0
+RETURN
+
+*                                         @METAGS sum
+*--------------- sum ---------------
+*
+MACRO sum id csum c1=1 c2
+if [c2]='' then; c2=$HINFO([id],'XBINS'); endif
+
+np = [c2] - [c1] + 1
+n = INT([np]/[csum])
+nrest = [np] - [n]*[csum]
+
+if [nrest] > 0 then
+   ndim = [n]+1
+   sigma x  = array([ndim])*0
+   sigma ex = array([ndim])*0
+   sigma y  = array([ndim])*0
+   sigma ey = array([ndim])*0
+   n1 = [c1]
+   last = [c1] + [n]*[csum] - 1
+   rebin [id] x y ex ey [n] [c1] [last]
+   n = 1
+   n1 = [last]+1
+   rebin [id] x([ndim]:) y([ndim]:) ex([ndim]:) ey([ndim]:) [n] [n1] [c2]
+else
+   ndim = [n]
+   sigma x  = array([ndim])*0
+   sigma ex = array([ndim])*0
+   sigma y  = array([ndim])*0
+   sigma ey = array([ndim])*0
+   rebin [id] x y ex ey [n] [c1] [c2]
+endif
+set mtyp 24
+h/pl [id]
+*set mtyp 20
+*graph $VLEN(x) x y sp
+h/err x y ex ey $VLEN(x) 20 ! 0
+RETURN
+
+*                                         @METAGS joint
+*--------------- joint ---------------
+*
+MACRO joint id nsum n1=1 n2
+if [id]='' then
+   mess Usage:    [0]//' id nsum n1=1 [n2]'
+   mess Example:  [0] 100 5 2
+   stopm
+endif
+
+APPL COMIS QUIT
+*      subroutine joint(id1,nsum,n1,n2,id2)
+      subroutine joint(id1,nsum,n1,n2)
+*      parameter (NDIM=100)
+*      real x(NDIM),y(NDIM),ex(NDIM),ey(NDIM)
+      vector x(*),y(*),ex(*),ey(*)
+      np = n2-n1+1
+      ncx = np/nsum
+      last = n1 + ncx*nsum - 1
+      call HREBIN(id1,x,y,ex,ey,ncx,n1,last)
+      if (MOD(np,nsum).GT.0) then
+         ncx = ncx+1
+         call HREBIN(id1,x(ncx),y(ncx),ex(ncx),ey(ncx),1,last+1,n2)
+      endif
+      end
+QUIT
+
+if [n2]='' then; n2=$HINFO([id],'XBINS'); endif
+np = [n2] - [n1] + 1
+ndim = INT([np]/[nsum])
+if [ndim]*[nsum] < [np] then; ndim=[ndim]+1; endif
+sigma x  = array([ndim])*0
+sigma ex = array([ndim])*0
+sigma y  = array([ndim])*0
+sigma ey = array([ndim])*0
+call joint([id],[nsum],[n1],[n2])
+
+set mtyp 24
+h/pl [id]
+h/err x y ex ey $VLEN(x) 20 ! 0
+RETURN
+
+*                                         @METAGS HAVER
+*--------------- HAVER ---------------
+*
+MACRO HAVER id1 id2 nsum n1=1 n2 chtitl='Non-equidistance bins'
+if [nsum]='' then
+   mess Usage:    [0]//' id1 id2 nsum n1=1 [n2] chtitl=''Non-equidist. aver.'''
+   mess Example:  [0] 100 200 5 2
+   stopm
+endif
+
+APPL COMIS QUIT
+      subroutine HAVER(id1,nsum,n1,n2,id2,chtitl)
+      character*(*) chtitl
+      parameter (NDIM=100)
+      real x(NDIM),y(NDIM),ex(NDIM),ey(NDIM)
+      vector x2(12),y2(12),ex2(12),ey2(12)
+      np = n2-n1+1
+      ncx = np/nsum
+      last = n1 + ncx*nsum - 1
+      call HREBIN(id1,x,y,ex,ey,ncx,n1,last)
+      if (MOD(np,nsum).GT.0) then
+         ncx = ncx+1
+         call HREBIN(id1,x(ncx),y(ncx),ex(ncx),ey(ncx),1,last+1,n2)
+      endif
+
+*     .. for analysis
+      do i=1,ncx
+         x2(i)  = x(i)
+         y2(i)  = y(i)
+         ex2(i) = ex(i)
+         ey2(i) = ey(i)
+      enddo
+
+*     .. construct the bin lower edges
+      do i=1,ncx
+         x(i) = x(i)-ex(i)
+      enddo
+*     .. upper edge of the last bin
+      x(ncx+1) = x(ncx) + 2.*ex(ncx)
+*     .. booking
+      call HBOOKB(id2,chtitl,ncx,x,0.)
+*     .. filling
+      call HPAK(id2,y)
+      call HPAKE(id2,ey)
+      end
+QUIT
+
+if $HEXIST([id2]) then; h/de [id2]; endif
+
+if [n2]='' then; n2=$HINFO([id1],'XBINS'); endif
+call HAVER([id1],[nsum],[n1],[n2],[id2],[chtitl])
+
+* analysis
+ncx = $HINFO([id2],'XBINS')
+sigma x1  = array([ncx])*0
+sigma y1  = array([ncx])*0
+sigma ex1 = array([ncx])*0
+sigma ey1 = array([ncx])*0
+rebin [id2] x1 y1 ex1 ey1 [ncx]
+
+*wait 'v/wr values x2,ex2,x1,ex1 (Q=Quit)'
+*v/wr x2,ex2,x1,ex1 ! '4F12.3'
+RETURN
+
+*                                         @METAGS acr
+*--------------- acr ---------------
+*
+MACRO acr
+a/cr -c vb        'exec vb'
+a/cr -c acr       'exec vb#acr'
+a/cr -c hx        'exec vb#HX'
+a/cr -c reb       'exec vb#reb'
+a/cr -c sum       'exec vb#sum'
+a/cr -c joint     'exec vb#joint'
+a/cr -c HAVER     'exec vb#HAVER'
+RETURN

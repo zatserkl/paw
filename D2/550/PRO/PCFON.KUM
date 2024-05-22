@@ -1,0 +1,133 @@
+*                                         @METAGS PCfon
+*--------------- PCfon ---------------
+*
+MACRO PCfon E
+if [E]='' then
+   mess Usage:    PCfon E
+   mess Returns result using statement RETURN
+   stopm
+endif
+
+*mess PCfon for E=550 MeV, 143.5 degrees
+*wait
+
+PCfon=''; g/imp PCfon
+if [PCfon]='' then; exec INIT; endif
+
+wait
+fun = PCfon($RSIGMA([E]))
+s = $CALL([fun])
+RETURN [s]
+
+*                                         @METAGS init
+*--------------- init ---------------
+*
+MACRO init AL=1 pluses=1
+exec FOR [AL] [pluses]
+g/cr PCfon INIT
+RETURN
+
+*                                         @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=SL
+PCfon=''; g/imp PCfon
+if [PCfon]='' then; exec INIT; endif
+fu/pl PCfon [E1] [E2] [opt]
+RETURN
+
+*                                         @METAGS AL
+*--------------- AL ---------------
+*
+MACRO AL E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=SL
+PCfon=''; g/imp PCfon
+if [PCfon]='' then; exec INIT; endif
+plci0 = $GRAFINFO('?plci')
+igset plci 4
+fu/pl AL [E1] [E2] [opt]
+igset plci [plci0]
+RETURN
+
+*                                         @METAGS pluses
+*--------------- pluses ---------------
+*
+MACRO pluses E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=SL
+PCfon=''; g/imp PCfon
+if [PCfon]='' then; exec INIT; endif
+plci0 = $GRAFINFO('?plci')
+igset plci 2
+fu/pl pluses [E1] [E2] [opt]
+igset plci [plci0]
+RETURN
+
+*                                         @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR AL=1 pluses=1
+if [pluses] = 1 then
+   v/cr D2p0(3);  v/re D2p0 D2p.fit ! ! -/*/
+   v/cr ALp0(3);  v/re ALp0 ALp.fit ! ! -/*/
+   v/cop D2p0(2:) D2p; v/de D2p0
+   v/cop ALp0(2:) ALp; v/de ALp0
+   APPL COMIS QUIT
+      function pluses(E)
+      vector D2p(2), ALp(2)
+      sD2p = exp(D2p(1) + E*D2p(2))
+      sALp = exp(ALp(1) + E*ALp(2))
+      pluses = sD2p-sALp
+      end
+   QUIT
+endif
+
+if [AL] = 1 then
+   fhigh = ALhigh.fit
+   flow  = ALlow.fit
+   v/cr ALlow0(3);  v/re ALlow0  [flow]  ! ! -/*/
+   v/cr ALhigh0(3); v/re ALhigh0 [fhigh] ! ! -/*/
+   v/cop ALlow0(2:)  ALlow;  v/de ALlow0
+   v/cop ALhigh0(2:) ALhigh; v/de ALhigh0
+   APPL COMIS QUIT
+      function AL(E)
+      parameter (Eprim=264.)
+*     Dimensions:
+*        ALlow(2)
+*        ALhigh(2)
+      vector ALlow(2), ALhigh(2)
+      if (E.LT.Eprim) then
+         AL = exp(ALlow(1) + E*ALlow(2))
+      else
+         AL = exp(ALhigh(1) + E*ALhigh(2))
+      endif
+      end
+   QUIT
+endif
+
+if [AL] = 2 then
+   fhigh = ALhigh0.fit
+   flow  = ALlow.fit
+   v/cr ALlow0(3);  v/re ALlow0  [flow]  ! ! -/*/
+   v/cr ALhigh0(4); v/re ALhigh0 [fhigh] ! ! -/*/
+   v/cop ALlow0(2:)  ALlow;  v/de ALlow0
+   v/cop ALhigh0(2:) ALhigh; v/de ALhigh0
+   APPL COMIS QUIT
+      function AL(E)
+      parameter (Eprim=293.0)
+*     Dimensions:
+*        ALlow(2)
+*        ALhigh(3)
+      vector ALlow(2), ALhigh(3)
+      if (E.LT.Eprim) then
+         AL = exp(ALlow(1) + E*ALlow(2))
+      else
+         AL = exp(ALhigh(1) + E*ALhigh(2)) + ALhigh(3)
+      endif
+      end
+   QUIT
+endif
+
+APPL COMIS QUIT
+      function PCfon(E)
+      PCfon = AL(E) + pluses(E)
+      end
+QUIT
+RETURN

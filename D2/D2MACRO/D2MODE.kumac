@@ -1,0 +1,116 @@
+*                                         @METAGS D2MODE
+*--------------- D2MODE ---------------
+*
+MACRO D2MODE
+D2FOR=''; g/imp D2FOR; if [D2FOR]='' then; exec D2FOR; endif
+g/cr D2MODE $WORD([0],1,1,#)
+ali/cr -C MODE        'exec '//$WORD([0],1,1,#)#MODE
+RETURN
+
+*                                         @METAGS MODE
+*--------------- MODE ---------------
+*
+MACRO MODE amode
+g/imp mode
+if [amode] = '' then
+   mess Usage:    [0] mode
+   mess Possible modes: PC, TITOV
+   mess Current mode [mode]
+   stopm
+endif
+
+CASE $UPPER([amode]) IN
+   (PC)     g/cr mode PC
+   (TITOV)  g/cr mode TITOV
+   (*)      mess Unknown mode. Possible modes: PC, TITOV
+            stopm
+ENDCASE
+
+if $UPPER([mode])=PC then
+   mess Search for histogram file
+   current = $SHELL(cd)
+   lcdir ..
+   parent = $SHELL(cd)
+   hfile = [parent]\HFILE\h$WORD([parent],$WORDS([parent],\), 1, \).his
+   if $FEXIST([hfile]) then
+      mess Histogram file [hfile] has been found
+      g/cr hfile [hfile]
+   else
+      mess File [hfile] did not found
+      mess ----
+      buf = 'Continue'
+      read buf 'Press <CR>'
+   endif
+   lcdir [current]
+   g/cr lun 99
+   g/cr floc  [parent]\SPECTRA
+
+   g/cr Nchan 96
+   g/cr minc  6
+   g/cr maxc  93
+
+   Nc  = 36
+   wmm = 2.
+   call CHAMBER([Nchan],[Nc],$RSIGMA([wmm]))
+   
+   Naver=0; g/imp Naver
+   if [Naver]=0 then
+      g/cr Naver 4
+   endif
+
+APPL COMIS QUIT
+*--                           @METAGS .READAT.PC
+      subroutine READAT(nz,nf)
+      call READSP(nz,nf)
+      END
+QUIT
+endif
+
+if $UPPER([mode])=TITOV then
+   mess Search for histogram file
+   current = $SHELL(cd)
+   lcdir ..
+   parent = $SHELL(cd)
+   hfile = [parent]\HFILE\t$WORD([parent],$WORDS([parent],\), 1, \).his
+   if $FEXIST([hfile]) then
+      mess Histogram file [hfile] has been found
+      g/cr hfile [hfile]
+   else
+      mess File [hfile] did not found
+   endif
+   lcdir [current]
+   g/cr lun 98
+   g/cr floc  [parent]\TITOV
+
+   g/cr Nchan 11
+   *g/cr minc  1
+   g/cr minc  2
+   g/cr maxc  11
+   g/cr Naver 1
+
+   Nc  = 4
+   wmm = 14.
+   call CHAMBER([Nchan],[Nc],$RSIGMA([wmm]))
+
+APPL COMIS QUIT
+*--                           @METAGS .READAT.TITOV
+      subroutine READAT(nz,nf)
+      call READT(nz,nf)
+      END
+QUIT
+endif
+
+XaxisMIN=''; XaxisMAX=''; YaxisMIN=''; YaxisMAX=''
+g/imp XaxisMIN,XaxisMAX,YaxisMIN,YaxisMAX
+if [XaxisMIN]<>''.OR.[XaxisMAX]<>''.OR.[YaxisMIN]<>''.OR.[YaxisMAX]<>'' then
+   ans = Y
+   read ans 'Reset axis limits (Y/N)?'
+   if $UPPER([ans]) = Y then
+      XaxisMIN=''; XaxisMAX=''; YaxisMIN=''; YaxisMAX=''
+   endif
+endif
+
+close 0
+mess Current mode [mode]
+mess ------------------
+RETURN

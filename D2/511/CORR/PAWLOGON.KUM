@@ -1,0 +1,15 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)\pawlogon
+mess Hello, folks!
+
+EXEC $ENV(HOME)\pawlogon#BigWin
+EXEC $ENV(HOME)\pawlogon#xargs
+
+exec D2CORR 503 143.5
+
+*x wmatr 1
+*v/re weff w1eff.dat
+RETURN

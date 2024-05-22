@@ -1,0 +1,15 @@
+*                                         @METAGS NcNHE0
+*--------------- NcNHE0 ---------------
+*
+MACRO NcNHE0 NH F E0 th=143.5 Dmm=18.1
+if [E0]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] NH F E0 th=143.5
+   stopm
+endif
+
+M  = 938.27
+Ec = [F]*17.61
+dN = $SIGMA((([E0]/[Ec])/(1+(2*[E0]/[M])*sin([th]*PI/360)**2) - 1)*[Dmm]/.02)
+Nc = [NH] + [dN]
+mess Nc = [Nc]
+RETURN

@@ -1,0 +1,602 @@
+*                                         @METAGS D2FIT
+*--------------- D2FIT ---------------
+*
+MACRO D2FIT ali=CREATE
+g/cr D2FIT $WORD([0],1,1,#)
+D2FOR=''   ; g/imp D2FOR   ; if [D2FOR]='' then   ; exec D2FOR   ; endif
+D2FITFOR=''; g/imp D2FITFOR; if [D2FITFOR]='' then; exec D2FITFOR; endif
+D2PLOTL='' ; g/imp D2PLOTL ; if [D2PLOTL]='' then ; exec D2PLOTL ; endif
+exec ALI [ali]
+RETURN
+
+*                                         @METAGS FITL
+*--------------- FITL ---------------
+*
+MACRO FITL list Emi Ema subf
+*MACRO FITL list Emi Ema subf idfit=0 idfitit='Fit data'
+if $UPPER([1])='HELP' .OR. [list] = '' then
+   mess Usage: $WORD([0],2,1,#) list Emi Ema subf
+   *mess Usage: $WORD([0],2,1,#) list Emi Ema subf [idfit=0 idfitit='Fit data']
+   stopm
+endif
+
+g/imp D2PLOTL
+
+g/imp Naver
+Naver0 = [Naver]
+read Naver 'Enter the Naver value for fit'
+
+subthefun = 0
+if [subf] <> '' then
+   if $INDEX([subf],'.')=0 then; subf=[subf].for; endif
+   if $FEXIST([subf])=0 then
+      mess Function [subf] does not defened. Nothing to substruct.
+      subthefun = 0
+   else
+      if $UPPER([subf]) <> 'thefun.for' then
+         g/imp D2FOR
+         exec [D2FOR]#FunCop [subf] thefun over=1
+      endif
+      dummy = $CALL('thefun.for(0.)')
+      subthefun = 1
+   endif
+endif
+
+if $VEXIST([list]) = 0 then
+   header = 'Include to fit'
+   exec [D2PLOTL]#Select [list] [Emi] [Ema] header=[header] set=1 subf=[subf]
+else
+   exec [D2PLOTL]#plotl subf=[subf]
+   exec [D2PLOTL]#LimPlot
+endif
+
+if $VLEN([list]) = 0 then
+   v/de [list]
+   stopm
+endif
+
+sigma xfit=array(10000)*0
+sigma yfit=array(10000)*0
+sigma wfit=array(10000)*0
+sigma dfit=array(10000)*0
+
+ldir = $HCDIR()
+WORKdir = //PAWC; g/imp WORKdir
+cd [WORKdir]
+
+icurr = 1
+do i=1, $VLEN([list])
+   id = [list]([i])
+   exec [D2PLOTL]#Prepare [id] subthefun=[subthefun]
+   id = -[id]
+   n = [icurr]
+   funcall = IFILL([id],Emin,Emax,xfit([n]),yfit([n]),wfit([n]),dfit([n]))
+   iadd = $ICALL([funcall])
+   icurr = [icurr]+[iadd]
+enddo
+icurr = [icurr]-1
+cd [ldir]
+
+if $VEXIST(xfitbuf) then; v/de xfitbuf; endif
+if $VEXIST(yfitbuf) then; v/de yfitbuf; endif
+if $VEXIST(wfitbuf) then; v/de wfitbuf; endif
+if $VEXIST(dfitbuf) then; v/de dfitbuf; endif
+v/cop xfit(1:[icurr]) xfitbuf
+v/cop yfit(1:[icurr]) yfitbuf
+v/cop wfit(1:[icurr]) wfitbuf
+v/cop dfit(1:[icurr]) dfitbuf
+v/de xfit,yfit,wfit,dfit
+
+sigma xfit=order(xfitbuf,xfitbuf)
+sigma yfit=order(yfitbuf,xfitbuf)
+sigma wfit=order(wfitbuf,xfitbuf)
+sigma dfit=order(dfitbuf,xfitbuf)
+v/de xfitbuf,yfitbuf,wfitbuf,dfitbuf
+
+*if [idfit] <> 0 then
+*   * create hist with fit data
+*   if $VEXIST(buf1) then; v/de buf1; endif
+*   sigma buf1=xfit-wfit
+*   ndim = $VDIM(buf1)
+*   ndim1 = [ndim]+1
+*   if $VEXIST(buf) then; v/de buf; endif
+*   v/cr buf([ndim1])
+*   v/cop buf1 buf
+*   v/inp buf([ndim1]) $EVAL(xfit([ndim])+wfit([ndim]))
+*   bins [idfit] [idfitit] [ndim] buf
+*   *v/de buf,buf1
+*   put/con [idfit] yfit
+*   put/err [idfit] dfit
+*endif
+
+opt fit
+set fit 1111
+Naver = [Naver0]
+RETURN
+
+*                                         @METAGS FITp
+*--------------- FITp ---------------
+*
+MACRO FITp power xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' .OR. [power] = '' then
+   mess Usage:    $WORD([0],2,1,#) power xfit=xfit yfit=yfit dfit=dfit
+   mess Example:  $WORD([0],2,1,#) 3
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = [power] + 1
+sigma ppar=array(1+[dim])
+v/inp ppar(1) [power]
+v/fit [xfit] [yfit] [dfit] p[power] qs 0 ppar(2:)
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenPOLI('fitdef')
+RETURN
+
+*                                         @METAGS FITe
+*--------------- FITe ---------------
+*
+MACRO FITe xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) xfit=xfit yfit=yfit dfit=dfit
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = 2
+sigma epar=array(1+[dim])
+v/inp epar(1) 0
+v/fit [xfit] [yfit] [dfit] e qs 0 epar(2:)
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+
+call GenEX('fitdef')
+RETURN
+
+*                                         @METAGS FITep
+*--------------- FITep ---------------
+*
+MACRO FITep power xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' .OR. [power] = '' then
+   mess Usage:    $WORD([0],2,1,#) power xfit=xfit yfit=yfit dfit=dfit
+   mess Example:  $WORD([0],2,1,#) 3
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = 2 + [power] + 1
+sigma eppar=array(1+[dim])
+v/inp eppar(1) [power]
+*v/fit [xfit] [yfit] [dfit] p[power] q0 0 eppar(4:)
+v/fit [xfit] [yfit] [dfit] e q0 0 eppar(2:3)
+v/fit [xfit] [yfit] [dfit] e+p[power] qs [dim] eppar(2:)
+*bad v/fit [xfit] [yfit] [dfit] e+p[power] qs 0 eppar(2:)
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenEP('fitdef')
+RETURN
+
+*                                         @METAGS FITee
+*--------------- FITee ---------------
+*
+MACRO FITee xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) xfit=xfit yfit=yfit dfit=dfit
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = 4
+sigma eepar=array(1+[dim])
+v/inp eepar(1) 0
+
+np = $VLEN([xfit])
+n1 = INT([np]/3)
+n2 = [np]-[n1]
+v/fit [xfit](1:[n1])    [yfit](1:[n1])    [dfit](1:[n1])    e q0 0 eepar(2:)
+v/fit [xfit]([n2]:[np]) [yfit]([n2]:[np]) [dfit]([n2]:[np]) e q0 0 eepar(4:)
+v/fit [xfit] [yfit] [dfit] e+e qs [dim] eepar(2:)
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenEE('fitdef')
+RETURN
+
+*                                         @METAGS FITeep
+*--------------- FITeep ---------------
+*
+MACRO FITeep power xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' .OR. [power] = '' then
+   mess Usage:    $WORD([0],2,1,#) power xfit=xfit yfit=yfit dfit=dfit
+   mess Example:  $WORD([0],2,1,#) 0
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = 4 + [power] + 1
+sigma eeppar=array(1+[dim])
+v/inp eeppar(1) [power]
+
+np = $VLEN([xfit])
+n1 = INT([np]/3)
+n2 = [np]-[n1]
+v/fit [xfit](1:[n1])    [yfit](1:[n1])    [dfit](1:[n1])    e q0 0 eeppar(2:)
+v/fit [xfit]([n2]:[np]) [yfit]([n2]:[np]) [dfit]([n2]:[np]) e q0 0 eeppar(4:)
+v/fit [xfit] [yfit] [dfit] e+e+p[power] qs [dim] eeppar(2:)
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenEEP('fitdef')
+RETURN
+
+*                                         @METAGS FITg
+*--------------- FITg ---------------
+*
+MACRO FITg xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) xfit=xfit yfit=yfit dfit=dfit
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = 3
+sigma gpar=array(1+[dim])
+v/inp gpar(1) 0
+v/fit [xfit] [yfit] [dfit] g qs 0 gpar(2:)
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenGAUSS('fitdef')
+RETURN
+
+*                                         @METAGS FITge
+*--------------- FITge ---------------
+*
+MACRO FITge xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) xfit=xfit yfit=yfit dfit=dfit
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = 5
+sigma gepar=array(1+[dim])
+v/inp gepar(1) 0
+v/fit [xfit] [yfit] [dfit] g q0 0 gepar(2:)
+v/fit [xfit] [yfit] [dfit] e q0 0 gepar(5:6)
+v/fit [xfit] [yfit] [dfit] g+e qs [dim] gepar(2:)
+*bad   v/fit [xfit] [yfit] [dfit] g+e qs 0 gepar(2:)
+g/cr fitfun ge
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenGE('fitdef')
+RETURN
+
+*                                         @METAGS FITgp
+*--------------- FITgp ---------------
+*
+MACRO FITgp power xfit=xfit yfit=yfit dfit=dfit
+if $UPPER([1])='HELP' .OR. [power] = '' then
+   mess Usage:    $WORD([0],2,1,#) power xfit=xfit yfit=yfit dfit=dfit
+   mess Example:  $WORD([0],2,1,#) 3
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = 3 + [power] + 1
+sigma gppar=array(1+[dim])
+v/inp gppar(1) [power]
+v/fit [xfit] [yfit] [dfit] g q0 0 gppar(2:4)
+v/fit [xfit] [yfit] [dfit] g+p[power] qs [dim] gppar(2:)
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenGP('fitdef')
+RETURN
+
+*                                         @METAGS FITpl
+*--------------- FITpl ---------------
+*
+MACRO FITpl power xfit=xfit yfit=yfit dfit=dfit
+*
+* Polinom to log
+*
+if $UPPER([1])='HELP' .OR. [power] = '' then
+   mess Usage:    $WORD([0],2,1,#) power xfit=xfit yfit=yfit dfit=dfit
+   mess Example:  $WORD([0],2,1,#) 3
+   stopm
+endif
+
+if $VEXIST([xfit])=0 then; mess Vector [xfit] did not exist; stopm; endif
+if $VEXIST([yfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+if $VEXIST([dfit])=0 then; mess Vector [yfit] did not exist; stopm; endif
+
+dim = [power] + 1
+sigma plpar=array(1+[dim])
+v/inp plpar(1) [power]
+
+plci0 = $GRAFINFO('?plci')
+*igset plci 0
+v/fit [xfit] $SIGMA(log([yfit])) [dfit] p[power] qs 0 plpar(2:)
+igset plci [plci0]
+
+if $VEXIST(Emin) = 0 then; sigma Emin=VMIN([xfit]); endif
+if $VEXIST(Emax) = 0 then; sigma Emax=VMAX([xfit]); endif
+call GenPL('fitdef')
+exec FITplot ! Emin Emax fill=0
+RETURN
+
+*                                         @METAGS GetExp
+*--------------- GetExp ---------------
+*
+MACRO GetExp file
+if $UPPER([1])='HELP' .OR. [file]='' then
+   mess Usage:    $WORD([0],2,1,#) file
+   stopm
+endif
+
+if $INDEX([file],'.')=0 then; file = [file].for; endif
+
+if $FEXIST([file]) then
+   mess File [file] already exist
+   wait
+endif
+
+g/imp D2PLOTL
+exec [D2PLOTL]#plocate 'Locate the first point'
+x1 = $WORD([@],1,1)
+y1 = $WORD([@],2,1)
+if [x1]='UNDEFENED' then; STOPM; endif
+exec [D2PLOTL]#plocate 'Locate the second point'
+x2 = $WORD([@],1,1)
+y2 = $WORD([@],2,1)
+if [x2]='UNDEFENED' then; STOPM; endif
+
+if [x1]=[x2] then
+   mess Ordinates must be different
+   STOPM
+endif
+
+lny1 = $SIGMA(log([y1]))
+lny2 = $SIGMA(log([y2]))
+P2 = ([lny1]-[lny2])/([x1]-[x2])
+P1 = [lny1] - [x1]*[P2]
+
+sigma epar=array(3)*0
+v/inp epar(2) [P1]
+v/inp epar(3) [P2]
+
+*if $VEXIST(Emin) = 0 then; sigma Emin=VMIN(xfit); endif
+*if $VEXIST(Emax) = 0 then; sigma Emax=VMAX(xfit); endif
+if $VEXIST(Emin) = 0 then; sigma Emin=[x1]; endif
+if $VEXIST(Emax) = 0 then; sigma Emax=[x2]; endif
+call GenEX($QUOTE([file]))
+RETURN
+
+*                                         @METAGS FITsave
+*--------------- FITsave ---------------
+*
+MACRO FITsave file comment
+if $UPPER([1])='HELP' .OR. [file] = '' then
+   mess Usage:    $WORD([0],2,1,#) file comment
+   stopm
+endif
+
+if $INDEX([file],'.')=0 then; file=[file].for; endif
+if $UPPER([file]) = 'fitdef.for' then
+   mess File cannot be copied onto itself
+   stopm
+endif
+
+if $FEXIST([file]) then
+   mess File [file] already exist
+   wait
+endif
+
+len = $LEN([comment])
+rest = [len]-60
+if [rest] > 20 then; rest=20; endif
+comm1 = $SUBSTRING([comment], 1,30)
+comm2 = $SUBSTRING([comment],31,30)
+comm3 = $SUBSTRING([comment],61,[rest])
+if $LEN([comm1])=0 then; comm1=' '; endif
+if $LEN([comm2])=0 then; comm2=' '; endif
+if $LEN([comm3])=0 then; comm3=' '; endif
+
+call FITsave($QUOTE([file]),$QUOTE([comm1]),$QUOTE([comm2]),$QUOTE([comm3]))
+RETURN
+
+*                                         @METAGS FITplot
+*--------------- FITplot ---------------
+*
+MACRO FITplot fun=fitdef E1 E2 opt=S ci=1
+if $UPPER([1]) = 'HELP' then
+   mess Usage:    $WORD([0],2,1,#)//' fun=fitdef E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=S ci=1'
+   stopm
+endif
+if $INDEX([fun],'.')=0 then; fun=[fun].for; endif
+if $FEXIST([fun])=0 then
+   mess File [fun] did not found
+   exitm
+endif
+if [E1]='' then; E1=$GRAFINFO('WNXMIN'); endif
+if [E2]='' then; E2=$GRAFINFO('WNXMAX'); endif
+ci0 = $GRAFINFO('?plci')
+set plci [ci]
+fu/pl [fun] [E1] [E2] [opt]
+set plci [ci0]
+RETURN
+
+*                                         @METAGS SetFitDef
+*--------------- SetFitDef ---------------
+*
+MACRO SetFitDef fun
+if [fun]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) fun
+   stopm
+endif
+
+g/imp d2for
+exec [d2for]#FunCop [fun] fitdef over=1
+exec [d2for]#RegFun fitdef
+RETURN
+
+*                                         @METAGS FitDatWrite
+*--------------- FitDatWrite ---------------
+*
+MACRO FitDatWrite file comment='Fit data'
+if $UPPER([1])='HELP' .OR. [file]='' then
+   mess Usage:    $WORD([0],2,1,#) file comment='Fit data'
+   stopm
+endif
+
+if $INDEX([file],'.')=0 then; file=[file].dat; endif
+if $FEXIST([file]) then
+   mess File [file] already exist
+   wait
+endif
+
+v/inp ?(1) 100
+format = F1.0,1X,$QUOTE([comment])
+v/wr ?(1) [file] [format] O
+v/wr xfit,yfit,wfit,dfit [file] ! C
+RETURN
+*                                         @METAGS FitDatRead
+*--------------- FitDatRead ---------------
+*
+MACRO FitDatRead file
+if $UPPER([1])='HELP' .OR. [file]='' then
+   mess Usage:    $WORD([0],2,1,#) file
+   stopm
+endif
+
+if $INDEX([file],'.')=0 then; file=[file].dat; endif
+if $FEXIST([file])=0 then
+   mess File [file] did not found
+   stopm
+endif
+
+if $VEXIST(xfit) then; v/de xfit,yfit,wfit,dfit; endif
+v/re xfit,yfit,wfit,dfit [file] ! ! -/*/
+RETURN
+*                                         @METAGS GraFit
+*--------------- GraFit ---------------
+*
+MACRO GraFit mt=24 ci=1 opt=awp
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) mt=24 ci=1 opt=awp
+   stopm
+endif
+
+if $VEXIST(xfit)=0 then
+   mess No fit vectors!
+   stopm
+endif
+mt0 = $GRAFINFO('?mtyp')
+ci0 = $GRAFINFO('?pmci')
+set mtyp [mt]
+set pmci [ci]
+graph $VLEN(xfit) xfit yfit [opt]
+*h/err xfit yfit $SIGMA(.1+0*xfit) dfit $VLEN(xfit) 0 ! CHOPT=0
+set mtyp [mt0]
+set pmci [ci0]
+RETURN
+*                                         @METAGS ErrFit
+*--------------- ErrFit ---------------
+*
+MACRO ErrFit mt=24 ci=1 opt=W10
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) mt=24 ci=1 opt=W10
+   stopm
+endif
+
+if $VEXIST(xfit)=0 then
+   mess No fit vectors!
+   stopm
+endif
+ci0 = $GRAFINFO('?pmci')
+set pmci [ci]
+h/err xfit yfit $SIGMA(0*xfit) dfit $VLEN(xfit) [mt] ! [opt]
+set pmci [ci0]
+RETURN
+*                                         @METAGS FitFit
+*--------------- FitFit ---------------
+*
+MACRO FitFit fun npar vpar
+if $UPPER([1])='HELP' .OR. [fun] = '' then
+   mess Usage:    $WORD([0],2,1,#) fun npar vpar
+   mess Example:  $WORD([0],2,1,#) e
+   stopm
+endif
+if $VEXIST(xfit)=0 then
+   mess No fit vectors!
+   stopm
+endif
+if [npar]<>'' then
+   v/fit xfit yfit dfit [fun] qs [npar] [vpar]
+else
+   v/fit xfit yfit dfit [fun] qs
+endif
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = 'HELP' then
+   op = CREATE
+   ask = MACRO $WORD([0],2,1,#): CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):     Aliases are created.
+
+ali/[op] -C FITL        'exec '//$WORD([0],1,1,#)#FITL
+ali/[op] -C FITp        'exec '//$WORD([0],1,1,#)#FITp
+ali/[op] -C FITe        'exec '//$WORD([0],1,1,#)#FITe
+ali/[op] -C FITep       'exec '//$WORD([0],1,1,#)#FITep
+ali/[op] -C FITee       'exec '//$WORD([0],1,1,#)#FITee
+ali/[op] -C FITeep      'exec '//$WORD([0],1,1,#)#FITeep
+ali/[op] -C FITg        'exec '//$WORD([0],1,1,#)#FITg
+ali/[op] -C FITge       'exec '//$WORD([0],1,1,#)#FITge
+ali/[op] -C FITgp       'exec '//$WORD([0],1,1,#)#FITgp
+ali/[op] -C FITpl       'exec '//$WORD([0],1,1,#)#FITpl
+ali/[op] -C GetExp      'exec '//$WORD([0],1,1,#)#GetExp 
+ali/[op] -C FITsave     'exec '//$WORD([0],1,1,#)#FITsave
+ali/[op] -C FITplot     'exec '//$WORD([0],1,1,#)#FITplot
+ali/[op] -C SetFitDef   'exec '//$WORD([0],1,1,#)#SetFitDef
+ali/[op] -C FitDatRead  'exec '//$WORD([0],1,1,#)#FitDatRead
+ali/[op] -C FitDatWrite 'exec '//$WORD([0],1,1,#)#FitDatWrite
+ali/[op] -C GraFit      'exec '//$WORD([0],1,1,#)#GraFit
+ali/[op] -C ErrFit      'exec '//$WORD([0],1,1,#)#ErrFit
+ali/[op] -C FitFit      'exec '//$WORD([0],1,1,#)#FitFit
+RETURN

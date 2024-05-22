@@ -1,0 +1,29 @@
+*** Begin of history file: Fri Jul  4 21:22:06 1997
+x make
+read 622
+h/pl 622 u
+h/l
+h/pl 622
+h/pl 622 u
+h/pl 622 ku
+alp
+h/pl 622 ku
+read 822
+h/pl 622
+h/pl 822 +sku
+h/pl 822 +
+h/pl 622
+h/pl 822 s+
+h/pl 822 +
+h/pl 622
+h/pl 10622
+h/pl 20622 -
+h/pl 10622
+h/pl 10622 u
+h/pl 10622 ku
+h/pl 10622 k
+h/pl 20622 u
+h/pl 20622 k
+mess $CALL('hi(622,3)')
+q
+*** End   of history file: Fri Jul  4 21:41:44 1997

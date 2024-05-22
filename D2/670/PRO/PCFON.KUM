@@ -1,0 +1,38 @@
+*                                         @METAGS PCFON
+*--------------- PCFON ---------------
+*
+MACRO PCFON
+exec READ
+exec PLOT
+RETURN
+
+*                                         @METAGS READ
+*--------------- READ ---------------
+*
+MACRO READ
+exec PRO#readpar pcAL903  pcAL903.par
+exec PRO#readpar pcAL1073 pcAL1073.par
+exec PRO#readpar pcAL1801 pcAL1801.par
+exec PRO#readpar pcAL2138 pcAL2138.par
+exec PRO#readpar pcALp pcALp.par
+exec PRO#readpar pcD2p pcD2p.par
+RETURN
+
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT
+lt0 = $GRAFINFO('?ltyp')
+*set ltyp 1
+exec PRO#exp1plot pcAL903  150 170
+exec PRO#exp1plot pcAL1073 170 300
+exec PRO#exp1plot pcAL1801 290 360
+exec PRO#exp1plot pcAL2138 350 420
+
+*set ltyp 1
+wait 'Plot the pluses (Q - Quit)?'
+v/cop pcALp alp
+v/cop pcD2p d2p
+exec PRO#diffpfun
+*set ltyp [lt0]
+RETURN

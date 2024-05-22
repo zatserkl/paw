@@ -1,0 +1,29 @@
+*                                         @METAGS E0
+*--------------- E0 ---------------
+*
+MACRO E0 E2 theta=143.5
+if [1]='' then
+   mess Usage:    E0 E2 theta=143.5
+   stopm
+endif
+
+sin2 = $SIGMA(sin((pi/180)*[theta]/2)**2)
+recoil = 1 - (2*[E2]/938.27)*[sin2]
+E1 = [E2] / [recoil]
+mess E0 = [E1]
+RETURN
+
+*                                         @METAGS E2
+*--------------- E2 ---------------
+*
+MACRO E2 E1 theta=143.5
+if [1]='' then
+   mess Usage:    E0#E2 E1 theta=143.5
+   stopm
+endif
+
+sin2 = $SIGMA(sin((pi/180)*[theta]/2)**2)
+recoil = 1 + (2*[E1]/938.27)*[sin2]
+E2 = [E1] / [recoil]
+mess E2 = [E2]
+RETURN

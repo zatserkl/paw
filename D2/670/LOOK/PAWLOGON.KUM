@@ -1,0 +1,24 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)\pawlogon
+mess Hello, folks!
+
+EXEC $ENV(HOME)\pawlogon#BigWin
+EXEC $ENV(HOME)\pawlogon#xargs
+
+*read macro 'Enter macro name to exec'
+*if [macro] <> '' then
+*   exec [macro]
+*endif
+
+exec D2LOOK 671 143.5
+
+*readl d2
+*mdir WORK0
+*cd WORK0
+*plotl wdir=WORK0
+*cd \
+
+RETURN

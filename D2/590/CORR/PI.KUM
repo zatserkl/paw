@@ -1,0 +1,14 @@
+*                                         @METAGS pi
+*--------------- pi ---------------
+*
+MACRO pi factor=1 opt=AWC
+if $VEXIST(ppi) then; v/de ppi; endif
+if $VEXIST(spi) then; v/de spi; endif
+v/cr ppi(7) r  100   125   150   175   200   225   250
+v/cr spi(7) r  402   486   553   447   219   229   131
+if $VEXIST(spi1) then; v/de spi1; endif
+sigma spi1=[factor]*spi
+graph $VLEN(ppi) ppi spi1 [opt]
+atitle 'p?[p]!, MeV/c' 'd^2![s]/d[w]dE, pb/MeV/sr'
+v/de spi1
+RETURN

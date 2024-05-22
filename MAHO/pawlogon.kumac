@@ -1,0 +1,19 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)/paw/pawlogon
+mess Local PAWLOGON
+LCDIR
+mess Hello, folks!
+
+*comm 'shell path.exe $1; exec path $1'
+*comm 'shell MAHO.exe $1 $2 $3 $4; exec MAHO report'
+
+exec $ENV(HOME)/paw/pawlogon#win 20 20
+exec $ENV(HOME)/paw/pawlogon#XARGS
+
+a/cr -C rep 'type maho.rep'
+
+exec MAHO
+RETURN

@@ -1,0 +1,120 @@
+*                                         @METAGS ass940
+*--------------- ass940 ---------------
+*
+MACRO ass940 k=70 eqerr=0 legend=0
+d2look=''; g/imp d2look
+if [d2look]='' then; exec d2look; g/imp d2look; endif
+
+g/cr kcur [k] 'current channel'
+
+sigma Rc =array(100)*0
+sigma Rd =array(100)*0
+sigma eRd=array(100)*0
+
+sigma hist=array(100)*0
+
+nbin=0
+*for id in 1043 1243 1543 1344 1743 1943 2143 2543 2943
+for id in  1043 1243 1543      1743 1943 2143 2543 2943
+   idc = 1$FORMAT([id],I0.4)
+   idd = 2$FORMAT([id],I0.4)
+   if $HEXIST([idc])=0 .OR. $HEXIST([idd])=0 then
+      exec [d2look]#readat [id]
+   endif
+
+   nbin = [nbin]+1
+   v/inp hist([nbin]) [id]
+
+   fcall = TITDAT([idc],'N=')
+   Ns = $CALL([fcall])
+
+   fcall = HI([idd],[k])
+   Nd = $CALL([fcall])
+   Rd = [Nd]/[Ns]
+   eNd = $RSIGMA([Nd])
+   eRd = $SIGMA(sqrt([eNd])/[Ns])
+
+   k1 = [k]-1
+   fcall = HI([idc],[k1])
+   Nck1 = $CALL([fcall])
+   fcall = HI([idd],[k1])
+   Ndk1 = $CALL([fcall])
+   Nck1 = [Nck1] - [Ndk1]
+
+   k2 = [k]+1
+   fcall = HI([idc],[k2])
+   Nck2 = $CALL([fcall])
+   fcall = HI([idd],[k2])
+   Ndk2 = $CALL([fcall])
+   Nck2 = [Nck2] - [Ndk2]
+   Nc = ([Nck1]+[Nck2])/2
+   Rc = [Nc]/[Ns]
+
+   v/inp  Rc([nbin]) [Rc]
+   v/inp  Rd([nbin]) [Rd]
+   v/inp eRd([nbin]) [eRd]
+   
+   if [Rd]=0 then; mess Rd=0 for id=[id]; wait; endif
+endfor
+
+if $VEXIST(buf) then; v/de buf; endif
+v/cop  hist(1:[nbin]) buf; v/de hist; v/cop buf hist; v/de buf
+
+v/cop  Rc(1:[nbin]) buf; v/de  Rc; v/cop buf  Rc; v/de buf
+v/cop  Rd(1:[nbin]) buf; v/de  Rd; v/cop buf  Rd; v/de buf
+v/cop eRd(1:[nbin]) buf; v/de eRd; v/cop buf eRd; v/de buf
+
+* sort
+sigma hist  = ORDER(hist,Rc)
+
+sigma Rd  = ORDER(Rd,Rc)
+sigma eRd = ORDER(eRd,Rc)
+sigma Rc  = ORDER(Rc,Rc)
+
+exec plotfit [eqerr] [legend]
+RETURN
+
+*                                         @METAGS plotfit
+*--------------- plotfit ---------------
+*
+MACRO plotfit eqerr=0 legend=0
+exec plot [legend]
+exec fit
+RETURN
+
+*                                         @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot legend=0
+nbin = $VDIM(Rc)
+*graph [nbin] Rc Rd awl*
+h/err Rc Rd $SIGMA(0*Rc) eRd [nbin] 31 ! W10L
+g/imp kcur
+xtit = Nc/Ns for channel No.[kcur]
+atitle [xtit] 'Nd/Ns'
+
+if [legend] <> 0 then
+   do i=1,[nbin]
+      key Rc([i]) Rd([i]) 1 $EVAL(hist([i]))
+   enddo
+endif
+RETURN
+
+*                                         @METAGS fit
+*--------------- fit ---------------
+*
+MACRO fit eqerr=0
+opt fit
+set fit 1111
+nbin = $VDIM(Rc)
+if [nbin] < 2 then
+   mess The number of bins too small. Fit not possible.
+   stopm
+endif
+
+if [eqerr]=0 then
+   v/fit Rc Rd eRd P1 qs
+else
+   v/fit Rc Rd $SIGMA(.1*Rd) P1 qs
+endif
+RETURN

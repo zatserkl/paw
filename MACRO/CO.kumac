@@ -1,0 +1,13 @@
+*                                     @METAGS CO
+*--------------- CO ---------------
+*
+MACRO CO n
+   r = $RGBINFO([n],'R')
+   g = $RGBINFO([n],'G')
+   b = $RGBINFO([n],'B')
+   mess RGB: [r] [g] [b]
+   read r
+   read g
+   read b
+   color [n] [r] [g] [b]
+RETURN

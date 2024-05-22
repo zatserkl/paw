@@ -1,0 +1,23 @@
+
+*                                         @METAGS s
+*--------------- s ---------------
+*
+MACRO s PICto=SAVED PICfrom=PICT00
+p/del [PICto]
+p/cop [PICfrom] [PICto]
+g/cr SAVEDpic [PICto]   'Saved picture'
+RETURN
+
+*                                         @METAGS p
+*--------------- p ---------------
+*
+MACRO p pic
+if [pic]='' then
+   SAVEDpic = PICT00
+   g/imp SAVEDpic
+   pic = [SAVEDpic]
+endif
+p/pl [pic]
+izpic PICT00 C
+RETURN
+

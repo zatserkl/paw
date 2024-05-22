@@ -1,0 +1,300 @@
+*** Begin of history file: Tue Oct 20 10:34:42 1998
+me
+comp 3041 31 32
+me
+comp 3041 31 32
+me
+comp 3041 31 32
+me
+comp 3041 31 32
+comp 2137 47
+h/fit 2137 p0 q
+h/fit 4737 p0 q
+bscal 4737 1 3
+h/l
+h/fit 1 p0 q
+comp 2137 47
+comp 2137 1000
+comp 1000
+alp
+h/l
+comp 2137 0001
+h/pl 1
+set pmci 2; h/pl 2137 s; set pmci 1
+alp
+h/de 0
+read 137
+read 237
+bscal 237 1000 1.07
+plus
+bdel 1000
+plus 137 237 1000 'D2 F=8.88 MBE=2e5 1(37) + 2(37)*1.07' 1.07
+bput 8.88 1000
+h/de 0
+read 437
+bscal 437 1000 1.07 'D2 F=9.68 MBE=3e5 4(37)*1.07'
+bput 9.68 1000
+h/de 0
+read 637
+bscal 637 1000 1.07 'D2 F=10.56 MBE=5e5 6(37)*1.07'
+bput 10.56 1000
+h/de 0
+read 837
+bscal 837 1000 1.07 'D2 F=11.51 MBE=1e6 8(37)*1.07'
+bput 11.51 1000
+h/de 0
+read 1037
+read 1137
+read 12
+read 14
+plus 14 12 1000
+h/l
+plus 1437 1237 1000
+plus 1000 1137 1000
+plus 1000 1037 'D2 F=12.54 MBE=3.5e6 10(37)*1.07 + 11(37) + 12(37) + 14(37)' 1.07
+h/pl 1000
+alp
+plus 1000 1037 'D2 F=12.54 MBE=3.5e6 10(37)*1.07 + 11(37)+12(37)+14(37)' 1.07
+me
+plus 1000 1037 1000 'D2 F=12.54 MBE=3.5e6 10(37)*1.07 + 11(37)+12(37)+14(37)' 1.07
+bput 12.54 1000
+h/de 0
+read 1537
+bscal 1537 1000 1.07
+read 1737
+plus 1000 1737 1000 'D2 F=13.67 MBE=1e6 (15(37)+17(37))*1.07' 1.07
+bput 13.67 1000
+h/de 0
+read 1937
+bscal 1937 1000 1.07 'D2 F=14.90 MBE=6e5 19(37)*1.07'
+bput 14.90 1000
+h/de 0
+read 2337
+read 3537
+plus 3537 2337 1000 'D2 F=16.24 MBE=6e5 23(37)*1.07 + 35(37)' 1.07
+bput 16.24 1000
+h/de 0
+read 2537
+bscal 2537 1000 1.07 'D2 F=17.70 MBE=1e6 25(37)*1.07'
+bput 17.70 1000
+h/de 0
+me
+read 2937
+read 3037
+read 3137
+plus 2937 3037 1000
+plus 1000 3137 1000
+bscal 1000 1000 1.03 'D2 F=19.29 MBE=3e6 (29(37)+30(37)+31(37))*1.03'
+bput 19.29 1000
+h/de 0
+comp 38 39 41 42
+alp
+plus 3937 4237 1000 'D2 F=20.55 MBE=4e6 39(37)+42(37)'
+bput 20.55 1000
+h/de 0
+comp 441 6 27
+alp
+plus 641 2741 1000
+plus 1000 441 1000 'D2 F=22.40 MBE=3.5e6 4(41)*1.05 + 6(41)+27(41)' 1.05
+bput 22.40 1000
+h/pl 1000
+h/de 0
+alp
+bcopput
+bcopput 36.12 3041 1e5 D2
+h/l
+read 337
+me
+bscal 337 1000 1.07 'Al F=8.88 MBE=1e5 337*1.07'
+bscal 337 2000 1.07 'Al F=8.88 MBE=1e5 337*1.07'
+bput 8.88 2000
+h/de 0
+read 537
+bscal 537 2000 1.07 'Al F=9.68 MBE=1e5 537*1.07'
+h/de 0
+read 737
+bscal 737 2000 1.07 'Al F=10.56 MBE=2e5 737*1.07'
+bput 10.56 2000
+h/de 0
+read 937
+bscal 937 2000 1.07 'Al F=11.51 MBE=5e5 937*1.07'
+bput 11.51 2000
+h/de 0
+bcopput 12.54 1337 5e5 Al
+bcopput 13.67 1637 2e5 Al
+bcopput 14.40 1837 3e5 Al
+bcopput 14.90 1837 3e5 Al
+read 2137
+read 4737
+plus 4737 2137 2000 'Al F=16.24 MBE=4e5 21(37)*1.07 + 47(37)' 1.07
+bput 16.24 2000
+h/de 0
+read 2437
+bscal 2437 2000 1.07 'Al F=17.70 MBE=2e5 24(37)*1.07'
+bput 17.70 2000
+h/de 0
+comp 28 32
+alp
+plus 2837 3237 2000 'Al F=19.29 MBE=2e6 2837+3237'
+bput 19.29 2000
+h/de 0
+ftit
+ftit 14.90 2000
+ftit 13.67 2000
+fbdel 12.54 2000
+fbdel 13.67 2000
+fbdel 14.90 2000
+h/de 0
+read 1337
+bscal 1337 2000 1.07 'Al F=12.54 MBE=5e5 1337*1.07'
+bput 12.54 2000
+h/de 0
+read 1637
+bscal 1637 2000 1.07 'Al F=13.67 MBE=2e5 1637*1.07'
+bput 13.67 2000
+h/de 0
+read 1837
+bscal 1837 2000 1.07 'Al F=14.90 MBE=3e5 1837*1.07'
+bput 14.90 2000
+h/de 0
+ftit 17.70 2000
+ftit 19.29 2000
+h/de 0
+h/de 0
+comp 3737 40 43 50
+alp
+ftit 20.55 1000
+h/de 0
+comp 4237 51 52 53
+comp 3737 40 50
+alp
+comp 4237 51 52 53
+comp 3737 40 50
+comp 3737 40 50
+comp 4237 51 52 53
+data 51
+data 52
+comp 4237 51 52 53
+data 51
+data 52
+data 51
+data 52
+data 53
+data 52
+data 54
+me
+x d2look#for
+h/de 0
+data 54
+data 51
+data 52
+me
+x d2look#for; h/de 0
+data 52
+comp 4237 51 52 53 54
+comp 4237 51 52 53
+comp 4137 51 52 53
+me
+x d2look#for; h/de 0
+comp 4137 51 52 53
+comp 5237 41 51 53
+comp 5237 41 51 53 42
+alp
+plus 5137 5337 1001
+bget 20.55 1000
+tit 1000
+plus 1001 1000 1000 'D2 F=20.55 MBE=5.5e6 5137+5337 + (3937+4237)*.9 (corr.DI)' .9
+fbdel 20.55 1000
+bput 20.55 1000
+comp 5237 41 51 53 42 1000
+v/cr di(4) r 42 52 62 68
+v/cr sumtot(4) r 1350 1008 891 956
+graph $VLEN(di) di sumtot aw*
+atitle 'Discr. livn.' 'Sum of chamber'
+itx 44 1350 '52(37) x2
+itx 43 1350 '52(37) x2
+itx 51 1020 '41(37)'
+itx 61 920 '51(37)'
+itx 67 980 '53(37) x2'
+itx 66 980 '53(37) x2'
+x diliv
+ed diliv
+x diliv
+ed diliv
+x diliv
+ed diliv
+x diliv
+p/pr diliv.ps
+alp
+fdir 20.55
+h/de 0
+comp 3737 40 50
+ed diliv
+us h/err
+ed diliv
+x diliv
+me
+ed diliv
+x diliv
+ed diliv
+x diliv
+ed diliv
+x diliv
+ed diliv
+x diliv
+ed diliv
+x diliv
+ed diliv
+x diliv
+p/pr diliv.ps
+alp
+h/l
+plus 3737 4037 2001
+plus 5037 2001 2000 'Al F=20.55 MBE=3e6 5037 + (3737+4037)*.9 (corr.DI)' .9
+bput 20.55 2000
+fdir 20.55
+h/de 0
+comp 341 4 6 27
+alp
+plus 441 641
+fdir 22.40
+fhlist 22.40
+h/de 0
+comp 541 28
+alp
+plus 541 2841 2000 'Al F=22.40 MBE=1.5e6 541+2841'
+bput 22.40 2000
+h/de 0
+comp 841 9 22
+comp 841 22
+comp 1341 14
+data 1441
+comp 1341 14
+comp 841 22 23
+alp
+plus 841 2241 3000 'D2+ F=8.88 MBE=7e4 841+2241'
+bput 8.88 3000
+h/de 0
+bcopput 8.88 2341 5e4 Al+
+bcopput 10.56 2041 6e4 D2+
+bcopput 10.56 2141 6e4 Al+
+bcopput 12.54 1841 1e5 D2+
+bcopput 12.54 1941 1e5 Al+
+bcopput 14.90 1641 2e5 D2+
+comp 2037 1741
+plus 2037 1741 4000 'Al+ F=14.90 MBE=3e5 2037+1741'
+bput 14.90 4000
+h/de 0
+alp
+comp 1341 14
+alp
+plus 1341 1441 3000 'D2+ F=17.70 MBE=4e5 1341+1441'
+bput 17.70 3000
+h/de 0
+bcopput 17.70 1541 3e5 Al+
+bcopput 20.55 1141 5e5 D2+
+bcopput 20.55 1241 5e5 Al+
+bcopput 22.40 941 3e5 D2+
+bcopput 22.40 1041 3e5 Al+
+exit
+*** End   of history file: Tue Oct 20 16:23:35 1998

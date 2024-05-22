@@ -1,0 +1,10 @@
+*                                         @METAGS h30x30
+*--------------- h30x30 ---------------
+*
+MACRO h30x30 id title='Hist. 30x30'
+if [id]='' then
+   mess Usage:    [0] id title=[title]
+   stopm
+endif
+2dh [id] [title] ! -30 30 ! -30 30
+RETURN

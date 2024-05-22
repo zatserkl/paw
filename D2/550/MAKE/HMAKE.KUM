@@ -1,0 +1,794 @@
+*                                      @METAGS HMAKE
+*--------------- HMAKE ---------------
+*
+MACRO HMAKE
+EXEC INI
+mess Welcome to macro HMAKE.
+exec MODE PC
+RETURN
+
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+opt stat
+set stat 1000001
+opt grid
+set mtyp 24
+close 0
+
+g/cr MAIN $WORD([0],1,1,#)
+
+D2HIST='';  g/imp D2HIST;  if [D2HIST]=''  then; exec D2HIST;  endif
+D2HFILE=''; g/imp D2HFILE; if [D2HFILE]='' then; exec D2HFILE; endif
+
+exec ALI CREATE
+RETURN
+
+*                                         @METAGS MODE
+*--------------- MODE ---------------
+*
+MACRO MODE amode
+g/imp mode
+if [amode] = '' then
+   mess Usage     HMAKE#MODE mode
+   mess Possible modes: PC, TITOV
+   mess Current mode [mode]
+   stopm
+endif
+
+CASE $UPPER([amode]) IN
+   (PC)     g/cr mode PC
+   (TITOV)  mess Mode TITOV is non-available; stopm
+            g/cr mode TITOV
+   (*)      mess Unknown mode. Possible modes: PC, TITOV
+            stopm
+ENDCASE
+
+g/imp mode,Nchan,minc,maxc,floc,lun,hfile
+
+if $UPPER([mode])=PC then
+   g/cr Nchan 96
+   g/cr minc  1
+   g/cr maxc  96
+   g/cr floc  \D2\550\SPECTRA
+   g/cr lun 99
+   g/cr hfile h550.his
+endif
+
+if $UPPER([mode])=TITOV then
+   g/cr Nchan 11
+   g/cr minc  1
+   g/cr maxc  11
+   g/cr floc  \D2\550\TITOV
+   g/cr lun 98
+   g/cr hfile t550.his
+endif
+RETURN
+
+*                                         @METAGS VIEW
+*--------------- VIEW ---------------
+*
+MACRO VIEW id
+if ([id].EQ.'') then
+   mess Usage:    HMAKE#VIEW id
+   stopm
+endif
+id = $FORMAT([id],I4.4)
+if $HEXIST([id]) = 0 then
+   exec READ [id]
+endif
+if $HEXIST([id]) then
+   exec PLOT [id]
+else
+   mess Bin [id] did not found
+endif
+RETURN
+
+*                              @METAGS .COMP.
+*---------- COMP ----------
+*
+MACRO COMP
+if $VEXIST(hlist) then
+   ans = Y
+   read ans 'Create new histogram list (Y/N)? '
+   if $UPPER([ans]) = 'Y' then
+      sigma hlist = array(100,0#0)
+   else
+      stopm
+   endif
+else
+   sigma hlist = array(100,0#0)
+endif
+
+N = 0
+AGAIN:
+id = 0
+read id 'Enter histogram ID (0 - EXIT)'
+if [id] <> 0 then
+   idcur = $FORMAT([id],I4.4)
+   if $HEXIST([id]) = 0 then; EXEC READ [id]; endif
+   N = [N] + 1
+   v/inp hlist([N]) [id]
+   EXEC HPLOTL [N]
+   goto AGAIN
+else
+   stopm
+endif
+RETURN
+
+*                             @METAGS NLIST
+*---------- NLIST ----------
+*
+MACRO NLIST
+N = 0
+do i=1, 100
+   if hlist([i]) = 0 goto EXIT
+   N = [N]+1
+enddo
+EXIT:
+RETURN [N]
+
+*                             @METAGS HPLOTL
+*---------- HPLOTL ----------
+*
+MACRO HPLOTL N
+if $VEXIST(hlist) = 0 then
+   mess No histogram list loaded
+   stopm
+endif
+
+if [N] = '' then; N = $EXEC(NLIST); endif
+
+max = 0
+do i=1, [N]
+   id = hlist([i])
+   val = $HINFO([id],'MAX')
+   if [val] > [max] then
+      max = 1.10*[val]
+   endif
+enddo
+
+g/imp Nchan
+nc = [Nchan] + 1
+null 0 [nc] 0 [max]
+atitle 'channels' 'counts'
+
+dmod0 = $GRAFINFO('?dmod')
+set dmod 1
+
+mt0 = $GRAFINFO('?mtyp')
+mt = 24
+set mtyp [mt]
+
+ci0 = $GRAFINFO('?pmci')
+ci = 1
+set pmci [ci]
+x = 0.5
+dx = 2
+NT0 = $GRAFINFO('NT')
+y1 = 19/([NT0]/10)
+y2 = [y1] - .4
+y3 = [y2] - .4
+SELNT 1
+   itx [x] [y3] "a#
+selnt [NT0]
+do i=1, [N]
+   id = $FORMAT(hlist([i]),I4.4)
+   h/pl [id] SP
+   SELNT 1
+      key [x] [y1] [mt]
+      itx ([x]+.3) [y1] [id]
+      itx ([x]+.3) [y2] $HINFO([id],'SUM')
+
+      sum = $HINFO([id],'SUM')
+      error  = $SIGMA(SQRT([sum]))
+      error  = $FORMAT([error],F8.0)
+      itx ([x]+.3) [y3] [error]
+   SELNT [NT0]
+
+   * set next marker/text position
+   x  = [x] + [dx]
+   * set next color index
+   ci = [ci]+1
+   if ([ci] .GT. 6) then
+      ci = 1
+   endif
+   set pmci [ci]
+   if ([ci].EQ.5) then
+      set pmci 11
+   endif
+   * set next polymarker type index
+   mt = [mt]+1
+   if ([mt] .GT. 30) then
+      mt = 24
+   endif
+   set mtyp [mt]
+enddo
+set mtyp [mt0]
+set pmci [ci0]
+set dmod [dmod0]
+RETURN
+
+*                             @METAGS READ
+*---------- READ ----------
+*
+MACRO READ id
+if ([id].EQ.'') then
+   mess Usage:    HMAKE#READ id
+   mess Example:  HMAKE#READ 1622
+   stopm
+endif
+id = $FORMAT([id],I4.4)
+
+nz = $SUBSTRING([id],1,2)
+nf = $SUBSTRING([id],3)
+
+g/imp floc
+datfil = [floc]\[nz].[nf]
+if $FEXIST([datfil])=0 then
+   lcdir
+   mess File [datfil] did not found.
+endif
+
+g/imp Nchan
+sigma vcount=array([Nchan])*0
+v/cop vcount vdelay
+
+v/re vcount,vdelay [datfil]
+EXEC BCRE [id]
+v/de vcount,vdelay
+RETURN
+
+*                             @METAGS BCRE
+*---------- BCRE ----------
+*
+MACRO BCRE id
+g/imp D2HIST
+id = $FORMAT([id],I4.4)
+nz = $SUBSTRING([id],1,2)
+nf = $SUBSTRING([id],3)
+
+tit = Counts for [nz]([nf])
+exec [D2HIST]#HCRE 1[id] [tit]
+put/con 1[id] vcount
+
+tit = Delays for [nz]([nf])
+exec [D2HIST]#HCRE 2[id] [tit]
+put/con 2[id] vdelay
+
+tit = True counts for [nz]([nf])
+exec UPTRUE [id]
+exec [D2HIST]#TIT [id] [tit]
+RETURN
+
+*                             @METAGS CandD
+*---------- CandD ----------
+*
+MACRO CandD
+g/imp idcur,minc,maxc
+
+idcur = $FORMAT([idcur],I4.4)
+id = 1[idcur]
+set mtyp 24
+exec PLOT [id] [minc] [maxc]
+id = 2[idcur]
+set mtyp 25
+exec PLOTS [id]
+set mtyp 24
+atitle 'channels' 'counts'
+RETURN
+
+*                             @METAGS TRUE
+*---------- TRUE ----------
+*
+MACRO TRUE
+g/imp idcur
+
+set mtyp 24
+exec PLOT [idcur]
+atitle 'channels' 'counts'
+RETURN
+
+*                             @METAGS PLOT
+*---------- PLOT ----------
+*
+MACRO PLOT id min=1 max=11 
+if [id] = '' then
+   mess 'Usage:    HMAKE#PLOT id [min=1] [max=11]'
+   stopm
+endif
+g/imp minc,maxc
+h/pl [id]([minc]:[maxc]) PE0
+RETURN
+
+*                             @METAGS PLOTS
+*---------- PLOTS ----------
+*
+MACRO PLOTS id mt
+if [id] = '' then
+   mess 'Usage:    HMAKE#PLOTS id [mt]'
+   stopm
+endif
+mtcur = $GRAFINFO('?mtyp')
+
+if [mt] <> '' then
+   set mtyp [mt]
+endif
+g/imp minc,maxc
+h/pl [id]([minc]:[maxc]) PE0S
+set mtyp [mtcur]
+RETURN
+
+*                             @METAGS ZOOM
+*---------- ZOOM ----------
+*
+MACRO ZOOM min max
+g/imp idcur,minc,maxc,Nchan
+
+if [1] <> '' then
+   minc = [min]
+else
+   min = [minc]
+endif
+
+if [2] <> '' then
+   maxc = [max]
+else
+   max = [maxc]
+endif
+
+if (([1]<>'') .AND. ([2]<>'')) goto PLOT
+
+if (([1] <> '').AND.([min] > [max])) then
+   max = [Nchan]
+endif
+if (([2] <> '').AND.([max] < [min])) then
+   min = 1
+endif
+EXEC PLOT [idcur] [min] [max]
+
+if [1] = '' then
+   mess '--- Locate MIN channel.'
+   if $VEXIST(vlocX) then; v/del vlocX; endif
+   if $VEXIST(vlocY) then; v/del vlocY; endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   if [idim] > 0 then
+      min = vlocX([idim])
+   endif
+endif
+
+if [2] = '' then
+   mess '--- Locate MAX channel.'
+   if $VEXIST(vlocX) then; v/del vlocX; endif
+   if $VEXIST(vlocY) then; v/del vlocY; endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   if [idim] > 0 then
+      max = vlocX([idim])
+   endif
+endif
+
+PLOT:
+minc = [min]
+maxc = [max]
+EXEC PLOT [idcur] [minc] [maxc]
+RETURN
+
+*                             @METAGS UNZOOM
+*---------- UNZOOM ----------
+*
+MACRO UNZOOM
+g/imp Nchan
+EXEC ZOOM 1 [Nchan]
+RETURN
+
+*                             @METAGS SetID
+*---------- SetID ----------
+*
+MACRO SetID id
+g/imp idcur
+if [id] = '' then
+   read idcur 'Set ID: '
+   idcur = $FORMAT([idcur],I4.4)
+else
+   idcur = $FORMAT([id],I4.4)
+endif
+RETURN
+
+*                             @METAGS PLUS
+*---------- PLUS ----------
+*
+MACRO PLUS id1 id2 id3 tit scale2=1
+if [id3] = '' then
+   mess 'Usage:    HMAKE#PLUS id1 id2 id3 [tit] [scale2=1]'
+   stopm
+endif
+
+g/imp D2HIST
+
+id1 = $FORMAT([id1],I4.4)
+id2 = $FORMAT([id2],I4.4)
+id3 = $FORMAT([id3],I4.4)
+
+if [tit]='' then
+   tit = Sum of [id1] and [id2]
+   if [scale2]<>1 then
+      add = . Scale[id2] = [scale2]
+      tit = [tit]//[add] 
+   endif
+   read tit 'Enter title'
+endif
+
+add 1[id1] 1[id2] 1[id3] ! [scale2]
+exec [D2HIST]#TIT 1[id3] [tit] quiet=0
+
+add 2[id1] 2[id2] 2[id3] ! [scale2]
+exec [D2HIST]#TIT 2[id3] [tit] quiet=0
+
+exec UPTRUE [id3]
+exec [D2HIST]#TIT [id3] [tit]
+
+exec [D2HIST]#HINFO [id3]
+RETURN
+
+*                             @METAGS MINUS
+*---------- MINUS ----------
+*
+MACRO MINUS id1 id2 id3 tit scale2=1
+if [id1] = '' then
+   mess 'Usage:    HMAKE#MINUS id1 id2 id3 tit [scale2=1]'
+   stopm
+endif
+
+g/imp D2HIST
+
+id1 = $FORMAT([id1],I4.4)
+id2 = $FORMAT([id2],I4.4)
+id3 = $FORMAT([id3],I4.4)
+
+if [tit]='' then
+   tit = Difference of [id1] and [id2]
+   if [scale2]<>1 then
+      add = . Scale[id2] = [scale2]
+      tit = [tit]//[add] 
+   endif
+   read tit 'Enter title'
+endif
+
+sub 1[id1] 1[id2] 1[id3] ! [scale2]
+exec [D2HIST]#TIT 1[id3] [tit]
+
+sub 2[id1] 2[id2] 2[id3] ! [scale2]
+exec [D2HIST]#TIT 2[id3] [tit]
+
+exec UPTRUE [id3]
+exec [D2HIST]#TIT [id3] [tit]
+
+exec [D2HIST]#HINFO [id3]
+RETURN
+
+*                                      @METAGS UPTRUE
+*--------------- UPTRUE ---------------
+*
+MACRO UPTRUE id
+if [id] = '' then
+   mess Usage:    HMAKE#UPTRUE id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+idcount = 1[id]
+iddelay = 2[id]
+if $HEXIST([idcount])=0 then
+   mess Counts histogram for [id] do not exist
+   stopm
+endif
+if $HEXIST([iddelay])=0 then
+   mess Delays histogram for [id] do not exist
+   stopm
+endif
+if $HEXIST([id]) then; h/de [id]; endif
+
+sub 1[id] 2[id] [id] ! ! E
+
+Nchan = $HINFO([id],'XBINS')
+sigma buf    = array([Nchan])*0
+sigma buferr = array([Nchan])*0
+
+* set negative bins to 0 and type zero channels
+GET/CON [id] buf
+zero=''
+do i=1,[Nchan]
+   if buf([i]) < 0 then
+      v/inp buf([i]) 0
+      if [zero]<>'' then
+         zero=[zero],[i]
+      else
+         zero=[i]
+      endif
+   endif
+enddo
+if [zero] <> '' then
+   mess Zero negative channels: [zero]
+endif
+PUT/CON [id] buf
+
+* set zero bin errors to 1
+GET/ERR [id] buferr
+sigma buferr = buferr + (buferr EQ 0)
+PUT/ERR [id] buferr
+v/de buf,buferr
+RETURN
+
+*                                      @METAGS MKERR
+*--------------- MKERR ---------------
+*
+MACRO MKERR id info=1
+if [id] = '' then
+   mess 'Usage:    HMAKE#MKERR id info=1'
+   stopm
+endif
+
+g/imp D2HIST
+
+id = $FORMAT([id],I4.4)
+
+exec UPTRUE [id]
+if [info]<>'' then; exec [D2HIST]#HINFO [id]; endif
+RETURN
+
+*                                      @METAGS BDEL
+*--------------- BDEL ---------------
+*
+MACRO BDEL id
+g/imp idcur
+if [id] = '' then
+   mess 'Usage:    HMAKE#BDEL id'
+   stopm
+endif
+
+if $HEXIST([id])=0 then
+   mess Histogram [id] does not exist.
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+h/del  [id]
+h/del 1[id]
+h/del 2[id]
+
+idcur=0
+g/imp idcur
+if [idcur]=[id] then; idcur=0; endif
+RETURN
+
+*                                      @METAGS BCOP
+*--------------- BCOP ---------------
+*
+MACRO BCOP id1 id2 tit
+if [id2] = '' then
+   mess 'Usage:    HMAKE#BCOP id1 id2 [title]'
+   stopm
+endif
+
+g/imp D2HIST
+
+if $HEXIST([id1]) = 0 then
+   mess Bin [id1] did not exist
+   stopm
+endif
+if $HEXIST([id2]) <> 0 then
+   mess Bin [id2] already exist
+   wait
+endif
+
+id1 = $FORMAT([id1],I4.4)
+id2 = $FORMAT([id2],I4.4)
+
+h/cop [id1] [id2] [tit]
+h/cop 1[id1] 1[id2] [tit]
+h/cop 2[id1] 2[id2] [tit]
+exec [D2HIST]#TIT [id2]
+RETURN
+
+*                                      @METAGS BCOPmker
+*--------------- BCOPmker ---------------
+*
+MACRO BCOPmker id1 id2 tit
+if [id2] = '' then
+   mess 'Usage:    HMAKE#BCOPmker id1 id2 [title]'
+   mess 'Example:  HMAKE#BCOPmker 3622 1000 ''D2, F=29.26, MBE=1e6, sterr'''
+   stopm
+endif
+exec BCOP [id1] [id2] [tit]
+exec MKERR [id2]
+RETURN
+
+*                                      @METAGS BPUT
+*--------------- BPUT ---------------
+*
+MACRO BPUT dir id
+if [dir]='' .OR. [id]='' then
+   mess Usage:    HMAKE#BPUT dir id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+if $HEXIST([id]) = 0 then
+   mess Histogram [id] from bin  [id] did not exist
+   stopm
+endif
+idcount = 1[id]
+if $HEXIST([idcount]) = 0 then
+   mess Histogram [idcount] from bin [id] did not exist
+   stopm
+endif
+iddelay = 2[id]
+if $HEXIST([iddelay]) = 0 then
+   mess Histogram [iddelay] from bin [id] did not exist
+   stopm
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   
+   hrout  [id]
+   hrout 1[id]
+   hrout 2[id]
+close [lun]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS BGET
+*--------------- BGET ---------------
+*
+MACRO BGET dir id
+if [dir]='' .OR. [id]='' then
+   mess Usage:    HMAKE#BGET dir id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+if $HEXIST([id]) then
+   mess Bin [id] in memory will be deleted!
+   ans = 'N'
+   read ans 'Delete (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      h/de [id]
+      h/de 1[id]
+      h/de 2[id]
+   else
+      mess Cansel.
+      stopm
+   endif
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! ' '
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+
+   hrin  [id]
+   hrin 1[id]
+   hrin 2[id]
+close [lun]
+
+if $HEXIST([id])=0 then
+   mess There is no bin [id] in the file.
+endif
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS FBDEL
+*--------------- FBDEL ---------------
+*
+MACRO FBDEL dir id
+if (([dir]='').OR.([id]='')) then
+   mess Usage:    HMAKE#FBDEL dir id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+g/imp D2HFILE
+exec [D2HFILE]#FHDEL [dir] [id]
+exec [D2HFILE]#FHDEL [dir] 1[id]
+exec [D2HFILE]#FHDEL [dir] 2[id]
+RETURN
+
+*                                      @METAGS BZERO
+*--------------- BZERO ---------------
+*
+MACRO BZERO id
+* Zero histograms
+id = $FORMAT([id],I4.4)
+g/imp D2HIST
+exec [D2HIST]#HCRE  [id]
+exec [D2HIST]#HCRE 1[id]
+exec [D2HIST]#HCRE 2[id]
+RETURN
+
+*                             @METAGS PAN
+*---------- PAN ----------
+*
+MACRO PAN
+mess Panels from macro HMAKE
+
+EXEC ALI DELETE
+EXEC ALI CREATE
+panel 0
+panel 1  'COMP' 'BIN-' 'ZOOM-' 'MINUS-' 'PLUS-' 'CandD' 'HPLOTL' 'PLOT-'_
+         'HINFO-' 'SetID' 'BGET' 'BPUT'
+panel 2  'opt-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-' 'g/l-' 'mess [$]'
+panel 3  'pan' 'p/cr' 'p/pr-' 'Clear' 'Notes' 'edit-' 'shell' 'x-' '$' 'me'
+style gp ! ! .12
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = '?' then
+   op = CREATE
+   read op 'MACRO HMAKE#ALI: CReate or DElete aliases? '
+endif
+
+mess HMAKE: Aliases is created.
+
+ali/[op] -C Notes       'edit Notes.txt'
+ali/[op] -C XL          'exec HMAKE#XL'
+ali/[op] -C INI         'exec HMAKE#INI'
+ali/[op] -C ALI         'exec HMAKE#ALI'
+ali/[op] -C PAN         'exec HMAKE#PAN'
+ali/[op] -C MODE        'exec HMAKE#MODE'
+ali/[op] -C VIEW        'exec HMAKE#VIEW'
+ali/[op] -C COMP        'exec HMAKE#COMP'
+ali/[op] -C HPLOTL      'exec HMAKE#HPLOTL'
+ali/[op] -C READ        'exec HMAKE#READ'
+ali/[op] -C ZOOM        'exec HMAKE#ZOOM'
+ali/[op] -C UNZOOM      'exec HMAKE#UNZOOM'
+ali/[op] -C CandD       'exec HMAKE#CandD'
+ali/[op] -C TRUE        'exec HMAKE#TRUE'
+ali/[op] -C SetID       'exec HMAKE#SetID'
+ali/[op] -C PLOT        'exec HMAKE#PLOT'
+ali/[op] -C PLOTS       'exec HMAKE#PLOTS'
+ali/[op] -C PLUS        'exec HMAKE#PLUS'
+ali/[op] -C MINUS       'exec HMAKE#MINUS'
+ali/[op] -C UPTRUE      'exec HMAKE#UPTRUE'
+ali/[op] -C MKERR       'exec HMAKE#MKERR'
+ali/[op] -C BDEL        'exec HMAKE#BDEL'
+ali/[op] -C BCOP        'exec HMAKE#BCOP'
+ali/[op] -C BCOPmker    'exec HMAKE#BCOPmker'
+ali/[op] -C BPUT        'exec HMAKE#BPUT'
+ali/[op] -C BGET        'exec HMAKE#BGET'
+ali/[op] -C FBDEL       'exec HMAKE#FBDEL'
+ali/[op] -C BZERO       'exec HMAKE#BZERO'
+RETURN
+
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+last 2
+x last
+ans = Y
+read ans 'Return to panels (Y/N)?'
+if $UPPER([ans]) = Y then
+   XP
+endif
+RETURN

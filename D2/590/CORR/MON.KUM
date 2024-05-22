@@ -1,0 +1,146 @@
+*                                         @METAGS mon
+*--------------- mon ---------------
+*
+MACRO mon
+D2LOOK = ''; g/imp D2LOOK
+if [D2LOOK]='' then; exec D2LOOK; endif
+RETURN
+
+*                                         @METAGS H2
+*--------------- H2 ---------------
+*
+MACRO H2
+d2look=''; g/imp d2look
+if [d2look]='' then; exec d2look; endif
+*mess d2look=[d2look]
+*wait
+
+sigma hiH2=array(100)*0
+sigma zfH2=array(100)*0
+sigma sH2 =array(100)*0
+sigma dsH2=array(100)*0
+
+*last = 56 | for 635 MeV, nf=37
+i=0
+for id in 142 2042 2542 2942 4242 4342 6342
+   if $HEXIST([id]) = 0 then
+      exec [d2look]#readat [id]
+   endif
+
+   i = [i]+1
+   v/inp hiH2([i]) [id]
+   if $LEN([id]) > 3 then
+      nz = $SUBSTRING([id],1,2)
+   else
+      nz = $SUBSTRING([id],1,1)
+   endif
+   nf = $SUBSTRING([id],-2)
+   *if [nf] = 37 then
+      np = [nz]
+   *else
+   *   np = [last] + [nz]
+   *endif
+   v/inp zfH2([i]) [np]
+
+   g/imp d2hist
+   sum = $EXEC([d2hist]#SUMC [id] verb=0)
+   fcall = ITITDAT([id],'M=')
+   M = $ICALL([fcall])
+   if [M] > 0 then
+      sum = $RSIGMA([sum])
+      s = [sum]*1000000/[M]
+      *ds = $SIGMA(sqrt($RSIGMA([sum]))*1000000/[M])
+      ds = $SIGMA(sqrt([sum]))
+      ds = [ds]*1000000/[M]
+   else
+      s = 0
+      ds = 0
+   endif
+   v/inp  sH2([i]) [s]
+   v/inp dsH2([i]) [ds]
+endfor
+
+tot = 90
+exec plot H2 [tot]
+RETURN
+
+*                                         @METAGS DIP
+*--------------- DIP ---------------
+*
+MACRO DIP
+d2look=''; g/imp d2look
+if [d2look]='' then; exec d2look; endif
+*mess d2look=[d2look]
+*wait
+
+sigma hiDIP=array(100)*0
+sigma zfDIP=array(100)*0
+sigma sDIP =array(100)*0
+sigma dsDIP=array(100)*0
+
+*last = 56 | for 635 MeV
+i=0
+for id in 1042 2342 2842 4142 6242
+   if $HEXIST([id]) = 0 then
+      exec [d2look]#readat [id]
+   endif
+
+   i = [i]+1
+   v/inp hiDIP([i]) [id]
+   if $LEN([id]) > 3 then
+      nz = $SUBSTRING([id],1,2)
+   else
+      nz = $SUBSTRING([id],1,1)
+   endif
+   nf = $SUBSTRING([id],-2)
+   *if [nf] = 37 then
+      np = [nz]
+   *else
+   *   np = [last] + [nz]
+   *endif
+   v/inp zfDIP([i]) [np]
+
+   g/imp d2hist
+   sum = $EXEC([d2hist]#SUMC [id] verb=0)
+   fcall = ITITDAT([id],'M=')
+   M = $ICALL([fcall])
+   if [M] > 0 then
+      sum = $RSIGMA([sum])
+      s = [sum]*1000000/[M]
+      *ds = $SIGMA(sqrt($RSIGMA([sum]))*1000000/[M])
+      ds = $SIGMA(sqrt([sum]))
+      ds = [ds]*1000000/[M]
+   else
+      s = 0
+      ds = 0
+   endif
+   v/inp  sDIP([i]) [s]
+   v/inp dsDIP([i]) [ds]
+endfor
+
+tot = 90
+exec plot DIP [tot]
+RETURN
+
+*                                         @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot mark tot=90
+np = $VLEN(hi[mark])
+xmin = 0
+if [tot] = '' then
+   xmax = zf[mark]([np]) + 10
+else
+   xmax = [tot]
+endif
+ymin = $SIGMA(0.9*VMIN(s[mark] + VMAX(s[mark])*(s[mark] EQ 0)))
+ymax = $SIGMA(1.1*VMAX(s[mark]))
+
+null [xmin] [xmax] [ymin] [ymax]
+h/err zf[mark] s[mark] $SIGMA(0*zf[mark]) ds[mark] [np] 24 ! 10
+xtit = [mark] expositions
+atitle [xtit] 'S, arb.units'
+do i=1,[np]
+   key zf[mark]([i]) s[mark]([i]) 24 $EVAL(hi[mark]([i]))
+enddo
+RETURN

@@ -1,0 +1,15 @@
+mv ACCIDENT.KUM    ACCIDENT.kumac
+mv ALLDEF.KUM      ALLDEF.kumac
+mv CLEAR.KUM       CLEAR.kumac
+mv CO.KUM          CO.kumac
+mv DEF.KUM         DEF.kumac
+mv INICOMIS.KUM    INICOMIS.kumac
+mv SETNUL.KUM      SETNUL.kumac
+mv SHOWR.KUM       SHOWR.kumac
+mv SP.KUM          SP.kumac
+mv SP02.KUM        SP02.kumac
+mv SP02DISP.KUM    SP02DISP.kumac
+mv TWO.KUM         TWO.kumac
+mv VTYP.KUM        VTYP.kumac
+mv WAITFOR.KUM     WAITFOR.kumac
+mv WIN.KUM         WIN.kumac

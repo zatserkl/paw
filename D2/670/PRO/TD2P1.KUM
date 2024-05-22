@@ -1,0 +1,35 @@
+*                                         @METAGS TD2p1
+*--------------- TD2p1 ---------------
+*
+MACRO TD2p1
+RETURN
+*                                         @METAGS WRITE
+*--------------- WRITE ---------------
+*
+MACRO WRITE
+v/cr TD2p1(3,6)
+v/inp TD2p1(:,1) E_D2p_903  s_D2p_903  d_D2p_903
+v/inp TD2p1(:,2) E_D2p_1073 s_D2p_1073 d_D2p_1073
+v/inp TD2p1(:,3) E_D2p_1389 s_D2p_1389 d_D2p_1389
+v/inp TD2p1(:,4) E_D2p_1801 s_D2p_1801 d_D2p_1801
+v/inp TD2p1(:,5) E_D2p_2138 s_D2p_2138 d_D2p_2138
+v/inp TD2p1(:,6) E_D2p_2271 s_D2p_2271 d_D2p_2271
+v/wr TD2p1 TD2p1.dat '3F8.1'
+RETURN
+
+*                                         @METAGS READ
+*--------------- READ ---------------
+*
+MACRO READ
+v/re eTD2p1,sTD2p1,dTD2p1 TD2p1.dat
+sigma ertD2p1=.04*eTD2p1
+RETURN
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT
+ci0 = $GRAFINFO('?pmci')
+set pmci 4
+h/err eTD2p1 sTD2p1 ertD2p1 dTD2p1 $VLEN(eTD2p1) 24 .5 s
+set pmci [ci0]
+RETURN

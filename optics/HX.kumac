@@ -1,0 +1,14 @@
+*                                         @METAGS hx
+*--------------- hx ---------------
+*
+MACRO hx id absmax title
+if [absmax]='' then
+   mess Usage:    [0] id absmax title
+   stopm
+endif
+if [title]='' then
+   title = Hist. [absmax]x[absmax]
+endif
+
+2dh [id] [title] ! -[absmax] [absmax] ! -[absmax] [absmax]
+RETURN

@@ -1,0 +1,34 @@
+*                                         @METAGS TAL1
+*--------------- TAL1 ---------------
+*
+MACRO TAL1
+RETURN
+*                                         @METAGS WRITE
+*--------------- WRITE ---------------
+*
+MACRO WRITE
+v/cr tal1(3,8)
+v/inp tal1(:,1) E_al_903 s_al_903 d_al_903
+v/inp tal1(:,2) E_al_1073 s_al_1073 d_al_1073
+v/inp tal1(:,3) E_al_1389 s_al_1389 d_al_1389
+v/inp tal1(:,4) E_al_1651 s_al_1651 d_al_1651
+v/inp tal1(:,5) E_al_1801 s_al_1801 d_al_1801
+v/inp tal1(:,6) E_al_1962 s_al_1962 d_al_1962
+v/inp tal1(:,7) E_al_2138 s_al_2138 d_al_2138
+v/inp tal1(:,8) E_al_2271 s_al_2271 d_al_2271
+v/wr tal1 tal1.dat '3F8.1'
+RETURN
+
+*                                         @METAGS READ
+*--------------- READ ---------------
+*
+MACRO READ
+v/re etAL1,stAL1,dtAL1 tal1.dat
+sigma ertAL1=.04*etAL1
+RETURN
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT
+h/err etAL1 stAL1 ertAL1 dtAL1 $VLEN(etAl1) 27 .5 s
+RETURN

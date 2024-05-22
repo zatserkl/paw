@@ -1,0 +1,7 @@
+*COMM   D2P + AL 20.39 AND 22.22
+*EMIN    180.0  MEV
+*EMAX    410.0  MEV
+*TYPE   2.      ID OF FUNCTION "EX"
+   0.
+   9.997675    
+  -.2002425E-01

@@ -1,0 +1,91 @@
+*** Begin of history file: Fri Oct 30 12:18:47 1998
+bcopput
+bcopput 8.52 342 5e4 D2
+bcopput 8.52 242 5e4 Al
+bcopput 9.28 542 1e5 D2
+bcopput 9.28 442 1e5 Al
+bcopput 9.28 5942 1e5 D2+
+bcopput 9.28 6042 1e5 Al+
+bcopput 10.12 742 2e5 D2
+bcopput 10.12 642 1e5 Al
+bcopput 11.03 942 5e5 D2
+bcopput 11.03 842 1e5 Al
+bcopput 11.03 5742 1e5 D2+
+bcopput 11.03 5842 1e5 Al+
+comp 1042 23 28 41 62
+comp 23 41 62
+comp 24 11
+alp
+bcopput 12.02 1042 1e6 D2
+bcopput 12.02 1142 1e5 Al
+comp 54 56 61
+comp 54 56 61
+comp 54 56 61
+alp
+plus 5442 5642 3000 'D2+ F=12.02 MBE=3e5 54+56 (42)'
+bput 12.02 3000
+bcopput 12.02 5542 2e5 Al+
+bcopput 13.10 1342 1e6 D2
+bcopput 13.10 1242 1e5 Al
+bcopput 13.10 5242 2e5 D2+
+bcopput 13.10 5342 2e5 Al+
+comp 14 16
+alp
+plus 1442 1642 1000 'D2 F=14.29 MBE=3e5 14+16 (42)'
+bput 14.29 1000
+bcopput 14.29 1542 1e5 Al
+bcopput 15.46 1842 2e5 D2
+comp 17 19
+alp
+plus 1742 1942 2000 'Al F=15.46 MBE=3e5 17+19 (42)'
+bput 15.46 2000
+bcopput 15.46 5042 5e5 D2+
+bcopput 15.46 5142 6e5 Al+
+bcopput 15.85 2242 4e5 D2
+bcopput 15.85 2142 2e5 Al
+bcopput 16.85 4442 5e5 D2 'D2 F=16.85 MBE=5e5 Bin 4442 Invalid Di=48 (as for 15.85)'
+bcopput 16.85 4542 5e5 Al 'Al F=16.85 MBE=5e5 Bin 4542 Invalid Di=48 (as for 15.85)'
+bcopput 18.37 2742 2e6 D2
+bcopput 18.37 2642 1e6 Al
+bcopput 18.37 4842 7e5 D2+
+bcopput 18.37 4942 4e5 Al+
+bcopput 20.02 3242 2e6 D2
+comp 30 33
+alp
+plus 3042 3342 2000 'Al F=20.02 MBE=2e6 30+33 (42)'
+bput 20.02 2000
+h/de 0
+comp 34 37 38
+data 38
+me
+x d2look#for
+bdel 3842
+comp 34 37 38
+lp
+aalp
+alp
+plus 3442 3842 1000 'D2 F=20.85 MBE=3e6 34+38 (42)'
+bput 20.85 1000
+h/de 0
+comp 36 39 40
+alp
+plus 3642 4042 2000 'Al F=20.85 MBE=1853709 36+40 (42)'
+bput 20.85 2000
+bcopput 20.85 4742 5e5 D2+
+bcopput 20.85 4642 5e5 Al+
+comp 142 20 25 29 43 63
+data 142
+comp 142 20 25 29 43 63
+data 63
+data 60
+comp 142 20 25 29 43 63
+comp 142 20 25 43 63
+comp 20 25 43 63
+comp 20 25 29 43 63
+plus 2042 2542 9000 ' '
+plus 9000 2942 9000 'sum'
+plus 9000 4342 9000 'sum'
+plus 9000 6342 9000 'H2 F=15.46 MBE=5e5 20+25+29+43+63 (42) N=4778 +/- 77, 1.6"Y#'
+bput 15.46 9000
+exit
+*** End   of history file: Fri Oct 30 13:45:39 1998

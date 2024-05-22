@@ -1,0 +1,100 @@
+*                                         @METAGS Nass
+*--------------- Nass ---------------
+*
+MACRO Nass
+d2look=''; g/imp d2look
+if [d2look]='' then; exec d2look; g/imp d2look; endif
+
+g/cr kcur [k] 'current channel'
+
+sigma p0  = array(96)*0
+sigma ep0 = array(96)*0
+
+sub = 0
+nbin=0
+
+LOOP:
+for id in 1042 2342 2842 4142 6242
+*for id in 1043 1243 1543 1344 1743 1943 2143 2543 2943
+*for id in 1043 1243 1543      1743 1943 2143 2543 2943
+*for id in  142 2042 2542 2942 4342 6342
+*for id in   142 2042 2542 2942 4342 6342 _
+*            342 542 742 942 1042 2842 1342 1442 1842 2242 4442 2742
+*            342 542 742 942 1042 2842 1342 1442 1842 2242 4442 2742 3242 3842
+   idc = 10000+[id]
+   idd = 20000+[id]
+
+   * Ns
+   fcall = TITDAT([idc],'N=')
+   Ns = $CALL([fcall])
+   * another way
+   Ns = $HINFO([idc],SUM) - $HINFO([idd],SUM)
+   
+   * MBE
+   fcall = TITDAT([idc],'M=')
+   MBE = $CALL([fcall])
+   * T
+   fcall = TITDAT([idc],'T=')
+   T = $CALL([fcall])
+   * current
+   Ibeam = [MBE]/[T]
+
+   if [sub]=1 then
+      * subtraction loop
+      idt = 30000+[id]
+      factor = [Ns]*[Ibeam]
+      *factor = [Ibeam]
+      *mult [idd] 1 -1 [factor] 1
+      *mult [idd] 1 -1
+
+      iddt = 40000+[id]
+      mult 1 1000000 [iddt] 1 [factor]
+
+      h/pl [idd] e0; set pmci 2; h/pl [iddt] e0s; set pmci 1
+      sumd  = $EXEC(d2hist#SUMC [idd]  verb=0)
+      sumdt = $EXEC(d2hist#SUMC [iddt] verb=0)
+      mess factor=[factor], sumd=[sumd], sumdt=[sumdt]
+      wait
+
+      sub [idc] [iddt] [idt]
+      exec Hpos [idc]
+
+      goto NEXT
+   endif
+
+   if $HEXIST([idc])=0 .OR. $HEXIST([idd])=0 then
+      exec [d2look]#readat [id]
+   endif
+
+   nbin = [nbin]+1
+
+
+   sigma con  = array(96)*0
+   get/con [idd] con
+
+   sigma p0 = p0 + con/[Ns]/[Ibeam]
+
+   NEXT:
+endfor
+
+if [sub]=1 then
+   STOPM
+endif
+
+sigma p0 = p0/[nbin]
+
+if $HEXIST(1000000)  then; h/de  1000000; endif
+
+h/cop [id] 1000000 'p0'
+put/con 1000000 p0
+put/err 1000000 ep0
+
+if $HEXIST(1) then; h/de 1; endif
+h/cop [id] 1 '1'
+put/con 1 $SIGMA(array(96)*1)
+put/err 1 $SIGMA(array(96)*0)
+
+sub = 1
+goto LOOP
+
+RETURN

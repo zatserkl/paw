@@ -1,0 +1,16 @@
+*                                         @METAGS accident
+*--------------- accident ---------------
+*
+MACRO accident id
+exec D2MAKE#read [id]
+idc = 1[id]
+exec D2HIST#HINFO [idc]
+nc = [@]
+
+idd = 2[id]
+exec D2HIST#HINFO [idd]
+nd = [@]
+
+procent = 100*[nd]/[nc]
+mess Delays/Counts = [procent] %
+RETURN

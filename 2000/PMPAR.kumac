@@ -1,0 +1,405 @@
+* Andriy_Zatserklyniy@fnal.gov
+
+*                                      @METAGS pmpar
+*--------------- pmpar ---------------
+*
+MACRO pmpar
+*
+if ([#].eq.0) then
+  mess 'Usage:   EXEC pmpar id [id2 id3 ...]'
+  mess 'Usage:   EXEC pmpar 1 2 3'
+  exitm
+endif
+*
+exec FOR
+
+fname = pmpar.ini
+mess 'Enter file name (default extension ''.ini'' can be omitted)'
+read fname
+if $INDEX([fname],'.')=0 then
+   fname = [fname].ini
+endif
+
+if $FEXIST([fname]) then
+   mess File [fname] already exist.
+   wait
+endif
+
+call FCLEAR($QUOTE([fname]))
+call writestr($QUOTE([fname]),'Spectra:')
+call writestr($QUOTE([fname]),'-------')
+
+hcol0 = $GRAFINFO('?hcol')
+fcol0 = $GRAFINFO('?fcol')
+set hcol 2
+set fcol 4
+
+if $VEXIST(parbuf) then
+  v/de parbuf,errbuf
+endif
+v/cr parbuf([#],4)
+v/cr errbuf([#],4)
+
+if $VEXIST(edges)=0 then
+  v/cr edges(3)
+endif
+
+i = 0
+FOR id IN [*]
+   i = [i]+1
+   title = $HTITLE([id])
+   call writestr($QUOTE([fname]),$QUOTE([title]))
+   exec pmfit [id]
+   v/inp parbuf([i],1) $EVAL(ABS( p(2)))
+   v/inp errbuf([i],1) $EVAL(ABS(ep(2)))
+   v/inp parbuf([i],2) $EVAL(ABS( p(3)))
+   v/inp errbuf([i],2) $EVAL(ABS(ep(3)))
+   v/inp parbuf([i],3) $EVAL(ABS( p(5)))
+   v/inp errbuf([i],3) $EVAL(ABS(ep(5)))
+   v/inp parbuf([i],4) $EVAL(ABS( p(6)))
+   v/inp errbuf([i],4) $EVAL(ABS(ep(6)))
+   if [i] .NE. [#] then
+      wait 'Process next hist. <CR>=Continue, Q=Quit'
+   endif
+ENDFOR
+
+call writepar([i],parbuf,errbuf,$QUOTE([fname]))
+
+set hcol [hcol0]
+set fcol [fcol0]
+v/de p,ep,parbuf,errbuf
+RETURN
+
+*                                         @METAGS pmfit
+*--------------- pmfit ---------------
+*
+MACRO pmfit id
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:             [0] id
+   stopm
+endif
+
+h/pl [id]
+
+if $VEXIST(edges) then
+   if edges(3) > 0. then
+      k1 = edges(1)
+   endif
+else
+   v/cr edges(3)
+endif
+read k1 'Enter pedestal upper edge (G=Graphics cursor)'
+if $UPPER([k1])='G' then
+   exec xloc
+   k1 = [@]
+endif
+v/inp edges(1) [k1]
+
+h/pl [id]([k1]:)
+
+if edges(3) > 0. then
+   pe12 = edges(2)
+endif
+read pe12 'Enter upper edge of pe1 (G=Graphics cursor)'
+if $UPPER([pe12])='G' then
+   exec xloc
+   pe12 = [@]
+endif
+v/inp edges(2) [pe12]
+
+if edges(3) > 0. then
+   k2 = edges(3)
+endif
+read k2 'Enter upper edge of pe2 (G=Graphics cursor)'
+if $UPPER([k2])='G' then
+   exec xloc
+   k2 = [@]
+endif
+v/inp edges(3) [k2]
+
+opt fit
+set fit 111
+
+sigma p =array(12)
+sigma ep=array(12)*0
+sigma pmin = array(12)
+sigma pmax = array(12)
+sigma step = array(12)
+
+h/fit [id](:[k1]) g q0 0 p
+h/fit [id]([k1]:[pe12]) g q0 0 p(4:6)
+h/fit [id](:[pe12]) g+g q0 6 p step pmin pmax ep
+*h/pl [id]([k1]:[k2])
+*wait
+
+pos1  = p(5)
+sig1  = p(6)
+delta = p(5)-p(2)
+* set two-electron peak
+v/inp p(8) $SIGMA([pos1]+[delta])
+v/inp p(9) $SIGMA([sig1]*sqrt(2.))
+
+* amplitude
+fcall=csum([id],[k1],[k2])
+sumt = $CALL([fcall])
+fcall=gsum(p(4),p(5),p(6),$RSIGMA([k1]),$RSIGMA([k2]))
+sum1 = $CALL([fcall])
+sum2 = [sumt]-[sum1]
+fcall=aest($RSIGMA([sum2]),p(8),p(9),$RSIGMA([k1]),$RSIGMA([k2]))
+sum2 = $CALL([fcall])
+if [sum2] < 0. then
+   sum2 = 1.
+endif
+v/inp p(7) [sum2]
+
+*mess sumt=[sumt]
+*mess sum1=[sum1]
+*mess sum2=[sum2]
+*wait
+
+sigma step = 0.10*p
+* limits
+sigma pmin = 0.70*p
+sigma pmax = 1.30*p
+v/inp pmin(7) $EVAL(0.20*p(7))
+
+h/fit [id]([k1]:[k2]) g+g qb0 6 p(4:9) step(4:9) pmin(4:9) pmax(4:9) ep(4:9)
+*h/pl [id]([k1]:[k2])
+
+pos1  = p(5)
+sig1  = p(6)
+delta = p(5)-p(2)
+
+* correct two-electron peak
+v/inp p(8) $SIGMA([pos1]+[delta])
+v/inp p(9) $SIGMA([sig1]*sqrt(2.))
+* set three-electron peak
+v/inp p(11) $SIGMA([pos1]+2.*[delta])
+v/inp p(12) $SIGMA([sig1]*sqrt(3.))
+
+* amplitude
+fcall=csum([id],[k1],[k2])
+sumt = $CALL([fcall])
+fcall=gsum(p(4),p(5),p(6),$RSIGMA([k1]),$RSIGMA([k2]))
+sum1 = $CALL([fcall])
+fcall=gsum(p(7),p(8),p(9),$RSIGMA([k1]),$RSIGMA([k2]))
+sum2 = $CALL([fcall])
+sum3 = [sumt]-[sum1]-[sum2]
+fcall=aest($RSIGMA([sum2]),p(11),p(12),$RSIGMA([k1]),$RSIGMA([k2]))
+sum3 = $CALL([fcall])
+if [sum3] < 0. then
+   sum3 = 1.
+endif
+v/inp p(10) [sum3]
+
+*mess sumt=[sumt]
+*mess sum1=[sum1]
+*mess sum2=[sum2]
+*mess sum3=[sum3]
+*wait
+
+sigma pmin = 0.90*p
+sigma pmax = 1.10*p
+sigma step = 0.10*p
+v/inp pmin(7)  $EVAL(0.20*p(7))
+v/inp pmin(10) $EVAL(0.20*p(10))
+*wait
+APPL HMINUIT EXIT
+name 1 A1
+name 2 N1
+name 3 [s]1
+name 4 A2
+name 5 N2
+name 6 [s]2
+name 7 A3
+name 8 N3
+name 9 [s]3
+migrad
+EXIT
+h/fit [id]([k1]:[k2]) g+g+g mqb0 12 p(4:12) step(4:12) pmin(4:12) pmax(4:12) ep(4:12)
+h/pl [id]([k1]:[k2])
+v/de step,pmin,pmax
+RETURN
+
+*                                         @METAGS xloc
+*--------------- xloc ---------------
+*
+MACRO xloc mess
+exec plocate [mess]
+if [@]='UNDEFINED' then
+   stopm
+else
+   x = $WORD([@],1,1)
+   *mess [x]
+endif
+RETURN [x]
+
+*                                         @METAGS plocate
+*--------------- plocate ---------------
+*
+MACRO plocate text
+mess [text]
+if $VEXIST(vlocX) then; v/de vlocX; endif
+if $VEXIST(vlocY) then; v/de vlocY; endif
+vlocate vlocX vlocY
+idim = $VLEN(vlocX)
+if [idim] > 0 then
+   xlocate = vlocX([idim])
+   ylocate = vlocY([idim])
+   v/de vlocX,vlocY
+else
+   EXITM 'UNDEFINED'
+endif
+RETURN [xlocate] [ylocate]
+
+*                                         @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+*                                         @METAGS csum
+*                                         12-23-99 06:23pm
+*--------------- csum ---------------
+*
+      function csum(id,n1,n2)
+      sum = 0.
+      do i=n1,n2
+         sum = sum+HI(id,i)
+      enddo
+      csum = sum
+      END
+*                                         @METAGS gsum
+*                                         12-23-99 06:23pm
+*--------------- gsum ---------------
+*
+      function gsum(a,amean,sigma,x1,x2)
+      pi = acos(-1.)
+      sqrt2 = sqrt(2.)
+      derf = erf((x2-amean)/sigma/sqrt2) - erf((x1-amean)/sigma/sqrt2)
+      gsum = a*sigma*sqrt(pi/2.)*derf
+      END
+*                                         @METAGS aest
+*                                         12-23-99 06:23pm
+*--------------- aest ---------------
+*
+      function aest(sum,amean,sigma,x1,x2)
+      pi = acos(-1.)
+      sqrt2 = sqrt(2.)
+      derf = erf((x2-amean)/sigma/sqrt2) - erf((x1-amean)/sigma/sqrt2)
+      aest = sum/(sigma*sqrt(pi/2.)*derf)
+      END
+*                                         @METAGS writepar
+*                                         12-24-99 08:47am
+*--------------- writepar ---------------
+*
+      SUBROUTINE writepar(n,parbuf,errbuf,fname)
+      real parbuf(n,4), errbuf(n,4)
+      character fname*32
+      character match, line*256
+		match=''''
+      call avpar(n,parbuf(1,1),errbuf(1,1),posp,eposp)
+      call avpar(n,parbuf(1,2),errbuf(1,2),sigp,esigp)
+      call avpar(n,parbuf(1,3),errbuf(1,3),pos1,epos1)
+      call avpar(n,parbuf(1,4),errbuf(1,4),sig1,esig1)
+      delta  = pos1-posp
+      edelta = sqrt(epos1**2 + eposp**2)
+
+      lun = LUNFREE(1)
+      open (lun, FILE=fname, STATUS='UNKNOWN')
+ 2000 read (lun, '(A)', END=1000) line
+      goto 2000
+ 1000 continue
+      write(lun,1) match
+      write(lun,*) 1., '                        anorm'
+      write(lun,*) posp,eposp, '          posp, eposp'
+      write(lun,*) sigp,esigp, '          sigp, esigp'
+      write(lun,*) pos1,epos1, '          pos1, epos1'
+      write(lun,*) sig1,esig1, '          sig1, esig1'
+
+      write(*,*) 1., '                     anorm'
+      write(*,*) posp,eposp, '       posp, eposp'
+      write(*,*) sigp,esigp, '       sigp, esigp'
+      write(*,*) pos1,epos1, '       pos1, epos1'
+      write(*,*) sig1,esig1, '       sig1, esig1'
+
+      write(lun,2)  match
+      write(lun,21) match, delta ,241, edelta
+	   write(*,2)  match
+      write(*,21) match, delta ,241, edelta
+      close(lun)
+    1 FORMAT(A)
+    2 FORMAT(A, '  Average delta:')
+   21 FORMAT(A, f8.3, 1x, A1, F6.3)
+      END
+*                                         @METAGS avpar
+*                                         12-24-99 09:15am
+*--------------- avpar ---------------
+*
+      SUBROUTINE avpar(n,par,err,apar,aerr)
+      real par(n),err(n)
+      if (n.EQ.1) then
+        apar = par(1)
+        aerr = err(1)
+        return
+      endif
+      xw = 0.
+      W  = 0.
+      do i=1,n
+         W = W+err(i)
+         xw = xw + par(i)*err(i)
+      enddo
+      xw = xw/W
+*     .. mean
+      apar = xw
+*     .. error
+      dxw = 0.
+      do i=1,n
+         dxw = dxw + err(i) * (par(i)-xw)**2
+      enddo
+      aerr = sqrt(dxw/(W*(n-1)))
+      END
+*                                         @METAGS .LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      logical used
+      lun = lunstart-1
+      if (lun.LT.0) lun=0
+  100 lun = lun+1
+      inquire (UNIT=lun, OPENED=used)
+      if (used) goto 100
+      LUNFREE = lun
+      END
+*                                         @METAGS writestr
+*                                         12-24-99 11:46am
+*--------------- writestr ---------------
+*
+      SUBROUTINE writestr(fname,str)
+      character fname*32, str*32
+      character match
+      match = ''''
+      lun = LUNFREE(1)
+      open (lun, FILE=fname, STATUS='UNKNOWN')
+ 2000 read (lun, '(A)', END=1000) line
+      goto 2000
+ 1000 continue
+      write (lun,'(A,A)') match,str
+      close(lun)
+      END
+*                                         @METAGS .FCLEAR
+*                                         01-20-98 01:27pm
+*--------------- FCLEAR ---------------
+*
+      SUBROUTINE FCLEAR(file)
+      character*(*) file
+      lun = LUNFREE(40)
+      open (lun, FILE=file, STATUS='UNKNOWN', ERR=10000)
+      endfile lun
+      close(lun)
+      RETURN
+10000 len = LENOCC(file)
+      print*, 'ERROR FCLEAR: File ', file(1:len), ' did not found'
+      END
+QUIT
+RETURN

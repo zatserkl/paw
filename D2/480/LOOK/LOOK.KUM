@@ -1,0 +1,427 @@
+*                             @METAGS .LOOK.
+*---------- LOOK ----------
+*
+MACRO LOOK type nz nf
+if $VEXIST(nzap)=0 .OR. $VEXIST(nfil)=0 .OR. $VEXIST(ntyp)=0 then
+   EXEC INI
+endif
+
+type = $UPPER([type])
+CASE [type] IN
+   (C)   nt=1
+   (D)   nt=2
+   (A)   nt=3
+   (S)   nt=4
+   (*)   type = 'S'
+         read type '--- Counts, Delays, All or Superimpose (C/D/A/S)?: '
+         type = $UPPER([type])
+         CASE [type] IN
+            (C)   nt=1
+            (D)   nt=2
+            (A)   nt=3
+            (S)   nt=4
+            (*)   mess Unknown type
+            stopm
+         ENDCASE
+ENDCASE
+   v/inp ntyp [nt]
+
+if ([nz].NE.'') then
+   v/inp nzap [nz]
+else
+   ns = nzap
+   read ns 'Enter nzap'
+   v/inp nzap [ns]
+endif
+
+if ([nf].NE.'') then
+   v/inp nfil [nf]
+else
+   nf = nfil
+   read nf 'Enter nfil'
+   v/inp nfil [nf]
+endif
+
+nz = $FORMAT(nzap(1),I2.2)
+nf = $FORMAT(nfil(1),I2.2)
+
+vecC = C[nz][nf]
+vecD = D[nz][nf]
+if ( ($VEXIST([vecC]).EQ.0) .OR. ($VEXIST([vecD]).EQ.0) ) then
+   EXEC READ [nz] [nf]
+endif
+
+CASE [type] IN
+   (C)   id = 1[nz][nf]
+         set mtyp 24
+         EXEC PLOT [id]
+         v/inp idcur [id]
+
+   (D)   id = 2[nz][nf]
+         set mtyp 25
+         EXEC PLOT [id]
+         v/inp idcur [id]
+
+   (A)   zon 1 2
+         id = 1[nz][nf]
+         set mtyp 24
+         EXEC PLOT [id]
+         v/inp idcur [id]
+         id = 2[nz][nf]
+         set mtyp 25
+         EXEC PLOT [id]
+         set mtyp 24
+         zon
+   
+   (S)   exec CandD
+         v/inp idcur 1[nz][nf]
+ENDCASE
+RETURN
+*                             @METAGS READ
+*---------- READ ----------
+*
+MACRO READ nz nf
+   if $VEXIST(nzap)=0 .OR. $VEXIST(nfil)=0 .OR. $VEXIST(ntyp)=0 then
+      EXEC INI
+   endif
+   if ([nz].NE.'') then
+      v/inp nzap [nz]
+   else
+      ns = nzap
+      read ns 'Enter nzap'
+      v/inp nzap [ns]
+   endif
+
+   if ([nf].NE.'') then
+      v/inp nfil [nf]
+   else
+      nf = nfil
+      read nf 'Enter nfil'
+      v/inp nfil [nf]
+   endif
+
+   nz = $FORMAT(nzap(1),I2.2)
+   nf = $FORMAT(nfil(1),I2.2)
+
+   datfil = ..\SPECTRA\[nz].[nf]
+   v/re C[nz][nf],D[nz][nf] [datfil]
+   EXEC HCRE 3 [nz] [nf]
+RETURN
+*                             @METAGS ZOOM0
+*---------- ZOOM0 ----------
+*
+MACRO ZOOM0
+   CASE ntyp(1) IN
+      (1)   type=C
+            set mtyp 24
+      (2)   type=D
+            set mtyp 25
+      (*)   type = 'C'
+            read type '--- Counts or Delays (C/D)?: '
+            type = $UPPER([type])
+            CASE [type] IN
+               (C)   nt=1
+                     v/inp ntyp [nt]
+                     set mtyp 24
+               (D)   nt=2
+                     v/inp ntyp [nt]
+                     set mtyp 25
+               (*)   mess Possible choice C or D
+                     stopm
+            ENDCASE
+   ENDCASE
+
+   nz = $FORMAT(nzap(1),I2.2)
+   nf = $FORMAT(nfil(1),I2.2)
+   nt = ntyp
+   id = [nt][nz][nf]
+   EXEC PLOT [id]
+   mess '--- Locate MIN channel.'
+   if $VEXIST(vlocX) then
+      v/del vlocX
+   endif
+   if $VEXIST(vlocY) then
+      v/del vlocY
+   endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   min = vlocX([idim])
+
+   mess '--- Locate MAX channel.'
+   if $VEXIST(vlocX) then
+      v/del vlocX
+   endif
+   if $VEXIST(vlocY) then
+      v/del vlocY
+   endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   max = vlocX([idim])
+
+   EXEC PLOT [id] [min] [max]
+RETURN
+*                             @METAGS ZOOM
+*---------- ZOOM ----------
+*
+MACRO ZOOM
+   CASE ntyp(1) IN
+      (1)   type=C
+            set mtyp 24
+      (2)   type=D
+            set mtyp 25
+      (*)   type = 'C'
+            read type '--- Counts or Delays (C/D)?: '
+            type = $UPPER([type])
+            CASE [type] IN
+               (C)   nt=1
+                     v/inp ntyp [nt]
+                     set mtyp 24
+               (D)   nt=2
+                     v/inp ntyp [nt]
+                     set mtyp 25
+               (*)   mess Possible choice C or D
+                     stopm
+            ENDCASE
+   ENDCASE
+
+   nz = $FORMAT(nzap(1),I2.2)
+   nf = $FORMAT(nfil(1),I2.2)
+   nt = ntyp
+   id = [nt][nz][nf]
+   EXEC PLOT [id]
+   mess '--- Locate MIN channel.'
+   if $VEXIST(vlocX) then
+      v/del vlocX
+   endif
+   if $VEXIST(vlocY) then
+      v/del vlocY
+   endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   min = vlocX([idim])
+
+   mess '--- Locate MAX channel.'
+   if $VEXIST(vlocX) then
+      v/del vlocX
+   endif
+   if $VEXIST(vlocY) then
+      v/del vlocY
+   endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   max = vlocX([idim])
+
+   EXEC PLOT [id] [min] [max]
+RETURN
+*                             @METAGS CORR
+*---------- CORR ----------
+*
+MACRO CORR
+   CASE ntyp(1) IN
+      (1)   type=C
+            set mtyp 24
+      (2)   type=D
+            set mtyp 25
+      (*)   type=C
+            read type '--- Counts or Delays (C/D)?: '
+            type = $UPPER([type])
+            CASE [type] IN
+               (C)   nt=1
+                     v/inp ntyp [nt]
+                     set mtyp 24
+               (D)   nt=2
+                     v/inp ntyp [nt]
+                     set mtyp 25
+               (*)   mess Possible choice C or D
+                     stopm
+            ENDCASE
+   ENDCASE
+
+   mess '--- Correct channel ---'
+   if $VEXIST(vlocX) then
+      v/del vlocX
+   endif
+   if $VEXIST(vlocY) then
+      v/del vlocY
+   endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   chan = $FORMAT(vlocX([idim]),I2)
+   val  = $FORMAT(vlocY([idim]),I6)
+   if [chan] < 1 then
+      chan = 1
+   endif
+   if [chan] > 96 then
+      chan = 96
+   endif
+
+   * current vector
+   nz = $FORMAT(nzap(1),I2.2)
+   nf = $FORMAT(nfil(1),I2.2)
+   vec = [type][nz][nf]
+   
+   oldval = $EVAL([vec]([chan]))
+   mess --- Old value [vec]([chan]) = $EVAL([vec]([chan])) ---
+   mess --- New value [vec]([chan]) = [val] ---
+
+   nt = ntyp
+   id = [nt][nz][nf]
+
+   v/inp [vec]([chan]) [val]
+   put/con [id] [vec]
+   EXEC PLOT [id]
+
+   ans = 'N'
+   read ans '--- Replace (Y/N)?: '
+   if ($UPPER([ans]) .EQ. 'N') then
+      v/inp [vec]([chan]) [oldval]
+      put/con [id] [vec]
+      EXEC PLOT [id]
+      mess --- Original value restored ---
+      mess '                                                          ' 
+      mess '                                                          '
+   else
+      ans = 'N'
+      read ans '--- Write to file (Y/N)?: '
+      if ($UPPER([ans]) .EQ. 'Y') then
+         file = SPECTRA\[nz].[nf]
+         v/wr C[nz][nf],D[nz][nf] [file]
+         mess --- File [file] updated ---
+         mess '                                                          ' 
+         mess '                                                          ' 
+      endif
+   endif
+RETURN
+*                             @METAGS HCRE
+*---------- HCRE ----------
+*
+MACRO HCRE nt nz nf
+   CASE [nt] IN
+      (1)   tit = Counts for [nz]([nf])
+            1dh 1[nz][nf] [tit] 96 0.5 96.5
+            put/con 1[nz][nf] C[nz][nf]
+      
+      (2)   tit = Delays for [nz]([nf])
+            1dh 2[nz][nf] [tit] 96 0.5 96.5
+            put/con 2[nz][nf] D[nz][nf]
+      
+      (3)   tit = Counts for [nz]([nf])
+            1dh 1[nz][nf] [tit] 96 0.5 96.5
+            put/con 1[nz][nf] C[nz][nf]
+            tit = Delays for [nz]([nf])
+            1dh 2[nz][nf] [tit] 96 0.5 96.5
+            put/con 2[nz][nf] D[nz][nf]
+
+      (*)   mess Unknown type
+            stopm
+   ENDCASE
+RETURN
+*                             @METAGS COUNTS
+*---------- COUNTS ----------
+*
+MACRO COUNTS
+   EXEC LOOK C nzap nfil
+RETURN
+*                             @METAGS DELAYS
+*---------- DELAYS ----------
+*
+MACRO DELAYS
+   EXEC LOOK D nzap nfil
+RETURN
+*                             @METAGS ALL
+*---------- ALL ----------
+*
+MACRO ALL
+   EXEC LOOK A nzap nfil
+RETURN
+*                             @METAGS CandD
+*---------- CandD ----------
+*
+MACRO CandD
+   nz = $FORMAT(nzap(1),I2.2)
+   nf = $FORMAT(nfil(1),I2.2)
+
+   id = 1[nz][nf]
+   set mtyp 24
+   exec PLOT [id]
+   id = 2[nz][nf]
+   set mtyp 25
+   exec PLOTS [id]
+RETURN
+*                             @METAGS PLOT
+*---------- PLOT ----------
+*
+MACRO PLOT id min=1 max=96 
+   h/pl [id]([min]:[max]) PE0
+RETURN
+*                             @METAGS PLOTS
+*---------- PLOTS ----------
+*
+MACRO PLOTS id min=1 max=96 
+   h/pl [id]([min]:[max]) PE0S
+RETURN
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+   g/cr macro LOOK
+   opt stat
+   set stat 0011
+   opt grid
+   if $VEXIST(ntyp)=0 then
+      v/cr ntyp(1) i
+   endif
+   if $VEXIST(nzap)=0 then
+      v/cr nzap(1) i
+   endif
+   if $VEXIST(nfil)=0 then
+      v/cr nfil(1) i
+   endif
+   if $VEXIST(idcur)=0 then
+      v/cr idcur(1) i
+   endif
+RETURN
+*                             @METAGS PAN
+*---------- PAN ----------
+*
+MACRO PAN
+mess Panels from macro LOOK
+EXEC ALI DELETE
+EXEC ALI CREATE
+panel 0
+panel 1 'READ' 'LOOK' 'CORR' 'ZOOM' 'COUNTS' 'DELAYS' 'ALL' 'CandD'
+panel 2 'opt-' 'opt zfl' 'tim-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-'
+panel 3 'ed pan' 'x pan' 'x pan#w' 'p/cr' 'p/pr-' 'shell' 'edit-' 'x-' '$' 'me'
+style gp ! ! .12
+RETURN
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op
+   if [op] = '' then
+      op = CREATE
+      read op 'MACRO LOOK#ALI: CReate or DElete aliases? '
+   endif
+   ali/[op] XL 'exec LOOK#XL' c
+   a/[op] LOOK 'exec look' C
+   a/[op] READ 'exec look#READ' C
+   a/[op] CORR 'exec look#CORR' C
+   a/[op] ZOOM 'exec look#ZOOM' C
+   a/[op] COUNTS 'exec look#COUNTS' C
+   a/[op] DELAYS 'exec look#DELAYS' C
+   a/[op] ALL 'exec look#ALL' C
+   a/[op] CandD 'exec look#CandD' C
+RETURN
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+   last 2
+   x last
+   ans = Y
+   read ans 'Return to panels (Y/N)?'
+   if $UPPER([ans]) = Y then
+      XP
+   endif
+RETURN
+

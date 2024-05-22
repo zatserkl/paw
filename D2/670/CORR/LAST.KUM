@@ -1,0 +1,32 @@
+*** Begin of history file: Wed Feb 10 14:56:18 1999
+pl d2
+av 1; pl h2
+lin
+av 1; pl h2
+pl sum=1 q2=0
+E0fromEH set=0
+E0fromEH
+pl
+Eprocess 680
+pl sum=1 q2=0
+ed pawlogon
+pl sum=1 q2=0
+ed d2plotl
+pl sum=1 q2=1
+sh hearts
+pl
+pl sum=1 q2=1
+fl \
+effgloread \ 1
+pl d2
+log
+pl d2
+av 4
+pl
+av 2; lin
+pl el
+fun al
+ed1 al
+p
+qu
+*** End   of history file: Wed Feb 10 15:31:47 1999

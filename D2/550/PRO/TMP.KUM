@@ -1,0 +1,4 @@
+do i=2, $VLEN(x1)
+   i1 = [i]-1
+   mess $EVAL(x1([i]) - x1([i1]))
+enddo

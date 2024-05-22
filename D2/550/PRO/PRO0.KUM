@@ -1,0 +1,378 @@
+*                                      @METAGS PRO
+*--------------- PRO ---------------
+*
+MACRO PRO
+mess Welcome to macro PRO.
+mess Aliases is created.
+EXEC INI
+
+exec MODE PC
+RETURN
+
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+opt logy
+opt stat
+set stat 1000001
+opt grid
+set mtyp 24
+close 0
+
+* Globals
+g/cr MAIN $WORD([0],1,1,#)
+g/cr process '520 143.5' 'E0, teta'
+* initial values for D2 that corresponds to nt=1
+g/cr typedef D2
+g/cr ntdef   1
+
+D2HIST='';  g/imp D2HIST;  if [D2HIST]=''  then; exec D2HIST;  endif
+D2HFILE=''; g/imp D2HFILE; if [D2HFILE]='' then; exec D2HFILE; endif
+D2PLOTL=''; g/imp D2PLOTL; if [D2PLOTL]='' then; exec D2PLOTL; endif
+D2FIT='';   g/imp D2FIT;   if [D2FIT]=''   then; exec D2FIT;   endif
+
+exec ALI CREATE
+RETURN
+
+*                                         @METAGS MODE
+*--------------- MODE ---------------
+*
+MACRO MODE amode
+g/imp mode
+if [amode] = '' then
+   mess Usage     PRO#MODE mode
+   mess Possible modes: PC, TITOV
+   mess Current mode [mode]
+   stopm
+endif
+
+CASE $UPPER([amode]) IN
+   (PC)     g/cr mode PC
+   (TITOV)  mess Mode TITOV is non-available; stopm
+            g/cr mode TITOV
+   (*)      mess Unknown mode. Possible modes: PC, TITOV
+            stopm
+ENDCASE
+
+g/imp mode,Nchan,minc,maxc,floc,lun,hfile
+
+if $UPPER([mode])=PC then
+   g/cr Nchan 96
+   g/cr minc  7
+   g/cr maxc  93
+   g/cr floc  \D2\550\SPECTRA
+   g/cr lun 99
+   g/cr hfile h550.his
+   g/cr Naver 4
+   g/cr npoint 11
+endif
+
+if $UPPER([mode])=TITOV then
+   g/cr Nchan 11
+   g/cr minc  1
+   g/cr maxc  11
+   g/cr floc  \D2\670\TITOV
+   g/cr lun 98
+   g/cr hfile t670.his
+   g/cr Naver 1
+   g/cr npoint 11
+endif
+
+XaxisMIN=''; XaxisMAX=''; YaxisMIN=''; YaxisMAX=''
+g/imp XaxisMIN,XaxisMAX,YaxisMIN,YaxisMAX
+if [XaxisMIN]<>''.OR.[XaxisMAX]<>''.OR.[YaxisMIN]<>''.OR.[YaxisMAX]<>'' then
+   ans = Y
+   read ans 'Reset axis limits (Y/N)?'
+   if $UPPER([ans]) = Y then
+      XaxisMIN=''; XaxisMAX=''; YaxisMIN=''; YaxisMAX=''
+   endif
+endif
+
+close 0
+mess Current mode [mode]
+mess ------------------
+RETURN
+
+*                                         @METAGS DSLOPE
+*--------------- DSLOPE ---------------
+*
+MACRO DSLOPE S
+d = 2
+Nc = 36
+Dold=18.3
+Dnew=17.3
+do k=1,96
+   Dk = [Dnew] + 0.0320*([k]-[Nc])
+   Scorr = [S]([k])*[Dk]/[Dold]
+   v/inp [S]([k]) [Scorr]
+enddo
+RETURN
+
+*                                         @METAGS CORRECT
+*--------------- CORRECT ---------------
+*
+MACRO CORRECT S
+* correct for dispersion
+exec DSLOPE [S]
+
+** resolution correction
+*exec REFcorr [S]
+*
+** channel efficiencies
+*exec EFFcorr [S]
+
+** reject the constant fon
+*exec CONSTfon [S]
+RETURN
+
+*                                      @METAGS HSCAL
+*--------------- HSCAL ---------------
+*
+MACRO HSCAL id1 id2 scal tit
+if [scal] = '' then
+   mess 'Usage:    PRO#HSCAL id1 id2 scal [tit]'
+   stopm
+endif
+
+g/imp D2HIST
+
+if [tit]='' then
+   tit = Scale [id1] to [id2] with factor [scal]
+   mess Default title: [tit]
+   read tit1 'Title:'
+   if [tit1] <> '' then; tit=[tit1]; endif
+endif
+
+g/imp Nchan
+factor=$RSIGMA([scal])
+sigma buf    = array([Nchan])
+sigma buferr = array([Nchan])
+
+get/con [id1] buf
+get/err [id1] buferr
+sigma buferr = buferr + (buferr EQ 0)
+
+sigma buf=buf*[factor]
+sigma buferr = buferr*[factor]
+
+exec [D2HIST]#HCRE [id2] [tit]
+put/con [id2] buf
+put/err [id2] buferr
+v/de buf,buferr
+exec [D2HIST]#HINFO [id2]
+RETURN
+
+*                                         @METAGS ASCAL
+*--------------- ASCAL ---------------
+*
+MACRO ASCAL dir type scal
+if [scal] = '' then
+   mess Usage:    exec ASCAL dir type scal
+   stopm
+endif
+
+g/imp D2HFILE
+
+typ = $UPPER([type])
+CASE [typ] IN
+   (D2)  id1=1000; id2=5000; type=D2
+   (AL)  id1=2000; id2=6000; type=Al
+   (D2+) id1=3000; id2=7000; type=D2P
+   (D2P) id1=3000; id2=7000; type=D2P
+   (AL+) id1=4000; id2=8000; type=AlP
+   (ALP) id1=4000; id2=8000; type=AlP
+   (*)   mess Unknown type [atype]
+         mess Possible types: D2,  AL,  D2+ (= D2P),  AL+ (= ALP).
+         stopm                                                                         
+ENDCASE                                                              
+     
+g/imp mode,hfile,lun
+
+exec [D2HFILE]#HGET [dir] [id1]
+if $HEXIST([id1]) = 0 then
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   mess No histogram [id1] in dir [dir]
+   stopm
+endif
+
+tit = [mode] [dir] [type] scal [scal]
+exec HSCAL [id1] [id2] [scal] [tit]
+
+exec [D2HFILE]#HPUT [dir] [id2]
+exec [D2HFILE]#FPUR [dir] N
+h/de [id1],[id2]
+RETURN
+
+*                                         @METAGS TabScal
+*--------------- TabScal ---------------
+*
+MACRO TabScal dir type file=FMBE.dat
+if [type] = '' then
+   mess Usage:    exec PRO#TabScal dir type file=FMBE.dat
+   stopm
+endif
+
+typ = $UPPER([type])
+CASE [typ] IN
+   (D2)  id1=1000; id2=5000; type=D2
+   (AL)  id1=2000; id2=6000; type=AL
+   (D2+) id1=3000; id2=7000; type=D2P
+   (D2P) id1=3000; id2=7000; type=D2P
+   (AL+) id1=4000; id2=8000; type=ALP
+   (ALP) id1=4000; id2=8000; type=ALP
+   (*)   mess Unknown type [atype]
+         mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP).
+         stopm                                                                         
+ENDCASE                                                              
+     
+g/imp D2HFILE
+g/imp mode,hfile,lun
+
+exec [D2HFILE]#HGET [dir] [id1] ! Y
+if $HEXIST([id1]) = 0 then
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   mess No histogram [id1] in dir [dir]
+   stopm
+endif
+
+* Scale factor as 18.3/(.02*17.61) * (1/F) * (1e6/MBE) = 51.959/F/MBE
+sigma QM1000=0
+sigma QM2000=0
+sigma QM3000=0
+sigma QM4000=0
+v/re QM1000,QM2000,QM3000,QM4000 [file] '8X,4F8.0' ! /[dir]/
+MBE = $RSIGMA(QM[id1])
+v/de QM1000,QM2000,QM3000,QM4000
+scal = $RSIGMA(51.959/[dir]/[MBE])
+
+tit = [mode] [dir] [type] scal [scal]
+read tit 'Enter title'
+exec HSCAL [id1] [id2] [scal] [tit]
+
+exec [D2HFILE]#HPUT [dir] [id2]
+*exec FPUR [dir] N
+h/de [id1],[id2]
+RETURN
+
+*                                         @METAGS REJECT
+*--------------- REJECT ---------------
+*
+MACRO REJECT F idout
+if [idout]='' then
+   mess Usage:    REJECT F idout
+   stopm
+endif
+
+g/imp D2HIST,D2HFILE
+
+idD2scal=5000
+
+exec [D2HFILE]#VGET D2 [F]
+if $HEXIST([idD2scal])=0 then
+   mess Histogram with data did not found .
+   stopm
+endif
+
+g/imp Nchan
+fname = $EVAL([F]*100)
+vname = D2_[fname]
+v/cop E_[vname] E
+v/cop S_[vname] S
+v/cop D_[vname] D
+v/cr Snuc([Nchan])
+
+zero=0
+do i=1,[Nchan]
+   Ech = E([i])
+   fon = $EXEC(PCfon [Ech])
+   Sch = S([i]) - [fon]
+   v/inp Snuc([i]) [Sch]
+
+   if Snuc([i]) < 0 then
+      v/inp Snuc([i]) 0
+      if [zero]=0 then
+         zero=[i]
+      else
+         zero=[zero],[i]
+      endif
+   endif
+enddo
+if [zero] <> 0 then
+   mess Zero negative channels: [zero]
+endif
+
+tit = F = [F] Deutron
+exec [D2HIST]#HCRE [idout] [tit]
+put/con [idout] Snuc
+* origin errors
+put/err [idout] D
+v/de E,S,Snuc
+RETURN
+
+*                                         @METAGS AREJECT
+*--------------- AREJECT ---------------
+*
+MACRO AREJECT F idout=1 ask=Y
+if [F]='' then
+   mess 'Usage:    AREJECT F [idout=1]'
+   stopm
+endif
+
+g/imp D2HFILE
+exec REJECT [F] [idout]
+exec [D2HFILE]#HPUT [F] [idout] [ask]
+RETURN
+
+*                             @METAGS PAN
+*---------- PAN ----------
+*
+MACRO PAN
+mess Panels from macro PRO
+init=0
+g/imp init
+if [init] = 0 then; exec INI; endif
+
+EXEC ALI DELETE
+EXEC ALI CREATE
+panel 0
+panel 1  'VIEW' 'BIN-' 'ZOOM-' 'MINUS-' 'PLUS-' 'CandD' 'PLOTL' 'PLOT-'_
+         'HINFO-' 'SetID' 'BGET' 'BPUT'
+panel 2  'opt-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-' 'g/l-' 'mess [$]'
+panel 3  'pan' 'p/cr' 'p/pr-' 'Clear' 'Notes' 'edit-' 'shell' 'x-' '$' 'me'
+style gp ! ! .12
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op
+if [op] = '' then
+   op = CREATE
+   read op 'MACRO PRO#ALI: CReate or DElete aliases? '
+endif
+ali/[op] -C Notes       'edit Notes.txt'
+ali/[op] -C XL          'exec PRO#XL'
+ali/[op] -C INI         'exec PRO#INI' 
+ali/[op] -C ALI         'exec PRO#ALI' 
+ali/[op] -C MODE        'exec PRO#MODE' 
+ali/[op] -C PAN         'exec PRO#PAN' 
+ali/[op] -C HSCAL       'exec PRO#HSCAL'
+ali/[op] -C ASCAL       'exec PRO#ASCAL'
+ali/[op] -C TabScal     'exec PRO#TabScal'
+ali/[op] -C REJECT      'exec PRO#REJECT'
+ali/[op] -C AREJECT     'exec PRO#AREJECT'
+RETURN
+
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+last 2
+x last
+ans = Y
+read ans 'Return to panels (Y/N)?'
+if $UPPER([ans]) = Y then
+   XP
+endif
+RETURN

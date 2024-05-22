@@ -1,0 +1,36 @@
+*                                         @METAGS TFON
+*--------------- TFON ---------------
+*
+MACRO TFON
+exec READ
+exec PLOT
+RETURN
+
+*                                         @METAGS READ
+*--------------- READ ---------------
+*
+MACRO READ
+readpar tal903  tal903.par
+readpar tal1073 tal1073.par
+readpar tal1651 tal1651.par
+readpar tal1962 tal1962.par
+readpar tal2138 tal2138.par
+readpar talp talp.par
+readpar td2p td2p.par
+RETURN
+
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT
+exp1plot tal903 150 200
+exp1plot tal1073 170 260
+exp1plot tal1651 220 340
+exp1plot tal1962 220 310
+exp1plot tal2138 350 420
+
+wait 'Plot the pluses (Q - Quit)?'
+v/cop talp alp
+v/cop td2p d2p
+diffpfun
+RETURN

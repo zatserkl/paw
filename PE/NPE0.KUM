@@ -1,0 +1,2078 @@
+*                                      @METAGS NPE
+*--------------- NPE ---------------
+*
+MACRO NPE id inifil=pmpar.ini
+   if [id] = '' then
+      mess 'Usage:      npe id [inifil]'
+      stopm
+   endif
+
+   g/cr idpro [id]
+   g/imp inifor
+   g/imp npe,error,chi2np
+
+   inifor = 0
+   if [inifor] <> 1 then; EXEC FBLOCK; endif
+
+   if $VEXIST(ampl) <> 0 then; v/de ampl; endif
+   sigma ampl=array(2048)*0
+   get/con [id] ampl
+   
+   *v/pr ampl 2
+   *wait
+
+   call readp($QUOTE([inifil]))
+*   sigma anorm=1.
+*   if (posp(1).EQ.0.) then
+*      call readp($QUOTE([inifil]))
+*   endif
+
+   APPL SIGMA EXIT
+      ped=0
+      pe=array(256,0#0)
+      ped2=0
+      pe2=array(256,0#0)
+      
+      rampl=array(2048,0#0)
+
+      aver=0.
+      err=0.
+      chi2 = 0.
+   EXIT
+
+   sigma acc=0.
+   if $VEXIST(maxpe)=0 then; v/cr maxpe(1) i; endif
+
+   EXEC a2pe_loop
+RETURN
+*                                      @METAGS MONO
+*--------------- MONO ---------------
+*
+MACRO MONO id npe event=10000. inifil=pmpar.ini
+   if [id]='' .OR. $UPPER([1])='HELP' then
+      mess 'Usage:   npe#MONO id npe [event=10000.] [inifil=pmpar.ini] '
+      mess 'Example: npe#MONO 10 3                                     '
+      stopm
+   endif
+   g/imp inifor
+   if [inifor] <> 1 then; EXEC FBLOCK; endif
+
+   APPL COMIS EXIT
+      subroutine spcre(avpe,event,ped,pe,maxpe)
+      integer maxpe
+      real ped,pe(256)
+
+      expon=exp(-real(avpe))
+      ped=int(.5 + event*expon)
+      print*, 'pedestal =',ped
+      val=1.
+      vmax=0
+      npe=0
+      factor=1.
+      do while (val.GT.1E-3*vmax)
+         npe = npe+1
+         maxpe=npe
+         factor = factor*avpe/npe
+         val = int(.5 + event*factor*expon)
+         pe(npe) = val
+         print*, 'pe(',npe,') =',pe(npe)
+         
+         if (val.GT.vmax) vmax=val
+         if (npe.EQ.256) then
+            print*, 'SPcre: npe=256. Exit.'
+            return
+         endif
+      enddo
+      end
+   EXIT
+
+   v/cr avpe r [npe]
+   sigma ped=0
+   sigma pe=array(256)*0
+   v/cr maxpe i
+   sigma ampnpe=array(2048)*0
+   v/cr event r [event]
+
+   call spcre(avpe(1),event(1),ped(1),pe,maxpe(1))
+
+   rand=N
+   read rand 'Randomize (Y/N)?'
+   if $UPPER([rand])=Y then
+      sigma ped=INT(.5+ped+sqrt(ped)*(.5-rndm(ped)))
+      sigma pe=INT(.5+pe+sqrt(pe)*(.5-rndm(pe)))
+   endif
+
+   call averpe(maxpe(1),ped(1),pe,0.,0.,0.)
+
+   av = $FORMAT(average,F7.3)
+   er = $FORMAT(error,F5.3)
+
+   call readp($QUOTE([inifil]))
+*   sigma anorm=1.
+*   if (posp(1).EQ.0.) then
+*      call readp($QUOTE([inifil]))
+*   endif
+
+   call restor(maxpe(1),ped(1),pe,ampnpe)
+   
+   tit = Example spectrum. Npe = $UNQUOTE([av]) "A# $UNQUOTE([er])
+   1dh [id] [tit] 2048 1 2049
+   put/con [id] ampnpe
+   h/pl [id]
+RETURN
+*                                      @METAGS PEAKS
+*--------------- PEAKS ---------------
+*
+MACRO PEAKS maxpe=3
+   delta = pos1-posp
+   sigma vnpe=0
+   sigma vsig=0
+   ci=1
+   set plci [ci]
+   do npe=1,[maxpe]
+      v/inp vnpe [npe]
+      pos = posp + [npe]*[delta]
+      sigma vsig = sig1*sqrt(vnpe)
+      amax=pe([npe])*$SIGMA(1./(sqrt(2.*pi)*vsig))
+      sig = vsig
+      k1 = [pos] - 2.5*vsig
+      k2 = [pos] + 2.5*vsig
+      fu/pl [amax]*exp(-.5*((x-[pos])/[sig])**2) [k1] [k2] s
+      ci = [ci]+1
+      set plci [ci]
+      if ([ci] .GT. 6) then
+         ci = 1
+      endif
+      set plci [ci]
+      if ([ci].EQ.5) then
+         set plci 11
+      endif
+   enddo
+   v/de vnpe,vsig
+   set plci 1
+RETURN
+*                                      @METAGS excre
+*--------------- excre ---------------
+*
+MACRO excre file
+   sigma exped=0
+   v/de exdata,expe
+   *sigma expe=array(256)*0
+   if [file] <> '' then
+      v/re exdata [file]
+      v/cop exdata(1) exped
+      v/cop exdata(2:) expe
+      v/cr maxex(1) i $SIGMA(NCO(expe))
+      goto CREATE
+   endif
+   v/cr maxex(1) i 30
+   v/inp exped(1) 100
+   sigma expe=array(256)*0
+   v/inp expe(1) 100
+   v/inp expe(2) 50
+   v/inp expe(10) 80
+   v/inp expe(11) 100
+   v/inp expe(12) 30
+   CREATE:
+   sigma exampl=array(2048)*0
+   call restor(maxex(1),exped(1),expe,exampl)
+   npe = $EXEC(exaver)
+   tit = 'Example spectrum. Npe = '//[npe]
+   h/cop 1 2 [tit]
+   put/con 2 exampl(:1024)
+   h/pl 2
+RETURN
+*                                      @METAGS exaver
+*--------------- exaver ---------------
+*
+MACRO exaver
+*   call averpe(maxex(1),exped(1),expe,0.,average(1),error(1))
+   call averpe(maxex(1),exped(1),expe,0.,0.,0.)
+   npe = $EVAL(average) +/- $EVAL(error)
+   v/pr average
+   v/pr error
+RETURN [npe]
+*                                      @METAGS a2pe_loop
+*--------------- a2pe_loop ---------------
+*
+MACRO a2pe_loop
+   g/imp npe,error,chi2np,idpro
+   
+   MINC = 2
+   MAXC = 1024
+   
+   *tr on
+
+   call _
+a2pe([MINC],[MAXC],ampl,ped(1),pe,posp(1),sigp(1),pos1(1),sig1(1),maxpe(1))
+
+   *tr off
+   *wait
+
+   call averpe(maxpe(1),ped(1),pe,acc(1),aver(1),err(1))
+   call restor(maxpe(1),ped(1),pe,rampl)
+   call chi(posp(1),sigp(1),ampl,rampl,chi2(1))
+   npe0 = anorm*aver
+   npe = $FORMAT([npe0],F7.3)
+   error = $FORMAT(err,F6.3)
+   chi2np = $FORMAT(chi2,F6.2)
+   g/cr npe1 [npe]//' +/- '//[error]//' pe. CHI2 = '//[chi2np] Before corr
+   mess Before a2pe correction: npe = [npe] +/- [error]. CHI2 = [chi2np]
+
+   vpe=pe2
+*   call _
+*a2pe([MINC],[MAXC],rampl,ped2(1),pe2,posp(1),sigp(1),pos1(1),sig1(1),maxpe(1))
+   call _
+a2pe([MINC],[MAXC],rampl,ped2(1),[vpe],posp(1),sigp(1),pos1(1),sig1(1),maxpe(1))
+   v/cop maxpe maxpe2
+
+   call corr(pe,pe2)
+
+   call averpe(maxpe(1),ped(1),pe,acc(1),aver(1),err(1))
+   call restor(maxpe(1),ped(1),pe,rampl)
+   call chi(posp(1),sigp(1),ampl,rampl,chi2(1))
+
+   * increase err due to corr
+   sigma err=sqrt(2.)*err
+   
+   npecor = anorm*aver
+   npe = $FORMAT([npecor],F7.3)
+   error = $FORMAT(err,F5.3)
+   chi2np = $FORMAT(chi2,F6.2)
+   g/cr npe2 [npe]//' +/- '//[error]//' pe. CHI2 = '//[chi2np] After corr
+   mess After a2pe correction: npe = [npe] +/- [error]. CHI2 = [chi2np]
+
+   tit = Fit for "4# $UNQUOTE($HTITLE([idpro])) "4# _
+         Npe=$UNQUOTE([npe]) "A# $UNQUOTE([error]). _
+         [h]^2! = $UNQUOTE([chi2np])
+   idout = 100+[idpro]
+   if $HEXIST([idout]) then; h/de [idout]; endif
+   h/cop [idpro] [idout] [tit]
+   put/con [idout] rampl
+   mess Restored spectrum in the histogram [idout]
+   mess To view result type exec npe#plot [idout] [chan1=8] [chan2=300]
+
+   GOTO ENDM         | Do not use final correction
+   mess Final phase
+   mess -----------
+
+   call averpe(maxpe2(1),ped2(1),pe2,acc(1),aver(1),err(1))
+   npepe2old = anorm*aver
+   call restor(maxpe2(1),ped(1),pe,rampl)
+   call _
+a2pe([MINC],[MAXC],rampl,ped2(1),pe2,posp(1),sigp(1),pos1(1),sig1(1),maxpe2(1))
+   call averpe(maxpe2(1),ped2(1),pe2,acc(1),aver(1),err(1))
+   npepe2new = anorm*aver
+   ratio = [npepe2old]/[npepe2new]
+   npefin = [npecor]*[ratio]
+   npe = $FORMAT([npefin],F7.3)
+   g/cr npefin [npe]//' +/- '//[error]//' pe. CHI2 = '//[chi2np] After final correction
+   *mess npepe2old = [npepe2old], npepe2new = [npepe2new], ratio = [ratio]
+   mess After final correction: npe = [npe] +/- [error]. CHI2 = [chi2np]
+   ENDM:
+RETURN
+*                                      @METAGS FBLOCK
+*--------------- FBLOCK ---------------
+*
+MACRO FBLOCK
+   g/cr inifor 1
+   g/cr npe,error,chi2np
+   
+
+   APPL COMIS EXIT
+*                             @METAGS .MAIN.a2pe
+*                             12-09-94 01:12am
+*
+      subroutine a2pe(MINC,MAXC,ampl,ped,pe, posp,sigp,pos1,sig1,maxpe)
+      parameter (MAXDIM=2048)
+      integer MINC,MAXC
+*      real ampl(MAXC)
+      real ampl(2048)
+      real ped,pe(256)
+      real posp,sigp, pos1,sig1
+      vector amax(256)
+
+*      print*, posp
+*      print*, sigp
+*      print*, pos1
+*      print*, sig1
+*      call cont('a2pe: 1')
+
+      delta = pos1 - posp
+      delta2 = delta/2.
+      delta4 = delta/4.
+*
+      ped = 0.
+      do k=1, 256
+         pe(k) = 0.
+      enddo
+
+*     .. pedestal ..
+      kmin = MINC
+*       .. high pedestal edge is equal 3 sigp
+***      kmax = .5 + posp + 3.*sigp
+      kmax = .5 + posp + 4.*sigp
+      if (kmax.gt.MAXC) kmax=MAXC
+      do k=kmin, kmax
+         ped = ped + ampl(k)
+      enddo
+      maxped = kmax
+
+*      print*, 'maxped =', maxped
+*      print*, 'ped =', ped
+*      call cont('Pause 1')
+
+*
+*     Amplitude estimation
+*
+*     .. photoel
+      do npe=1, 256
+         maxpe = npe
+         sig = sqrt(real(npe))*sig1
+         pos = pos1 + (npe-1)*delta
+         kmin = pos - delta2
+         if (kmin.le.maxped) kmin=maxped+1
+*         if (kmin.lt.MINC) kmin=MINC
+*        .. 1pe starts from pedestal edge ..
+*         if (npe.eq.1) kmin=maxped+1
+
+         kmax = .5 + pos + delta4
+         if (kmax.gt.MAXC) kmax=MAXC
+*        
+         amax(npe) = 0.
+         nk=0
+         do k=kmin, kmax
+            nk = nk+1
+            amax(npe) = amax(npe) + ampl(k)
+         enddo
+         amax(npe) = amax(npe)/nk
+         
+****************************************************
+*         print*, npe, amax(npe), k
+*         call cont('npe, amax, k')
+
+*        .. if assigned the last channel
+*         if (k.GE.MAXC) goto 100
+         if (k.GE.1000) goto 100
+****************************************************
+      enddo
+
+  100 continue
+
+***************************      call cont('Pause 2')
+
+      factor = sqrt(2.*3.14159)
+      kmin = maxped+1
+      do npe=1, maxpe-1
+*        .. current peak parameters
+         pos = pos1 + (npe-1)*delta
+         sig = sig1*sqrt(real(npe))
+*        .. next peak parameters
+         posn = pos+delta
+         sign = sig1*sqrt(real(npe+1))
+
+         kmax = pos + 3.*sig
+         if (kmax.GT.MAXC) kmax=MAXC
+         if (kmax.LE.kmin) goto 250
+         do k=kmin,kmax
+            acurr = gint(amax(npe),pos,sig,k,k+1)
+            anext = gint(amax(npe+1),posn,sign,k,k+1)
+            if (acurr.GT.anext) then
+               pe(npe) = pe(npe)+ampl(k)
+            else
+               goto 200
+            endif
+         enddo
+
+  200    continue
+         kmin = k+1
+         if (kmin.GT.MAXC) goto 300
+  250 enddo
+
+  300 continue
+*     .. last peak
+      pos = pos1 + (maxpe-1)*delta
+      sig = sig1*sqrt(real(maxpe))
+      kmax = pos + 3.*sig
+      if (kmax.GT.MAXC) kmax=MAXC
+      do k=kmin,kmax
+         pe(maxpe) = pe(maxpe)+ampl(k)
+      enddo
+
+      goto 1000   ! Do not use additional correction
+*
+*     Additonal correction
+*
+      do npe=maxpe-1,1,-1
+*        .. current peak parameters
+         pos = pos1 + (npe-1)*delta
+         sig = sig1*sqrt(real(npe))
+*        .. next peak parameters
+         posn = pos+delta
+         sign = sig1*sqrt(real(npe+1))
+*        .. channel between the peaks
+         k = .5 + pos+delta2
+*        .. corr due to next peak
+         ratio = gint(1.,posn,sign,k,k+1) / gint(1.,pos,sig,k,k+1)
+         pe(npe) = pe(npe) - ratio*pe(npe+1)
+         amax(npe) = pe(npe)/(factor*sig)
+      enddo
+      amax(maxpe) = pe(maxpe)/(factor*(sqrt(real(maxpe))*sig1))
+
+*     .. assign with new amplitudes
+      factor = sqrt(2.*3.14159)
+      kmin = maxped+1
+      do npe=1, maxpe-1
+*        .. current peak parameters
+         pos = pos1 + (npe-1)*delta
+         sig = sig1*sqrt(real(npe))
+*        .. next peak parameters
+         posn = pos+delta
+         sign = sig1*sqrt(real(npe+1))
+
+         kmax = pos + 3.*sig
+         if (kmax.GT.MAXC) kmax=MAXC
+         if (kmax.LE.kmin) goto 450
+         pe(npe) = 0.
+         do k=kmin,kmax
+            acurr = gint(amax(npe),pos,sig,k,k+1)
+            anext = gint(amax(npe+1),posn,sign,k,k+1)
+            if (acurr.GT.anext) then
+               pe(npe) = pe(npe)+ampl(k)
+            else
+               goto 400
+            endif
+         enddo
+
+  400    continue
+         kmin = k+1
+         if (kmin.GT.MAXC) goto 500
+  450 enddo
+
+  500 continue
+*     .. last peak
+      pos = pos1 + (maxpe-1)*delta
+      sig = sig1*sqrt(real(maxpe))
+      kmax = pos + 3.*sig
+      if (kmax.GT.MAXC) kmax=MAXC
+      do k=kmin,kmax
+         pe(maxpe) = pe(maxpe)+ampl(k)
+      enddo
+*     .. end of additional correction
+*
+1000  continue
+
+*     .. normilazing
+      suma=0.
+      do k=maxped+1,MAXC
+         suma = suma+ampl(k)
+      enddo
+
+      sumpe=0.
+      max=maxpe
+      do npe=max,1,-1
+         n = .5 + pe(npe)
+         sumpe = sumpe+n
+         if (sumpe.EQ.0.) maxpe=npe
+      enddo
+      maxpe = maxpe-1
+      print*, 'maxpe =', maxpe
+
+      anorm = suma/sumpe
+      
+*      print*, 'a2pe anorn =', anorm
+      do k=1,maxpe
+         pe(k) = int(.5+anorm*pe(k))
+      enddo
+      end
+*                             @METAGS averpe
+*                             12-09-94 01:54am
+*
+      subroutine averpe(npemax,ped,pe,acc, aver,err)
+      real ped, pe(256)
+      vector average(1),error(1)
+      sumpe = ped-acc
+      aver = 0.
+      err = 0.
+      do npe=npemax, 1, -1
+         sumpe = sumpe+pe(npe)
+         aver = aver + npe*pe(npe)
+         err = err + pe(npe)*npe**2
+      enddo
+      aver = aver/sumpe
+      err = sqrt(err)/sumpe
+      average(1)=aver
+      error(1)=err
+      end
+*                                   @METAGS chi
+*--------------- chi ---------------
+*
+      subroutine chi(posp,sigp,ampl,rampl,chi2)
+      parameter (MAXDIM=2048)
+      real ampl(MAXDIM),rampl(MAXDIM)
+      maxped = posp+3.*sigp
+      chi2=0.
+      np = 0
+      do k=maxped+1,MAXDIM
+         if ((ampl(k).EQ.0.) .AND. (rampl(k).EQ.0.)) goto 100
+         np = np+1
+         sterr=sqrt(ampl(k))
+         if (sterr.LT.1.) sterr=1.
+         chi2 = chi2 + ((ampl(k)-rampl(k))/sterr)**2
+  100 enddo
+      chi2 = chi2/np
+      end
+*                             @METAGS readp
+*
+*
+      subroutine readp(inifil)
+      vector anorm(1), posp(1),eposp(1),sigp(1),esigp(1)
+      vector           pos1(1),epos1(1),sig1(1),esig1(1)
+      character match, line*78, inifil*12
+      data match/''''/
+*
+      open (UNIT=1, FILE=inifil, STATUS='OLD', ERR=99999)
+99900 read (1,10, END=99990) line
+      if (line(1:1).EQ.match) goto 99900
+
+*      backspace 1   ! Don't work correctly in F2C!
+      read (line,*, ERR=99990) anorm(1)
+      read (1,*, ERR=99990) posp(1), eposp(1)
+      read (1,*, ERR=99990) sigp(1), esigp(1)
+      read (1,*, ERR=99990) pos1(1), epos1(1)
+      read (1,*, ERR=99990) sig1(1), esig1(1)
+99990 close (UNIT=1)
+      print*, '--- Data from ini-file ---'
+      print*, anorm(1), '                anorm'
+      print*, posp(1), eposp(1),   '  posp, eposp'
+      print*, sigp(1), esigp(1),   '  sigp, esigp'
+      print*, pos1(1), epos1(1),   '  pos1, epos1'
+      print*, sig1(1), esig1(1),   '  sig1, esig1'
+c
+*      print*, 'Press <ENTER> to continue'
+*      read 1, i
+      return
+99999 print*, '.. Ini file not found ..'
+      stop
+    1 FORMAT(I3)
+   10 FORMAT(A)
+      end
+*                             @METAGS restor
+*                             02-08-95 10:03am
+*
+      subroutine restor(maxpe,ped,pe, rampl)
+      parameter (MAXDIM=2048)
+      vector anorm(1), posp(1),eposp(1),sigp(1),esigp(1)
+      vector           pos1(1),epos1(1),sig1(1),esig1(1)
+
+      real rampl(MAXDIM)
+      real ped, pe(256)
+      real sp(MAXDIM)
+      integer isp(MAXDIM)
+
+      do k=1,MAXDIM
+         isp(k)=0
+         sp(k)=0.
+         rampl(k)=0.
+      enddo
+
+*     .. pedestal
+      r = 3.*sigp(1)
+      kmin = posp(1)-r
+      if (kmin.lt.1) kmin=1
+      kmax = posp(1)+r
+      if (kmax.gt.MAXDIM) kmax=MAXDIM
+      do k=kmin,kmax
+         sp(k) = sp(k)+gint(ped,posp(1),sigp(1),k,k+1)
+      enddo
+      maxped=kmax
+*     .. pe peaks
+      sum0=ped
+      delta = pos1(1)-posp(1)
+      factor = sqrt(2.*3.14159)
+      do npe=1,maxpe
+         sum0 = sum0+pe(npe)
+         amean = posp(1) + npe*delta
+         sigma = sig1(1)*sqrt(real(npe))
+         const = pe(npe)/(factor*sigma)
+         r = 3.*sigma
+         kmin = amean-r
+         if (kmin.le.maxped) kmin=maxped+1
+         kmax = amean+r
+         if (kmax.gt.MAXDIM) kmax=MAXDIM
+         do k=kmin,kmax
+            contr = gint(const,amean,sigma,k,k+1)
+            sp(k) = sp(k)+contr
+         enddo
+      enddo
+
+      sum1=0
+      do k=1,kmax
+         rampl(k) = int(.5 + sp(k))
+         sum1 = sum1+rampl(k)
+      enddo
+
+      open (unit=1, file='a2pe.dat', status='unknown')
+      snorm=sum0/sum1
+      do k=1,kmax
+         rampl(k) = int(.5 + snorm*rampl(k))
+         write (1,*) k, int(rampl(k))
+      enddo
+      close (unit=1)
+      end
+*                                   @METAGS corr
+*------------- corr -------------
+*
+      subroutine corr(pe,pe2)
+      parameter (max=256)
+      real pe(max),pe2(max)
+      sum0=0.
+      sum1=0.
+      do npe=1,max
+*         pe0=pe(npe)
+         sum0 = sum0+pe(npe)
+         dpe = pe(npe)-pe2(npe)
+         pe(npe) = pe(npe)+dpe
+         if (pe(npe).LT.0.) pe(npe)=0.
+         sum1 = sum1+pe(npe)
+*         if(pe0.GT.0.) print*,'CORR:npe,pe0,pe,dpe:',npe,pe0,pe(npe),dpe
+      enddo
+      anorm=sum0/sum1
+      do npe=1,max
+         pe(npe) = int(.5+anorm*pe(npe))
+      enddo
+      end
+*                                      @METAGS gfun
+*------------------- gfun --------------------
+*
+      function gfun(x,const,amean,sigma)
+*     .. gnorm = 1./sqrt(2.*3.14159) ..
+*      parameter (gnorm = .3989423)
+*      gfun = (gnorm/sigma) * const*exp(-.5*((x-amean)/sigma)**2)
+      gfun = const*exp(-.5*((x-amean)/sigma)**2)
+      end
+*                                      @METAGS gint
+*----------------- gint -----------------
+*
+      function gint(ampl,pos,sig,kmin,kmax)
+*     .. sqrtpi=sqrt(pi/2)
+      parameter (sqrtpi=1.253314, sqrt2=1.414214)
+      erf1 = erf((kmin-pos)/(sig*sqrt2))
+      erf2 = erf((kmax-pos)/(sig*sqrt2))
+      gint = ampl*sig*sqrtpi*(erf2-erf1)
+      end
+*                                         @METAGS CONT
+*                                         08-02-96 02:07pm
+*--------------- CONT ---------------
+*
+      SUBROUTINE CONT(mess)
+      character mess*(*)
+      print*, mess
+      print*, '<CR> - Continue, 1 - Stop'
+      read 1,i
+      if (i.NE.0) stop
+      return
+    1 FORMAT(I1)
+      END
+   EXIT
+RETURN   | FBLOCK
+*                                      @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot id=101 k1=8 k2=300
+   g/imp idpro
+   h/cop [idpro] 1000 $HTITLE([id])
+   h/pl 1000([k1]:[k2]) *
+   h/pl [id]([k1]:[k2]) s
+RETURN
+ENDKUMAC
+
+' File t6awt.dat
+'9606            counter1
+'1558095         counter2
+'5               counter3
+'4274923         counter4
+'9179            N "Strob"
+'1               crate->monitor.finish
+'200             nrepeat_curr
+'0               crate->monitor.rest
+6     109             
+7     259             
+8     10              
+9     17              
+10    15              
+11    20              
+12    16              
+13    18              
+14    31              
+15    14              
+16    32              
+17    20              
+18    28              
+19    29              
+20    27              
+21    40              
+22    40              
+23    33              
+24    35              
+25    46              
+26    39              
+27    28              
+28    35              
+29    36              
+30    45              
+31    41              
+32    55              
+33    57              
+34    51              
+35    56              
+36    58              
+37    59              
+38    52              
+39    57              
+40    56              
+41    55              
+42    58              
+43    61              
+44    53              
+45    58              
+46    60              
+47    44              
+48    56              
+49    52              
+50    60              
+51    64              
+52    50              
+53    60              
+54    43              
+55    68              
+56    62              
+57    59              
+58    60              
+59    52              
+60    64              
+61    64              
+62    70              
+63    54              
+64    80              
+65    76              
+66    70              
+67    68              
+68    74              
+69    88              
+70    72              
+71    67              
+72    57              
+73    58              
+74    59              
+75    57              
+76    62              
+77    70              
+78    58              
+79    65              
+80    75              
+81    61              
+82    70              
+83    71              
+84    67              
+85    74              
+86    66              
+87    55              
+88    69              
+89    78              
+90    50              
+91    60              
+92    60              
+93    68              
+94    60              
+95    51              
+96    46              
+97    65              
+98    68              
+99    59              
+100   60              
+101   67              
+102   52              
+103   62              
+104   58              
+105   60              
+106   56              
+107   61              
+108   44              
+109   56              
+110   61              
+111   51              
+112   58              
+113   39              
+114   42              
+115   48              
+116   51              
+117   57              
+118   40              
+119   46              
+120   43              
+121   41              
+122   58              
+123   42              
+124   34              
+125   51              
+126   60              
+127   39              
+128   43              
+129   31              
+130   45              
+131   50              
+132   33              
+133   51              
+134   38              
+135   34              
+136   33              
+137   46              
+138   50              
+139   33              
+140   26              
+141   40              
+142   34              
+143   29              
+144   33              
+145   33              
+146   41              
+147   42              
+148   40              
+149   40              
+150   31              
+151   29              
+152   27              
+153   38              
+154   27              
+155   20              
+156   32              
+157   26              
+158   31              
+159   35              
+160   26              
+161   30              
+162   27              
+163   36              
+164   25              
+165   28              
+166   29              
+167   24              
+168   20              
+169   28              
+170   24              
+171   25              
+172   27              
+173   17              
+174   18              
+175   17              
+176   22              
+177   18              
+178   21              
+179   15              
+180   12              
+181   18              
+182   13              
+183   26              
+184   13              
+185   17              
+186   13              
+187   25              
+188   11              
+189   14              
+190   18              
+191   15              
+192   20              
+193   16              
+194   16              
+195   17              
+196   17              
+197   20              
+198   8               
+199   18              
+200   17              
+201   12              
+202   19              
+203   9               
+204   8               
+205   9               
+206   12              
+207   20              
+208   18              
+209   10              
+210   8               
+211   8               
+212   8               
+213   11              
+214   15              
+215   13              
+216   5               
+217   9               
+218   10              
+219   10              
+220   13              
+221   6               
+222   7               
+223   8               
+224   10              
+225   5               
+226   6               
+227   3               
+228   5               
+229   5               
+230   4               
+231   7               
+232   4               
+233   7               
+234   5               
+235   11              
+236   5               
+237   7               
+238   3               
+239   3               
+240   7               
+241   2               
+242   2               
+243   5               
+244   1               
+245   2               
+246   10              
+247   1               
+248   2               
+249   5               
+250   3               
+251   7               
+252   2               
+253   6               
+254   3               
+255   5               
+256   2               
+257   4               
+258   2               
+259   1               
+260   4               
+261   3               
+262   6               
+263   1               
+264   1               
+266   4               
+268   2               
+269   2               
+270   1               
+271   1               
+272   4               
+273   4               
+274   1               
+275   1               
+276   1               
+278   1               
+279   1               
+280   5               
+281   2               
+282   3               
+283   1               
+284   1               
+285   2               
+286   1               
+287   2               
+288   1               
+289   3               
+290   1               
+291   2               
+292   3               
+293   1               
+294   2               
+295   1               
+296   1               
+298   1               
+299   2               
+300   1               
+302   1               
+303   1               
+304   1               
+305   1               
+306   1               
+307   2               
+308   1               
+309   2               
+310   1               
+312   1               
+313   2               
+315   1               
+318   2               
+319   1               
+320   1               
+325   1               
+326   1               
+328   1               
+329   1               
+330   1               
+334   2               
+344   2               
+350   1               
+351   1               
+364   1               
+365   1               
+367   1               
+373   1               
+376   1               
+386   1               
+387   1               
+398   1               
+400   1               
+424   1               
+425   1               
+427   1               
+456   1               
+479   1               
+483   1               
+525   1               
+544   1               
+638   1               
+697   1               
+963   1               
+1017  1               
+
+' File tpe7a.dat
+'9907            counter1
+'883914          counter2
+'49612           counter3
+'2832690         counter4
+'9897            N "Strob"
+'1               crate->monitor.finish
+'100             nrepeat_curr
+'0               crate->monitor.rest
+1     1               
+6     258             
+7     375             
+8     22              
+9     17              
+10    21              
+11    19              
+12    29              
+13    28              
+14    33              
+15    23              
+16    25              
+17    42              
+18    34              
+19    33              
+20    51              
+21    55              
+22    43              
+23    50              
+24    59              
+25    49              
+26    65              
+27    48              
+28    51              
+29    56              
+30    77              
+31    62              
+32    56              
+33    56              
+34    76              
+35    64              
+36    62              
+37    75              
+38    53              
+39    62              
+40    77              
+41    69              
+42    84              
+43    59              
+44    71              
+45    77              
+46    59              
+47    68              
+48    76              
+49    73              
+50    70              
+51    74              
+52    73              
+53    82              
+54    70              
+55    68              
+56    65              
+57    75              
+58    70              
+59    78              
+60    69              
+61    79              
+62    65              
+63    71              
+64    77              
+65    76              
+66    67              
+67    70              
+68    80              
+69    67              
+70    73              
+71    65              
+72    84              
+73    67              
+74    78              
+75    82              
+76    58              
+77    69              
+78    62              
+79    62              
+80    65              
+81    61              
+82    68              
+83    56              
+84    87              
+85    62              
+86    62              
+87    76              
+88    60              
+89    65              
+90    47              
+91    79              
+92    62              
+93    68              
+94    59              
+95    74              
+96    68              
+97    65              
+98    64              
+99    82              
+100   75              
+101   57              
+102   63              
+103   51              
+104   50              
+105   57              
+106   49              
+107   59              
+108   50              
+109   59              
+110   49              
+111   51              
+112   59              
+113   49              
+114   51              
+115   41              
+116   41              
+117   49              
+118   34              
+119   43              
+120   50              
+121   43              
+122   41              
+123   43              
+124   42              
+125   41              
+126   42              
+127   46              
+128   45              
+129   43              
+130   44              
+131   38              
+132   54              
+133   53              
+134   32              
+135   34              
+136   32              
+137   28              
+138   38              
+139   40              
+140   24              
+141   43              
+142   41              
+143   25              
+144   32              
+145   29              
+146   29              
+147   38              
+148   31              
+149   34              
+150   35              
+151   31              
+152   26              
+153   31              
+154   18              
+155   34              
+156   26              
+157   16              
+158   36              
+159   32              
+160   26              
+161   21              
+162   27              
+163   27              
+164   24              
+165   21              
+166   15              
+167   17              
+168   19              
+169   21              
+170   24              
+171   18              
+172   19              
+173   20              
+174   16              
+175   16              
+176   24              
+177   21              
+178   8               
+179   11              
+180   21              
+181   21              
+182   17              
+183   12              
+184   15              
+185   17              
+186   14              
+187   12              
+188   12              
+189   13              
+190   15              
+191   14              
+192   9               
+193   16              
+194   10              
+195   11              
+196   12              
+197   16              
+198   5               
+199   7               
+200   7               
+201   9               
+202   3               
+203   8               
+204   16              
+205   10              
+206   10              
+207   8               
+208   8               
+209   11              
+210   11              
+211   12              
+212   11              
+213   5               
+214   8               
+215   10              
+216   8               
+217   4               
+218   6               
+219   5               
+220   3               
+221   4               
+222   10              
+223   10              
+224   8               
+225   11              
+226   4               
+227   5               
+228   7               
+229   7               
+230   9               
+231   7               
+232   5               
+233   2               
+234   2               
+235   5               
+236   7               
+238   2               
+239   2               
+240   6               
+241   8               
+242   3               
+243   4               
+244   4               
+245   3               
+246   1               
+247   4               
+248   5               
+249   3               
+250   4               
+251   3               
+252   1               
+253   1               
+254   4               
+256   1               
+257   5               
+258   2               
+259   3               
+260   2               
+261   2               
+262   4               
+263   2               
+264   2               
+265   1               
+266   3               
+268   1               
+269   2               
+270   2               
+271   1               
+272   2               
+273   7               
+274   3               
+275   1               
+276   3               
+277   1               
+278   3               
+279   1               
+281   2               
+283   1               
+285   1               
+286   1               
+287   2               
+288   1               
+290   3               
+291   1               
+294   1               
+298   1               
+300   2               
+301   1               
+302   1               
+306   1               
+308   1               
+311   1               
+312   1               
+316   1               
+319   1               
+321   3               
+322   1               
+331   1               
+336   2               
+337   1               
+343   1               
+346   1               
+352   1               
+362   1               
+368   1               
+371   1               
+378   1               
+379   1               
+383   2               
+386   1               
+389   1               
+398   1               
+442   1               
+445   1               
+489   1               
+558   1               
+
+* Files for PM.KUM
+*                                      @METAGS pm
+*--------------- pm ---------------
+*
+MACRO pm
+*
+   set stat 0011
+*
+if ([#].eq.0) then
+  mess 'Usage:   EXEC pmpar id [id2 id3 ...]'
+  mess 'Usage:   EXEC pmpar 1 2 3'
+  exitm
+endif
+*
+opt fit
+opt stat
+
+ped1=3
+ped2=9
+one1=10
+one2=50
+two2=80
+*mess 'Enter limits:'
+*read ped1
+*read ped2
+*read one1
+*read one2
+*read two2
+
+fname = pmpar
+mess 'Enter file name (without .ini)'
+read fname
+
+   sigma par=array(7)*0
+   sigma epar=array(7)*0
+   sigma tmp1=array(7)*0
+   sigma tmp2=array(7)*0
+   sigma tmp3=array(7)*0
+
+   zone 1 [#]
+
+FOR id IN [*]
+
+   * pedestal
+   h/fit [id]([ped1]:[ped2]) g 0q 0 par tmp1 tmp2 tmp3 epar
+   one1 = $SIGMA(INT(1.+par(2)+3.*(par(3)+epar(3))))
+   * save pedestal errors
+   v/cop epar(1:3) eped
+
+   * 1pe
+   h/fit [id]([one1]:[one2]) g 0q 0 par(4:6) tmp1 tmp2 tmp3 epar(4:6)
+   
+   * 1pe+2pe
+   k1 = $SIGMA(INT(par(2)+(par(5)-par(2))/4.))
+   v/inp par(7) $EVAL(par(4)/10.)
+
+APPL HMINUIT EXIT
+name 1 ampp
+name 2 posp
+name 3 sigp
+name 4 amp1
+name 5 pos1
+name 6 sig1
+name 7 amp2
+fix 1
+fix 2
+fix 3
+migrad
+EXIT
+
+   h/fit [id]([k1]:[two2]) pm.for mq0 7 par tmp1 tmp2 tmp3 epar
+
+   v/cop par par[id]
+   v/cop eped epar; v/de eped
+   v/cop epar epar[id]
+   
+   h/pl [id](8:100)
+   
+   EXEC PMPEAKS [id]
+ENDFOR
+v/de tmp1,tmp2,tmp3
+
+   * Average
+   sigma avpar=array(7)*0
+   sigma averr=array(7)*0
+   sigma wsum=0
+
+   FOR id IN [*]
+      v/cop par[id] par
+      v/cop epar[id] epar
+      APPL SIGMA EXIT
+         w = par(4)/par(7)
+         wsum = wsum+w
+         avpar = avpar + w*par
+         averr = averr + w*epar
+      EXIT
+   ENDFOR
+
+   sigma avpar=avpar/wsum
+   sigma averr=averr/wsum
+   v/de par,epar,w,wsum
+
+   v/cop avpar(2) posp
+   v/cop averr(2) eposp
+   v/cop avpar(3) sigp
+   v/cop averr(3) esigp
+
+   v/cop avpar(5) pos1
+   v/cop averr(5) epos1
+   v/cop avpar(6) sig1
+   v/cop averr(6) esig1
+
+   mess PM paramaters:
+   *v/pr avpar
+   mess $FORMAT(posp,F7.2) posp
+   mess $FORMAT(sigp,F7.2) sigp
+   mess $FORMAT(pos1,F7.2) pos1
+   mess $FORMAT(sig1,F7.2) sig1
+   mess Errors PM paramaters:
+   *v/pr averr
+   mess $FORMAT(eposp,F7.2) eposp
+   mess $FORMAT(esigp,F7.2) esigp
+   mess $FORMAT(epos1,F7.2) epos1
+   mess $FORMAT(esig1,F7.2) esig1
+
+   APPL COMIS QUIT
+*                                         @METAGS WRITEP
+*                                         05-08-96 04:34pm
+*--------------- WRITEP ---------------
+*
+      subroutine writep(inifil)
+      character match, inifil*12
+      vector avpar(7),averr(7)
+      data match/''''/
+*
+      open (UNIT=1, FILE=inifil, STATUS='UNKNOWN')
+      write(1,1) match
+		write(1,12) match
+		write(1,1) match
+      write(1,*) 1., '                        anorm'
+      write(1,*) avpar(2), averr(2), '          posp, eposp'
+      write(1,*) avpar(3), averr(3), '          sigp, esigp'
+      write(1,*) avpar(5), averr(5), '          pos1, epos1'
+      write(1,*) avpar(6), averr(6), '          sig1, esig1'
+
+      write(*,*) 1., '                     anorm'
+      write(*,*) avpar(2), averr(2), '       posp, eposp'
+      write(*,*) avpar(3), averr(3), '       sigp, esigp'
+      write(*,*) avpar(5), averr(5), '       pos1, epos1'
+      write(*,*) avpar(6), averr(6), '       sig1, esig1'
+
+      delta=avpar(5)-avpar(2)
+      edelta=sqrt(averr(5)**2+averr(2)**2)
+	   write(1,2)  match
+      write(1,21) match, delta ,241, edelta
+	   write(*,2)  match
+      write(*,21) match, delta ,241, edelta
+      close (1)
+      return
+    1 FORMAT(A)
+    2 FORMAT(A, '  Average delta:')
+   12 FORMAT(A, '   Set for ')
+   21 FORMAT(A, f8.3, 1x, A1, F6.3)
+      end
+   QUIT
+
+   call writep($QUOTE([fname].ini))
+   zone
+RETURN
+*                                      @METAGS PMPEAKS
+*--------------- PMPEAKS ---------------
+*
+MACRO PMPEAKS id
+   *v/cop par(2) posp
+   *v/cop par(3) sigp
+   *v/cop par(4) amp1
+   *v/cop par(5) pos1
+   *v/cop par(6) sig1
+   *v/cop par(7) amp2
+   v/cop par[id] par
+
+   delta = pos1-posp
+   sigma vnpe=0
+   sigma vsig=0
+   set ltyp 2
+
+   set plci 2
+   amax= par(4)
+   pos = par(5)
+   sig = par(6)
+   k1 = [pos] - 2.0*[sig]
+   k2 = [pos] + 2.5*[sig]
+   fu/pl [amax]*exp(-.5*((x-[pos])/[sig])**2) [k1] [k2] s
+
+   set ltyp 2
+   set plci 4
+   amax= par(7)
+   pos = $EVAL(par(2)+2.*(par(5)-par(2)))
+   sig = $EVAL(1.414213*par(6))
+   k1 = [pos] - 2.5*[sig]
+   k2 = [pos] + 2.5*[sig]
+   fu/pl [amax]*exp(-.5*((x-[pos])/[sig])**2) [k1] [k2] s
+
+   set plci 1
+   set ltyp 1
+RETURN
+*                                      @METAGS PRINT
+*--------------- PRINT ---------------
+*
+MACRO PRINT
+   APPL COMIS QUIT
+      vector avpar(12),averr(12)
+      print*, 'delta'
+      print 1, avpar(8) - avpar(2)
+      print 2, 241, sqrt(averr(8)**2+averr(2)**2)
+    1 format(1x, f8.3)
+    2 format(1x, A1, f7.3)
+      end
+   QUIT
+RETURN
+*                                      @METAGS FUN
+*--------------- FUN ---------------
+*
+MACRO FUN x1=8 x2=80
+   igset ltyp 3
+   igset plci 5
+   fun/pl pmpar1.f [x1] [x2] s
+   igset ltyp 2
+   igset plci 3
+   fun/pl pmpar2.f [x1] [x2] s
+   igset ltyp 1
+   igset plci 12
+   fun/pl pmpar3.f [x1] [x2] s
+   igset ltyp 4
+   igset plci 14
+   fun/pl pmpar4.f [x1] [x2] s
+   igset ltyp 1
+   igset plci 9
+   fun/pl pmpar.f [x1] [x2] s      
+RETURN
+ENDKUMAC
+
+' File PM.FOR
+      function pm(x)
+      parameter (sqrt2=1.414214)
+      common /pawpar/ p(7)
+      equivalence (ampp,p(1)), (posp,p(2)), (sigp,p(3))
+      equivalence (amp1,p(4)), (pos1,p(5)), (sig1,p(6))
+      equivalence (amp2,p(7))
+
+      const=amp1
+      amean=pos1
+      sigma=sig1
+      v1 = g(x,const,amean,sigma)
+      const=amp2
+      amean=posp+2.*(pos1-posp)
+      sigma=sqrt2*sig1
+      v2 = g(x,const,amean,sigma)
+      pm = v1+v2
+      end
+c--------------- g ------------------
+      function g(x,const,amean,sigma)
+      arg = .5*((x-amean)/sigma)**2
+      if (arg.LT.50.) then
+         g = const*exp(-arg)
+      else
+         g = 0.
+      endif
+      end
+*                                   @METAGS cont
+*--------------- cont ---------------
+*
+      subroutine cont(mess)
+      character mess*(*)
+      print*, mess
+      print*, '<CR> - Continue, 1 - Stop'
+      read 1,i
+      if (i.NE.0) stop
+      return
+    1 FORMAT(I1)
+      end
+
+* File sp.kum
+MACRO sp file=' ' ID=1 PL=Y
+*
+if ([1].eq.' ') then
+  mess 'Usage:   EXEC sp filename(without .dat) [ID=1] [PL=Y]'
+  mess 'Example: EXEC sp dl370 1'
+  mess 'Example: EXEC sp dl370'
+  exitm
+endif
+*
+
+file = [file].dat
+if $FEXIST([file]) = 0 then
+   shell echo on
+   mess file [file] not found
+   shell dir *.dat /P /W /O:N /L
+   
+   cansel = 'Cansel execution'
+   file = [cansel]
+   read file 'Enter file name without .dat: '
+   if ([file].EQ.[cansel]) then
+      stopm
+   else
+      file = [file].dat
+   endif
+endif
+
+if $FEXIST([file]) = 0 then
+   mess file [file].dat not found
+   stopm
+endif
+
+ve/de chan,rdata
+ve/re chan,rdata [file] ! ! '-/''/'
+*
+ve/del data
+appl sigma exit
+  !print
+  npoint = vmax(chan)
+  !noprint
+  data=array(npoint,0#0)
+  np = nco(chan)
+exit
+*
+appl comis quit
+      vector np(*)
+      vector data(*)
+      vector chan(*),rdata(*)
+      do i=1,int(np)
+         data(chan(i))=rdata(i)
+      enddo
+      end
+quit
+*
+  opt fit
+  set fit 111
+  opt stat
+  set mtyp 24
+* -- for fun/plot --
+  igset plci 4
+  set dmod 1  | line type for lines. IGSET LTYP cannot be used.
+
+*  * Double line width
+*  set fwid 2
+
+if $HEXIST([ID]) then; hi/de [ID]; endif
+***v/dr data [ID]
+cr/1dhisto [ID] [file] npoint 1 (npoint+1)
+put/con [ID] data
+if $UPPER([PL])=Y then
+   hi/pl [ID]
+endif
+RETURN
+
+
+' File pe85a.dat
+'18495           counter1
+'1669104         counter2
+'8               counter3
+'2771952         counter4
+'18488           N "Strob"
+'1               crate->monitor.finish
+'200             nrepeat_curr
+'0               crate->monitor.rest
+1     1               
+2     1               
+3     1               
+4     1               
+5     4               
+6     8434            
+7     8101            
+8     27              
+9     22              
+10    16              
+11    22              
+12    25              
+13    29              
+14    31              
+15    30              
+16    27              
+17    37              
+18    48              
+19    56              
+20    38              
+21    55              
+22    43              
+23    36              
+24    50              
+25    33              
+26    47              
+27    35              
+28    42              
+29    43              
+30    42              
+31    35              
+32    47              
+33    45              
+34    47              
+35    42              
+36    39              
+37    38              
+38    41              
+39    49              
+40    41              
+41    40              
+42    27              
+43    32              
+44    32              
+45    34              
+46    34              
+47    20              
+48    30              
+49    24              
+50    28              
+51    21              
+52    23              
+53    19              
+54    22              
+55    24              
+56    8               
+57    16              
+58    12              
+59    16              
+60    15              
+61    9               
+62    12              
+63    9               
+64    8               
+65    10              
+66    13              
+67    8               
+68    14              
+69    8               
+70    4               
+71    7               
+72    6               
+73    5               
+74    4               
+75    2               
+76    7               
+77    4               
+78    7               
+79    7               
+80    3               
+81    1               
+82    7               
+83    6               
+84    1               
+85    5               
+86    3               
+87    2               
+88    2               
+89    4               
+90    6               
+91    2               
+93    3               
+94    1               
+97    1               
+98    1               
+99    3               
+100   3               
+101   2               
+102   1               
+106   2               
+111   1               
+112   1               
+119   1               
+121   1               
+125   1               
+127   1               
+130   1               
+
+' File pe85.dat
+'19376           counter1
+'1703852         counter2
+'15              counter3
+'4063019         counter4
+'19369           N "Strob"
+'1               crate->monitor.finish
+'200             nrepeat_curr
+'0               crate->monitor.rest
+2     1               
+3     5               
+4     2               
+5     16              
+6     5273            
+7     10402           
+8     49              
+9     49              
+10    42              
+11    56              
+12    49              
+13    48              
+14    51              
+15    67              
+16    70              
+17    55              
+18    54              
+19    70              
+20    70              
+21    73              
+22    72              
+23    78              
+24    76              
+25    95              
+26    85              
+27    87              
+28    96              
+29    92              
+30    91              
+31    78              
+32    85              
+33    104             
+34    75              
+35    82              
+36    82              
+37    76              
+38    74              
+39    79              
+40    61              
+41    67              
+42    64              
+43    56              
+44    46              
+45    59              
+46    49              
+47    43              
+48    54              
+49    45              
+50    30              
+51    47              
+52    43              
+53    37              
+54    58              
+55    23              
+56    42              
+57    38              
+58    34              
+59    30              
+60    18              
+61    23              
+62    23              
+63    26              
+64    16              
+65    24              
+66    22              
+67    20              
+68    14              
+69    10              
+70    17              
+71    15              
+72    13              
+73    6               
+74    12              
+75    12              
+76    7               
+77    9               
+78    11              
+79    3               
+80    5               
+81    5               
+82    6               
+83    8               
+84    6               
+85    5               
+86    5               
+87    9               
+88    4               
+89    6               
+90    6               
+91    4               
+92    7               
+93    2               
+94    3               
+95    2               
+96    3               
+98    2               
+100   2               
+101   7               
+102   2               
+103   2               
+105   1               
+108   3               
+109   1               
+110   1               
+111   2               
+112   5               
+113   2               
+114   1               
+115   1               
+116   2               
+117   1               
+123   1               
+124   1               
+125   3               
+132   1               
+133   1               
+135   2               
+137   1               
+176   1               
+435   1               
+
+' File pe200.dat
+'19752           counter1
+'1718294         counter2
+'10              counter3
+'3010172         counter4
+'19736           N "Strob"
+'1               crate->monitor.finish
+'200             nrepeat_curr
+'0               crate->monitor.rest
+1     2               
+4     3               
+5     15              
+6     6962            
+7     10297           
+8     46              
+9     34              
+10    25              
+11    27              
+12    32              
+13    26              
+14    35              
+15    51              
+16    38              
+17    33              
+18    43              
+19    47              
+20    74              
+21    63              
+22    37              
+23    52              
+24    60              
+25    45              
+26    70              
+27    61              
+28    64              
+29    57              
+30    64              
+31    61              
+32    62              
+33    68              
+34    62              
+35    53              
+36    54              
+37    55              
+38    41              
+39    51              
+40    44              
+41    51              
+42    28              
+43    37              
+44    36              
+45    30              
+46    39              
+47    38              
+48    30              
+49    39              
+50    33              
+51    27              
+52    21              
+53    27              
+54    21              
+55    22              
+56    25              
+57    18              
+58    18              
+59    15              
+60    18              
+61    23              
+62    14              
+63    13              
+64    16              
+65    13              
+66    15              
+67    9               
+68    6               
+69    10              
+70    8               
+71    5               
+72    12              
+73    3               
+74    7               
+75    5               
+76    3               
+77    10              
+78    3               
+79    7               
+80    1               
+81    6               
+82    4               
+83    3               
+84    2               
+85    3               
+86    2               
+87    2               
+88    4               
+89    4               
+90    4               
+91    6               
+93    2               
+94    2               
+97    1               
+99    1               
+100   1               
+101   1               
+102   1               
+106   2               
+107   3               
+108   2               
+110   1               
+111   2               
+112   1               
+115   1               
+121   1               
+122   1               
+123   1               
+155   1               
+299   1               

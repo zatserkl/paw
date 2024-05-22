@@ -1,0 +1,39 @@
+*** Begin of history file: Wed Oct 21 11:21:09 1998
+ed v.dat
+v/cr v(2,100)
+v/re v v.dat
+v/pr v
+v/cr v(100,2)
+v/re v v.dat
+v/pr v
+v/cr v(2,100)
+v/re v v.dat
+v/pr v
+v/cr v(2,100) i
+v/re v v.dat
+v/pr v
+ed v.dat
+v/re v v.dat; v/pr v
+ed v.dat
+v/re v v.dat; v/pr v
+v/cr v(2,100)
+v/l
+ed v.dat
+v/re v v.dat; v/pr v
+mess $VLEN(v)
+mess $VLEN(v,2)
+mess $VLEN(v,1)
+v/re v2(:,:) v.dat; v/pr v2
+v/de v2
+v/re v2 v.dat; v/pr v2
+v/wr v v2.dat
+ed v2.dat
+v/wr v v2.dat 'I8,2X,F4.2'
+ed v2.dat
+v/wr v v2.dat 'f8.0,2X,F4.2'
+ed v2.dat
+v/wr v v2.dat 'f8.0,2X,F5.2'
+ed v2.dat
+v/l
+qu
+*** End   of history file: Wed Oct 21 12:23:00 1998

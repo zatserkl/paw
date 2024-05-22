@@ -1,0 +1,40 @@
+*                                         @METAGS fmir
+*--------------- fmir ---------------
+*
+MACRO fmir Rbox=30 Dcol=100
+APPL COMIS QUIT
+*                                         @METAGS fmir
+*                                         10-02-98 00:31am
+*--------------- fmir ---------------
+*
+      function fmir(Rbox,Dcol)
+*     .. initial value
+      f = Dcol
+*     .. works in term of R
+      R = 2.*f
+*     .. accuracy
+      eps = 0.001*f
+      iter = 0
+  100 continue
+      delta = sqrt(R**2 + Rbox**2) - R
+      alpha = atan(Rbox/(Dcol-delta))
+      R1 = Rbox/tan(alpha/2.)
+      dif = abs(R1-R)
+      R = R1
+      iter = iter+1
+      print*, 'iter =', iter
+      if (iter.EQ.10) then
+         print*, 'Iteration limit is exceeded'
+         goto 1000
+      endif
+      if (dif.GT.eps) goto 100
+ 1000 f = R/2.
+      fmir = f
+*      print*, 'For Rbox =', Rbox, ' Dcol =', Dcol, ' result f =', f
+      END
+QUIT
+
+fstr = fmir($RSIGMA([Rbox]),$RSIGMA([Dcol]))
+f = $CALL([fstr])
+mess For Rbox = [Rbox], Dcol = [Dcol]  f = [f]
+RETURN

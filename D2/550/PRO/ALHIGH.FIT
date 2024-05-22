@@ -1,0 +1,7 @@
+*COMM   
+*EMIN    280.4  MEV
+*EMAX    364.0  MEV
+*TYPE   2.      ID OF FUNCTION "EX"
+   0.
+   10.73787    
+  -.2146644E-01

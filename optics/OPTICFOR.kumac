@@ -1,0 +1,2809 @@
+*                                         @METAGS OPTICFOR
+*--------------- OPTICFOR ---------------
+*
+MACRO OPTICFOR
+g/cr OPTICFOR $WORD([0],1,1,#)
+
+APPL COMIS QUIT
+*                                         @METAGS PLOSPH
+*                                         15/06/98 18:15
+*--------------- PLOSPH ---------------
+*
+      SUBROUTINE PLOSPH(R,zmin,zmax,xmin,xmax,ixplot,iyplot,frame)
+      real frame(5)
+*     .. xmin,xmax and y in mirror frame
+      parameter (NP=100)
+      real xpoint(NP),ypoint(NP)
+      real point(6)
+
+*     .. coordinates to plot
+      ix = 3+ixplot
+      iy = 3+iyplot
+
+      y=0.
+
+      if ((xmin.NE.0.) .AND. (xmax.NE.0)) then
+         xstep = (xmax-xmin)/(NP-1)
+         x = xmin
+         do i=1,NP
+            z = R - sqrt(R**2 - x**2 - y**2)
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP,xpoint,ypoint)
+      else
+         xmin = sqrt(R**2 - (zmin-R)**2)
+         xmax = sqrt(R**2 - (zmax-R)**2)
+         if (zmax.EQ.0.) xmax=R
+         xstep = 2.*(xmax-xmin)/(NP-1)
+         NP2 = NP/2
+         
+         x = xmin
+         do i=1,NP2
+            z = R - sqrt(R**2 - x**2 - y**2)
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP2,xpoint,ypoint)
+
+         xstep = -xstep
+         x = -xmin
+         do i=1,NP2
+            z = R - sqrt(R**2 - x**2 - y**2)
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP2,xpoint,ypoint)
+      endif
+      END
+
+*                                         @METAGS COLSPH
+*                                         24/06/98 14:57
+*--------------- COLSPH ---------------
+*
+      SUBROUTINE COLSPH(R,zmin,zmax,maxray,rayhis,nray,ierr)
+*     Returns error code:
+*      0: normal reflection
+*      1: initial ray is absorbed at the back side of sphera
+*     -1: initial ray have missed the sphera
+      real R,zmin,zmax
+      integer maxray
+      real rayhis(6,maxray+1)
+      integer nray,ierr
+
+*     .. the number of processed rays
+      nray = 1
+  100 continue
+         ires = MIRSPH(R,zmin,zmax,rayhis(1,nray),rayhis(1,nray+1))
+*         print*, 'COLSPH: ires =', ires
+         if (ires.EQ.0) then
+*           .. ray remains in sphera
+            if (nray.EQ.maxray) then
+*              .. history overflow
+               ierr = 0
+               RETURN
+            endif
+            nray = nray+1
+            goto 100
+         elseif (ires.EQ.-1) then
+*           .. ray live the sphera
+            nray = nray-1
+            ierr = 0
+            if (nray.EQ.0) then
+*              .. incident ray have missed the sphera
+               ierr=-1
+            endif
+         else
+*           .. incident ray hitted back side
+            ierr = 1
+         endif
+      RETURN
+      END
+
+*                                         @METAGS SPHERA
+*                                         06-02-98 01:17pm
+*--------------- SPHERA ---------------
+*
+      SUBROUTINE SPHERA(R,zmin,zmax,maxray,rayhis,nray,ierr)
+*
+*     Reflection from spheroidal mirror  x**2 + y**2 + (z-R)**2 = R**2
+*     Focus f=R/2
+*     To simplify calculation we use transfer to center of sphera system
+*
+*     Note: rayhis,rayhis1 in frame of spheroid
+*           (i.e. normal in sphera top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of spheroid x**2 + y**2 + (z-R)**2 = R**2
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of sphera
+*     -1: ray have missed the sphera
+*
+*              x|          "Mirror" system
+*               |      .   ---------------
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----*-----------------------
+*              /| |    |      R                     z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer maxray,nray,ierr
+      real R,zmin,zmax,rayhis(6,maxray+1)
+      double precision R2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3, z
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot,j
+
+      ierr = 0
+      nray = 1
+
+      do i=1,6
+         rayhis(i,nray+1) = rayhis(i,nray)
+      enddo
+
+      R2 = DBLE(R)**2
+*     .. spheroid boundaries in center of sphera system (shift for z)
+      z1 = zmin - R
+      z2 = zmax - R
+      if (zmax .EQ. 0.) then
+*        .. set z2 to center of sphera in "sphera" system
+         z2=0.d0
+      endif
+*      print*, 'z1,z2: =', z1,z2
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray in center of sphera system (shift for x1)
+      x1 = DBLE(rayhis(4,nray)) - DBLE(R)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+*      print*, 'rayhis(4,nray) in "mirror" system =', rayhis(4,nray)
+*      print*, 'x1 in "sphera" system =', x1
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2 + y**2 + z**2 = R**2
+*--
+*     Perform the calculation in center of sphera system.
+*     Here x**2 + y**2 + z**2 = R**2
+*--
+*     .. coeffs. of square equation
+      a = c1**2 + c2**2 + c3**2
+      b = 2.*(c1*x1 + c2*x2 + c3*x3)
+      c = x1**2 + x2**2 + x3**2 - R2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'SPHERA: idroot =', idroot
+*         call WAIT('SPHERA: No roots of square equation')
+         goto 1001
+
+         if (idroot.LT.0) call MESS('SPHERA: No roots')
+         if (idroot.EQ.1) call MESS('SPHERA: Any roots')
+         if (idroot.EQ.2) call MESS('SPHERA: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of spheroid. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of spheroid. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nray = nray+1
+
+*     .. adjust point on spheroid
+      x2 = x2 + c2*t
+      x3 = x3 + c3*t
+      if (z .LE. 0.d0) then
+         x1 = -1.d0*sqrt(R2 - x2**2 - x3**2)
+      else
+         x1 =       sqrt(R2 - x2**2 - x3**2)
+      endif
+*      print*, 'z in "sphera" system =', z
+*     .. radiant of the output ray in mirror system (shift for z)
+      rayhis(4,nray) = x1 + R
+      rayhis(5,nray) = x2
+      rayhis(6,nray) = x3
+*      print*, 'rayhis1(4,nray) in "mirror" system =', rayhis1(4,nray)
+*
+*  Gets directrix cosines o of nornal to spheroid in the point ray1(4:6)
+*
+*  Rewrite spheroid equation x**2 + y**2 + z**2 = R**2 in form
+*  F(z,x,y)=0. Becouse spheroid reflect by its inner surface,
+*  F(z,x,y) = R**2 - z**2 + x**2 + y**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 = -x1
+      o2 = -x2
+      o3 = -x3
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+*     .. include factor 2 to oray
+      oray = 2.d0*(o1*c1 + o2*c2 + o3*c3)/oo
+*      print*, 'o:', o1,o2,o3
+      if (oray .GE. 0.d0) then
+*         print*, 'o:', o1,o2,o3
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      c1 = c1 - oray*o1
+      c2 = c2 - oray*o2
+      c3 = c3 - oray*o3
+*     .. assign to output ray
+      rayhis(1,nray) = c1
+      rayhis(2,nray) = c2
+      rayhis(3,nray) = c3
+      
+      if (nray.GT.maxray) then
+*        .. history overflow
+         goto 1001
+      endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. here c1,c2,c3 is cosines and x1,x2,x3 is radiant of reflected ray
+*        Note: x1 in "sphera" system
+*     .. coeffs. of square equation
+      a = c1**2 + c2**2 + c3**2
+      b = 2.*(c1*x1 + c2*x2 + c3*x3)
+*     .. becouse a.NE.0
+      t1 = -b/a
+*     .. to use the same code
+      t2 = t1
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the spheroid
+      if (nray.EQ.1) ierr = -1
+      nray = nray-1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of spheroid
+      ierr = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'SPHERA: nray =', nray, '   rays for nray-1, nray:'
+*      print*, (rayhis(j,nray-1), j=1,6)
+*      print*, (rayhis(j,nray), j=1,6)
+      RETURN
+      END
+
+*                                         @METAGS MIRSPH
+*                                         06-02-98 01:17pm
+*--------------- MIRSPH ---------------
+*
+      integer function MIRSPH(R,zmin,zmax,ray, ray1)
+*
+*     Reflection from spheroidal mirror  x**2 + y**2 + (z-R)**2 = R**2
+*     Focus f=R/2
+*     To simplify calculation we use transfer to center of sphera system
+*
+*     Note: ray,ray1 in frame of spheroid
+*           (i.e. normal in sphera top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of spheroid x**2 + y**2 + (z-R)**2 = R**2
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of sphera
+*     -1: ray have missed the sphera
+*
+*              x|          "Mirror" system
+*               |      .   ---------------
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----*-----------------------
+*              /| |    |      R                     z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      real R,zmin,zmax,ray(6),ray1(6)
+      double precision R2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z,x,y
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+
+      R2 = DBLE(R)**2
+*     .. spheroid boundaries in center of sphera system (shift for z)
+      z1 = zmin - R
+      z2 = zmax - R
+      if (zmax .EQ. 0.) then
+*        .. set z2 to center of sphera in "sphera" system
+         z2=0.d0
+      endif
+*      print*, 'z1,z2: =', z1,z2
+
+*     .. cosines of incident ray
+      c1 = ray(1)
+      c2 = ray(2)
+      c3 = ray(3)
+*     .. radiant of incident ray in center of sphera system (shift for x1)
+      x1 = DBLE(ray(4)) - DBLE(R)
+      x2 = ray(5)
+      x3 = ray(6)
+*      print*, 'ray(4) in "mirror" system =', ray(4)
+*      print*, 'x1 in "sphera" system =', x1
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2 + y**2 + z**2 = R**2
+*--
+*     Perform the calculation in center of sphera system.
+*     Here x**2 + y**2 + z**2 = R**2
+*--
+*     .. coeffs. of square equation
+      a = c1**2 + c2**2 + c3**2
+      b = 2.*(c1*x1 + c2*x2 + c3*x3)
+      c = x1**2 + x2**2 + x3**2 - R2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'MIRSPH: idroot =', idroot
+*         call WAIT('MIRSPH: No roots of square equation')
+         goto 1001
+
+         if (idroot.LT.0) call MESS('MIRSPH: No roots')
+         if (idroot.EQ.1) call MESS('MIRSPH: Any roots')
+         if (idroot.EQ.2) call MESS('MIRSPH: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+***      if (zmax .EQ. 0.) z2=R
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of spheroid. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+***      if (zmax .EQ. 0.) z2=R
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of spheroid. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+*     .. adjust point on spheroid
+      x = REAL(x2 + c2*t)
+      y = REAL(x3 + c3*t)
+      z = x1 + c1*t
+      if (z .LE. 0.d0) then
+         z = REAL(-1.d0 * sqrt(R2 - x**2 - y**2))
+      else
+         z = REAL(sqrt(R2 - x**2 - y**2))
+      endif
+*      print*, 'z in "sphera" system =', z
+*     .. radiant of the output ray in mirror system (shift for z)
+      ray1(4) = z + R
+      ray1(5) = x
+      ray1(6) = y
+*      print*, 'ray1(4) in "mirror" system =', ray1(4)
+*
+*  Gets directrix cosines o of nornal to spheroid in the point ray1(4:6)
+*
+*  Rewrite spheroid equation x**2 + y**2 + z**2 = R**2 in form
+*  F(z,x,y)=0. Becouse spheroid reflect by its inner surface,
+*  F(z,x,y) = R**2 - z**2 + x**2 + y**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 = -z
+      o2 = -x
+      o3 = -y
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+      oray = o1*c1 + o2*c2 + o3*c3
+*      print*, 'o:', o1,o2,o3
+      if (oray .GE. 0.d0) then
+*         print*, 'o:', o1,o2,o3
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      ray1(1) = c1 - 2.d0*oray*o1/oo
+      ray1(2) = c2 - 2.d0*oray*o2/oo
+      ray1(3) = c3 - 2.d0*oray*o3/oo
+
+*     .. normal reflection
+      MIRSPH = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the spheroid
+      MIRSPH = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of spheroid
+      MIRSPH = 1
+      goto 1000
+      RETURN
+ 1000 continue
+      print*, 'MIRSPH: ray,ray1:'
+      print*, ray
+      print*, ray1
+      RETURN
+      END
+*                                         @METAGS MISPH
+*                                         06-02-98 01:17pm
+*--------------- MISPH ---------------
+*
+      integer function MISPH(R,ray,ray1)
+*
+*     Minimized routine: only one reflection
+*
+*     Reflection from spherical mirror  x**2 + y**2 + (z-R)**2 = R**2
+*     Focus f=R/2
+*     To simplify calculation we use transfer to center of sphera system
+*
+*     Note: ray,ray1 in frame of spheroid
+*           (i.e. normal in sphera top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of spheroid x**2 + y**2 + (z-R)**2 = R**2
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of sphera
+*     -1: ray have missed the sphera
+*
+*              x|          "Mirror" system
+*               |      .   ---------------
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----*-----------------------
+*              /| |    |      R                     z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      real R,ray(6),ray1(6)
+      double precision R2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot,j
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+
+      R2 = DBLE(R)**2
+
+*     .. cosines of incident ray
+      c1 = ray(1)
+      c2 = ray(2)
+      c3 = ray(3)
+*     .. radiant of incident ray in center of sphera system (shift for x1)
+      x1 = DBLE(ray(4)) - DBLE(R)
+      x2 = ray(5)
+      x3 = ray(6)
+*      print*, 'rayhis(4,nray) in "mirror" system =', rayhis(4,nray)
+*      print*, 'x1 in "sphera" system =', x1
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2 + y**2 + z**2 = R**2
+*--
+*     Perform the calculation in center of sphera system.
+*     Here x**2 + y**2 + z**2 = R**2
+*--
+*     .. coeffs. of square equation
+      a = c1**2 + c2**2 + c3**2
+      b = 2.*(c1*x1 + c2*x2 + c3*x3)
+      c = x1**2 + x2**2 + x3**2 - R2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'MISPH: idroot =', idroot
+*         call WAIT('MISPH: No roots of square equation')
+         goto 1001
+
+         if (idroot.LT.0) call MESS('MISPH: No roots')
+         if (idroot.EQ.1) call MESS('MISPH: Any roots')
+         if (idroot.EQ.2) call MESS('MISPH: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+*      print*, 'MIN root = ', t
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+*      print*, 'MAX root =', t
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+*     .. adjust point on spheroid
+      x2 = x2 + c2*t
+      x3 = x3 + c3*t
+      x1 = -1.d0*sqrt(R2 - x2**2 - x3**2)
+*      print*, 'z in "sphera" system =', z
+*     .. radiant of the output ray in mirror system (shift for z)
+      ray1(4) = x1 + R
+      ray1(5) = x2
+      ray1(6) = x3
+*
+*  Gets directrix cosines o of nornal to spheroid in the point ray1(4:6)
+*
+*  Rewrite spheroid equation x**2 + y**2 + z**2 = R**2 in form
+*  F(z,x,y)=0. Becouse spheroid reflect by its inner surface,
+*  F(z,x,y) = R**2 - z**2 + x**2 + y**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 = -x1
+      o2 = -x2
+      o3 = -x3
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+*     .. include factor 2 to oray
+      oray = 2.d0*(o1*c1 + o2*c2 + o3*c3)/oo
+*      print*, 'o:', o1,o2,o3
+      if (oray .GE. 0.d0) then
+*         print*, 'o:', o1,o2,o3
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      ray1(1) = c1 - oray*o1
+      ray1(2) = c2 - oray*o2
+      ray1(3) = c3 - oray*o3
+
+*     .. normal reflection
+      MISPH = 0
+      goto 1000
+      RETURN
+
+ 1001 continue
+*     .. ray have missed the spheroid
+      MISPH = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of spheroid
+      MISPH = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'MISPH: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS PLOPAR
+*                                         15/06/98 18:15
+*--------------- PLOPAR ---------------
+*
+      SUBROUTINE PLOPAR(p,q,zmin,zmax,xmin,xmax,ixplot,iyplot,frame)
+      real frame(5)
+*     .. xmin,xmax and y in mirror frame
+      parameter (NP=100)
+      real xpoint(NP),ypoint(NP)
+      real point(6)
+
+*     .. coordinates to plot
+      ix = 3+ixplot
+      iy = 3+iyplot
+
+      y=0.
+
+      if ((xmin.NE.0.) .AND. (xmax.NE.0)) then
+         xstep = (xmax-xmin)/(NP-1)
+         x = xmin
+         do i=1,NP
+            z = (x**2/p + y**2/q)/2.
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP,xpoint,ypoint)
+      else
+         xmin = sqrt(2.*zmin*p)
+         xmax = sqrt(2.*zmax*p)
+         if (zmax.EQ.0.) xmax=(.5*(p+q))/2.
+         xstep = 2.*(xmax-xmin)/(NP-1)
+         NP2 = NP/2
+         
+         x = xmin
+         do i=1,NP2
+            z = (x**2/p + y**2/q)/2.
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP2,xpoint,ypoint)
+
+         xstep = -xstep
+         x = -xmin
+         do i=1,NP2
+            z = (x**2/p + y**2/q)/2.
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP2,xpoint,ypoint)
+      endif
+      END
+
+*                                         @METAGS COLPAR
+*                                         24/06/98 14:57
+*--------------- COLPAR ---------------
+*
+      SUBROUTINE COLPAR(p,q,zmin,zmax,maxray,rayhis,nray,ierr)
+*     Returns error code:
+*      0: normal reflection
+*      1: initial ray is absorbed at the back side of paraboloid
+*     -1: initial ray have missed the paraboloid
+      real p,q,zmin,zmax
+      integer maxray
+      real rayhis(6,maxray+1)
+      integer nray,ierr
+
+*     .. the number of processed rays
+      nray = 1
+  100 continue
+         ires = MIRPAR(p,q,zmin,zmax,rayhis(1,nray),rayhis(1,nray+1))
+         print*, 'COLPAR: ires =', ires
+         if (ires.EQ.0) then
+*           .. ray remains in paraboloid
+            if (nray.EQ.maxray) then
+*              .. history overflow
+               ierr = 1
+               RETURN
+            endif
+            nray = nray+1
+            goto 100
+         elseif (ires.EQ.-1) then
+*           .. ray live the paraboloid
+            nray = nray-1
+            ierr = 0
+            if (nray.EQ.0) then
+*              .. incident ray have missed the paraboloid
+               ierr=-1
+            endif
+         else
+*           .. incident ray hitted back side
+            ierr = 1
+         endif
+      RETURN
+      END
+
+*                                         @METAGS PARABpar
+*                                         07-10-98 04:25pm
+*--------------- PARABpar ---------------
+*
+      SUBROUTINE PARABpar(Rfoc,Rmax, f,h)
+*     .. Rfoc - paraboloid radius in the focus
+      f = Rfoc/2.
+      h = Rmax**2/(4.*f)
+      END
+
+*                                         @METAGS PARAB
+*                                         06-02-98 01:17pm
+*--------------- PARAB ---------------
+*
+      SUBROUTINE PARAB(f,zmin,zmax,maxray,rayhis,nray,ierr)
+*
+*     Commonly, p = q = 2f
+*     Reflection from paraboloid mirror 2z = x**2/p + y**2/q
+*
+*     Note: ray,ray1 in frame of paraboloid
+*           (i.e. normal in paraboloid top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of paraboloid 2z = x**2/p + y**2/q
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of paraboloid
+*     -1: ray have missed the paraboloid
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer maxray,nray,ierr
+      real f,zmin,zmax,rayhis(6,maxray+1)
+      double precision p,q,z1,z2
+      double precision c1,c2,c3,x1,x2,x3, z
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot,j
+
+      ierr = 0
+      nray = 1
+
+      do i=1,6
+         rayhis(i,nray+1) = rayhis(i,nray)
+      enddo
+
+      p = 2.d0*f
+      q = p
+*     .. paraboloid boundaries along the z
+      z1 = zmin
+      z2 = zmax
+      if (zmax.EQ.0.) z2=f
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nray)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2/p + y**2/q - 2*z = 0
+*
+*     .. coeffs. of square equation
+      a = c2**2/p + c3**2/q
+      b = 2.*(c2*x2/p + c3*x3/q - c1)
+      c = x2**2/p + x3**2/q - 2.*x1
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'PARAB: idroot =', idroot
+*         call WAIT('PARAB: No roots of square equation')
+*         goto 1001
+
+         if (idroot.LT.0) call MESS('PARAB: No roots')
+         if (idroot.EQ.1) call MESS('PARAB: Any roots')
+         if (idroot.EQ.2) call MESS('PARAB: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of paraboloid. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of paraboloid. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nray = nray+1
+
+*     .. adjust point on paraboloid
+      x2 = x2 + c2*t
+      x3 = x3 + c3*t
+      x1 = (x2**2/p + x3**2/q)/2.d0
+*      z = REAL(x1 + c1*t)
+*     .. radiant of the output ray
+      rayhis(4,nray) = x1
+      rayhis(5,nray) = x2
+      rayhis(6,nray) = x3
+*
+*  Gets directrix cosines o of nornal to paraboloid in the point ray1(4:6)
+*
+*  Rewrite paraboloid equation x**2/p + y**2/q - 2*z = 0 in form
+*  F(z,x,y)=0. Becouse paraboloid reflect by its inner surface,
+*  F(z,x,y) = 2*z - x**2/p + y**2/q
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  1.d0
+      o2 = -x2/p
+      o3 = -x3/q
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+*     .. include factor 2 to oray
+      oray = 2.d0*(o1*c1 + o2*c2 + o3*c3)/oo
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      c1 = c1 - oray*o1
+      c2 = c2 - oray*o2
+      c3 = c3 - oray*o3
+*     .. assign to output ray
+      rayhis(1,nray) = c1
+      rayhis(2,nray) = c2
+      rayhis(3,nray) = c3
+
+       if (nray.GT.maxray) then
+*         .. history overflow
+          goto 1001
+       endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. here c1,c2,c3 is cosines and x1,x2,x3 is radiant of reflected ray
+*     .. coeffs. of square equation
+      a = c2**2/p + c3**2/q
+      b = 2.*(c2*x2/p + c3*x3/q - c1)
+ 
+*      c = x2**2/p + x3**2/q - 2.*x1
+*      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'Compare: roots:', t1,t2
+
+      if (a .NE. 0.d0) then
+         t1 = -b/a
+*         print*, 'by Viete t1=', t1
+*         print*, 'Compare: eq.:', a*t1**2 + b*t1 + c
+      else
+*        .. the other root=0 too
+*           there is no intersection point downstream the ray
+         nray = nray+1
+         goto 1001
+      endif
+*     .. to use the same code
+      t2 = t1
+
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the paraboloid
+      if (nray.EQ.1) ierr = -1
+      nray = nray-1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of paraboloid
+      ierr = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'PARAB: nray =', nray, '   rays for nray-1, nray:'
+*      print*, (rayhis(j,nray-1), j=1,6)
+*      print*, (rayhis(j,nray), j=1,6)
+      RETURN
+      END
+
+*                                         @METAGS MIRPAR
+*                                         06-02-98 01:17pm
+*--------------- MIRPAR ---------------
+*
+      integer function MIRPAR(ppar,qpar,zmin,zmax,ray, ray1)
+*
+*     Commonly, p = q = 2f
+*     Uses double precision p=ppar, q=qpar
+*     Reflection from paraboloid mirror 2z = x**2/p + y**2/q
+*
+*     Note: ray,ray1 in frame of paraboloid
+*           (i.e. normal in paraboloid top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of paraboloid 2z = x**2/p + y**2/q
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of paraboloid
+*     -1: ray have missed the paraboloid
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      real ppar,qpar,zmin,zmax,ray(6),ray1(6)
+      double precision p,q,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z,x,y
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+
+      p = ppar
+      q = qpar
+*     .. paraboloid boundaries along the z
+      z1 = zmin
+      z2 = zmax
+
+*     .. cosines of incident ray
+      c1 = ray(1)
+      c2 = ray(2)
+      c3 = ray(3)
+*     .. radiant of incident ray
+      x1 = ray(4)
+      x2 = ray(5)
+      x3 = ray(6)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2/p + y**2/q - 2*z = 0
+*
+*     .. coeffs. of square equation
+      a = c2**2/p + c3**2/q
+      b = 2.*(c2*x2/p + c3*x3/q - c1)
+      c = x2**2/p + x3**2/q - 2.*x1
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'MIRPAR: idroot =', idroot
+*         call WAIT('MIRPAR: No roots of square equation')
+*         goto 1001
+
+         if (idroot.LT.0) call MESS('MIRPAR: No roots')
+         if (idroot.EQ.1) call MESS('MIRPAR: Any roots')
+         if (idroot.EQ.2) call MESS('MIRPAR: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+      if (zmax .EQ. 0.) z2=z
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of paraboloid. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+      if (zmax .EQ. 0.) z2=z
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of paraboloid. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+*     .. adjust point on paraboloid
+      x = REAL(x2 + c2*t)
+      y = REAL(x3 + c3*t)
+      z = REAL((x**2/p + y**2/q)/2.d0)
+*     .. radiant of the output ray
+      ray1(4) = z
+      ray1(5) = x
+      ray1(6) = y
+*
+*  Gets directrix cosines o of nornal to paraboloid in the point ray1(4:6)
+*
+*  Rewrite paraboloid equation x**2/p + y**2/q - 2*z = 0 in form
+*  F(z,x,y)=0. Becouse paraboloid reflect by its inner surface,
+*  F(z,x,y) = 2*z - x**2/p + y**2/q
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  1.d0
+      o2 = -x/p
+      o3 = -y/q
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+      oray = o1*c1 + o2*c2 + o3*c3
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      ray1(1) = c1 - 2.d0*oray*o1/oo
+      ray1(2) = c2 - 2.d0*oray*o2/oo
+      ray1(3) = c3 - 2.d0*oray*o3/oo
+
+*     .. normal reflection
+      MIRPAR = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the paraboloid
+      MIRPAR = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of paraboloid
+      MIRPAR = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'MIRPAR: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS COLCON
+*                                         24/06/98 14:57
+*--------------- COLCON ---------------
+*
+      SUBROUTINE COLCON(tgcone,zmin,zmax,maxray,rayhis,nray,ierr)
+*     Returns error code:
+*      0: normal reflection
+*      1: initial ray is absorbed at the back side of cone
+*     -1: initial ray have missed the cone
+      real tgcone,zmin,zmax
+      integer maxray
+      real rayhis(6,maxray+1)
+      integer nray,ierr
+
+*     .. the number of processed rays
+      nray = 1
+  100 continue
+         ires = MIRCON(tgcone,zmin,zmax,rayhis(1,nray),rayhis(1,nray+1))
+*         print*, 'COLCON: ires =', ires
+         if (ires.EQ.0) then
+*           .. ray remains in cone
+            if (nray.EQ.maxray) then
+*              .. history overflow
+               ierr = 1
+               RETURN
+            endif
+            nray = nray+1
+            goto 100
+         elseif (ires.EQ.-1) then
+*           .. ray live the cone
+            nray = nray-1
+            ierr = 0
+            if (nray.EQ.0) then
+*              .. incident ray have missed the cone
+               ierr=-1
+            endif
+         else
+*           .. incident ray hitted back side
+            ierr = 1
+         endif
+      RETURN
+      END
+
+*                                         @METAGS CONEpar
+*                                         07-10-98 04:28pm
+*--------------- CONEpar ---------------
+*
+      SUBROUTINE CONEpar(r1,r2,dh, tgcone,h1,h2)
+      tgcone = (r2-r1)/dh
+      h1 = r1/tgcone
+      h2 = r2/tgcone
+      END
+
+*                                         @METAGS CONE
+*                                         06-02-98 01:17pm
+*--------------- CONE ---------------
+*
+      SUBROUTINE CONE(tgcone,zmin,zmax,maxray,rayhis,nray,ierr)
+*
+*     Reflection from conical mirror (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     Note: ray,ray1 in frame of cone
+*           (i.e. normal in the plane of cutted cone top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of cone (x**2 + y**2)/tgcone**2 - z**2 = 0
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of cone
+*     -1: ray have missed the cone
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |__  |
+*            /  |  \)  | <-- tgcone
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer maxray,nray,ierr
+      real tgcone,zmin,zmax,rayhis(6,maxray+1)
+      double precision tg2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z,x,y
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot,j
+
+      ierr = 0
+      nray = 1
+
+      do i=1,6
+         rayhis(i,nray+1) = rayhis(i,nray)
+      enddo
+
+      tg2 = tgcone**2
+*     .. cone boundaries along the z
+      z1 = zmin
+      z2 = zmax
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nray)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     .. coeffs. of square equation
+      a = (c2**2 + c3**2)/tg2 - c1**2
+      b = 2.d0*((c2*x2 + c3*x3)/tg2 - c1*x1)
+      c = (x2**2 + x3**2)/tg2 - x1**2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, a,b,c
+*      print*, t1,t2
+      if (idroot.NE.0) then
+         if (idroot.EQ.2) then
+            call MESS('CONE: Complex roots: no intersection')
+            goto 1001
+         endif
+         if (idroot.LT.0) call MESS('ERROR CONE: No roots')
+         if (idroot.EQ.1) call MESS('CONE: Any roots')
+         if (x1.GT.z2) then
+            z = 0.
+         elseif (x1.LT.z1) then
+            z = z1-z2
+         else
+            z = x1
+         endif
+         t = (z-x1)/c1
+         rayhis(5,nray) = x2 + c2*t
+         rayhis(6,nray) = x3 + c3*t
+*        .. z precisely on cone
+         rayhis(4,nray) = REAL(sqrt(x2**2 + x3**2)/tgcone)
+         goto 1002
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of cone. Change to MAX root ---'
+*         print*, z
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of cone. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nray = nray+1
+
+*     .. adjust point on cone
+      x = REAL(x2 + c2*t)
+      y = REAL(x3 + c3*t)
+      z = REAL(sqrt(x**2 + y**2)/DBLE(tgcone))
+*     .. radiant of the output ray
+      rayhis(4,nray) = z
+      rayhis(5,nray) = x
+      rayhis(6,nray) = y
+*
+*  Gets directrix cosines o of nornal to cone in the point ray1(4:6)
+*
+*  Rewrite cone equation (x**2 + y**2)/tg**2 - z**2 = 0 in form
+*  F(z,x,y)=0. Becouse cone reflect by its inner surface,
+*  F(z,x,y) = z**2 - (x**2 + y**2)/tg**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*  For cone (o*o) = 4*(z**2 + (x**2+y**2)/tg**2) = 4*2*z**2
+*  is only function of z.
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  z
+      o2 = -x/tg2
+      o3 = -y/tg2
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+      oray = o1*c1 + o2*c2 + o3*c3
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      rayhis(1,nray) = c1 - 2.d0*oray*o1/oo
+      rayhis(2,nray) = c2 - 2.d0*oray*o2/oo
+      rayhis(3,nray) = c3 - 2.d0*oray*o3/oo
+
+       if (nray.GT.maxray) then
+*         .. history overflow
+          goto 1002
+       endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nray)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+*     .. coeffs. of square equation
+      a = (c2**2 + c3**2)/tg2 - c1**2
+      b = 2.d0*((c2*x2 + c3*x3)/tg2 - c1*x1)
+*     .. becouse a.NE.0.
+      t1 = -b/a
+*     .. to use the same code
+      t2 = t1
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the cone
+      if (nray.EQ.1) ierr = -1
+      nray = nray-1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of cone
+      ierr = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'CONE: nray =', nray, '   rays for nray-1, nray:'
+*      print*, (rayhis(j,nray-1), j=1,6)
+*      print*, (rayhis(j,nray), j=1,6)
+      RETURN
+      END
+
+*                                         @METAGS MIRCON
+*                                         06-02-98 01:17pm
+*--------------- MIRCON ---------------
+*
+      integer function MIRCON(tgcone,zmin,zmax,ray, ray1)
+*
+*     Reflection from conical mirror (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     Note: ray,ray1 in frame of cone
+*           (i.e. normal in the plane of cutted cone top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of cone (x**2 + y**2)/tgcone**2 - z**2 = 0
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of cone
+*     -1: ray have missed the cone
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |__  |
+*            /  |  \)  | <-- tgcone
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      real tgcone,zmin,zmax,ray(6),ray1(6)
+      double precision tg2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z,x,y
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+
+      tg2 = tgcone**2
+*     .. cone boundaries along the z
+      z1 = zmin
+      z2 = zmax
+
+*     .. cosines of incident ray
+      c1 = ray(1)
+      c2 = ray(2)
+      c3 = ray(3)
+*     .. radiant of incident ray
+      x1 = ray(4)
+      x2 = ray(5)
+      x3 = ray(6)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     .. coeffs. of square equation
+      a = (c2**2 + c3**2)/tg2 - c1**2
+      b = 2.d0*((c2*x2 + c3*x3)/tg2 - c1*x1)
+      c = (x2**2 + x3**2)/tg2 - x1**2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, a,b,c
+*      print*, t1,t2
+      if (idroot.NE.0) then
+         if (idroot.EQ.2) then
+            call MESS('MIRCON: Complex roots: no intersection')
+            goto 1001
+         endif
+         if (idroot.LT.0) call MESS('ERROR MIRCON: No roots')
+         if (idroot.EQ.1) call MESS('MIRCON: Any roots')
+         if (x1.GT.z2) then
+            z = 0.
+         elseif (x1.LT.z1) then
+            z = z1-z2
+         else
+            z = x1
+         endif
+         t = (z-x1)/c1
+         ray1(5) = x2 + c2*t
+         ray1(6) = x3 + c3*t
+*        .. z precisely on cone
+         ray1(4) = REAL(sqrt(x2**2 + x3**2)/tgcone)
+         goto 1002
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of cone. Change to MAX root ---'
+*         print*, z
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of cone. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+*     .. adjust point on cone
+      x = REAL(x2 + c2*t)
+      y = REAL(x3 + c3*t)
+      z = REAL(sqrt(x**2 + y**2)/DBLE(tgcone))
+*     .. radiant of the output ray
+      ray1(4) = z
+      ray1(5) = x
+      ray1(6) = y
+*
+*  Gets directrix cosines o of nornal to cone in the point ray1(4:6)
+*
+*  Rewrite cone equation (x**2 + y**2)/tg**2 - z**2 = 0 in form
+*  F(z,x,y)=0. Becouse cone reflect by its inner surface,
+*  F(z,x,y) = z**2 - (x**2 + y**2)/tg**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*  For cone (o*o) = 4*(z**2 + (x**2+y**2)/tg**2) = 4*2*z**2
+*  is only function of z.
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  z
+      o2 = -x/tg2
+      o3 = -y/tg2
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+      oray = o1*c1 + o2*c2 + o3*c3
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      ray1(1) = c1 - 2.d0*oray*o1/oo
+      ray1(2) = c2 - 2.d0*oray*o2/oo
+      ray1(3) = c3 - 2.d0*oray*o3/oo
+
+*     .. normal reflection
+      MIRCON = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the cone
+      MIRCON = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of cone
+      MIRCON = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'MIRCON: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS PLOCON
+*                                         15/06/98 18:15
+*--------------- PLOCON ---------------
+*
+      SUBROUTINE PLOCON(tgcone,zmin,zmax,xmin,xmax,ixplot,iyplot,frame)
+      real frame(5)
+*     .. xmin,xmax and y in mirror frame
+      parameter (NP=100)
+      real xpoint(NP),ypoint(NP)
+      real point(6)
+
+*     .. coordinates to plot
+      ix = 3+ixplot
+      iy = 3+iyplot
+
+      if ((xmin.NE.0.) .AND. (xmax.NE.0)) then
+         xstep = (xmax-xmin)/(NP-1)
+         x = xmin
+         do i=1,NP
+            z = sqrt(x**2 + y**2)/tgcone
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP,xpoint,ypoint)
+      else
+         xmin = tgcone*zmin
+         xmax = tgcone*zmax
+         xstep = 2.*(xmax-xmin)/(NP-1)
+         NP2 = NP/2
+         
+         x = xmin
+         do i=1,NP2
+            z = sqrt(x**2 + y**2)/tgcone
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP2,xpoint,ypoint)
+
+         xstep = -xstep
+         x = -xmin
+         do i=1,NP2
+            z = sqrt(x**2 + y**2)/tgcone
+            point(4) = z
+            point(5) = x
+            point(6) = x
+            call tolab(frame,point,point)
+*           .. to plot y vs x
+            xpoint(i) = point(ix)
+            ypoint(i) = point(iy)
+            x = x+xstep
+         enddo
+         call IPL(NP2,xpoint,ypoint)
+      endif
+      END
+
+*                                         @METAGS PLOPLA
+*                                         15/06/98 18:15
+*--------------- PLOPLA ---------------
+*
+      SUBROUTINE PLOPLA(xmin,xmax,ixplot,iyplot,frame)
+      real frame(5)
+*     .. xmin,xmax and y in mirror frame
+      parameter (NP=100)
+      real xpoint(NP),ypoint(NP)
+      real point(6)
+
+*     .. coordinates to plot
+      ix = 3+ixplot
+      iy = 3+iyplot
+
+      xstep = (xmax-xmin)/(NP-1)
+      x = xmin
+      do i=1,NP
+         z = 0.
+         point(4) = z
+         point(5) = x
+         point(6) = y
+         call tolab(frame,point,point)
+*        .. to plot y vs x
+         xpoint(i) = point(ix)
+         ypoint(i) = point(iy)
+         x = x+xstep
+      enddo
+      call IPL(NP,xpoint,ypoint)
+      END
+
+*                                         @METAGS MIRPLA
+*                                         07-08-98 10:42pm
+*--------------- MIRPLA ---------------
+*
+      integer function MIRPLA(ray,ray1)
+*
+*     Reflaction from plane mirror
+*
+*     Note: ray,ray1 in frame of plane z=0
+*           (i.e. plane normal is o=(1,0,0))
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of plane
+*     -1: ray have missed the plane
+*
+*              x|   
+*               |   
+*               | /|
+*               |/ |
+*               /  |
+*              /|  |
+*             / |  |
+*            /  |  |
+*            |  +------------------------
+*            | / 0 |                    z
+*            |/   / 
+*            |   / 
+*           /|  / 
+*          / | / 
+*         /  |/ 
+*       y/     
+*            
+      IMPLICIT NONE
+      real ray(6),ray1(6)
+      real t
+      integer i
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+*
+*     Intersection point of line and plane z=0
+*     Line: direcrix cosines ray(3) and point aray(3)
+*     Solve system of linear equations:
+*     Ray: dir.cosines=(cosz,cosx,cosy), point aray=(z0,x0,y0)
+*     eq.: (x-x0)/cosx = (y-y0)/cosy = (z-z0)/cosz
+*     Plane: z=0
+*
+      if (ray(1) .NE. 0.) then
+         t = -ray(4)/ray(1)
+      else
+*        .. ray is parallel to plane
+         goto 1001
+      endif
+*      print*, 'MIRPLA: t=', t
+      if (t .LT. 0.) then
+*        .. ray have missed the plane
+         goto 1001
+      endif
+
+*     .. intersection point ray1(3+i) = ray(3+i) + ray(i)*t
+      ray1(5) = ray(5) + ray(2)*t
+      ray1(6) = ray(6) + ray(3)*t
+*     .. z precisely on plane
+      ray1(4) = 0.
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*     In our frame o=(1,0,0) and (o*ray) = ray(1)
+*
+      if (ray(1) .GE. 0.) then
+*        .. (o*ray) > 0: ray hitted the back side of plane
+         goto 1002
+      endif
+*     .. to reflect enough invert z-component (already ray1(1:3)=ray(1:3))
+      ray1(1) = -ray(1) 
+
+*     .. normal reflection
+      MIRPLA = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the plane
+      MIRPLA = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of plane
+      MIRPLA = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'MIRPLA: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS MIRREC
+*                                         07-08-98 10:42pm
+*--------------- MIRREC ---------------
+*
+      integer function MIRREC(a,b,ray,ray1)
+*
+*              x|   
+*               |   
+*               | /|
+*              a|/ |
+*               /  |
+*              /|  |
+*             / |  |
+*            /  |  |
+*            |  +------------------------
+*            | / 0 |                    z
+*            |/   / 
+*           b|   / 
+*           /|  / 
+*          / | / 
+*         /  |/ 
+*       y/     
+*            
+      IMPLICIT NONE
+      real a,b,ray(6),ray1(6)
+      real t
+      integer i
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+*
+*     Intersection point of line and plane z=0
+*     Line: direcrix cosines ray(3) and point aray(3)
+*     Solve system of linear equations:
+*     Ray: dir.cosines=(cosz,cosx,cosy), point aray=(z0,x0,y0)
+*     eq.: (x-x0)/cosx = (y-y0)/cosy = (z-z0)/cosz
+*     Plane: z=0
+*
+      if (ray(1) .NE. 0.) then
+         t = -ray(4)/ray(1)
+      else
+*        .. ray is parallel to plane
+         goto 1001
+      endif
+*      print*, 'MIRREC: t=', t
+      if (t .LT. 0.) then
+*        .. ray have missed the plane
+         goto 1001
+      endif
+
+*     .. intersection point ray1(3+i) = ray(3+i) + ray(i)*t
+      ray1(5) = ray(5) + ray(2)*t
+      ray1(6) = ray(6) + ray(3)*t
+*     .. z precisely on plane
+      ray1(4) = 0.
+
+*     .. test to hit
+      if ((ABS(ray1(5)).GT.a) .OR. (ABS(ray1(6)).GT.b)) then
+*        .. miss
+         goto 1001
+      endif
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*     In our frame o=(1,0,0) and (o*ray) = ray(1)
+*
+      if (ray(1) .GE. 0.) then
+*        .. (o*ray) > 0: ray hitted the back side of plane
+         goto 1002
+      endif
+*     .. to reflect enough invert z-component (already ray1(1:3)=ray(1:3))
+      ray1(1) = -ray(1) 
+
+*     .. normal reflection
+      MIRREC = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the plane
+      MIRREC = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of plane
+      MIRREC = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'MIRREC: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS MIRCIR
+*                                         07-08-98 09:40pm
+*--------------- MIRCIR ---------------
+*
+      integer function MIRCIR(R,ray,ray1)
+*
+*        x|
+*         |
+*         |R
+*         O-------
+*        /       z
+*      y/
+*
+      IMPLICIT NONE
+      real R,ray(6),ray1(6)
+      real t
+      integer i
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+*
+*     Intersection point of line and plane z=0
+*     Line: direcrix cosines ray(3) and point aray(3)
+*     Solve system of linear equations:
+*     Ray: dir.cosines=(cosz,cosx,cosy), point aray=(z0,x0,y0)
+*     eq.: (x-x0)/cosx = (y-y0)/cosy = (z-z0)/cosz
+*     Plane: z=0
+*
+      if (ray(1) .NE. 0.) then
+         t = -ray(4)/ray(1)
+      else
+*        .. ray is parallel to plane
+         goto 1001
+      endif
+*      print*, 'MIRCIR: t=', t
+      if (t .LT. 0.) then
+*        .. ray have missed the plane
+         goto 1001
+      endif
+
+*     .. intersection point ray1(3+i) = ray(3+i) + ray(i)*t
+      ray1(5) = ray(5) + ray(2)*t
+      ray1(6) = ray(6) + ray(3)*t
+*     .. z precisely on plane
+      ray1(4) = 0.
+
+*     .. test to hit
+      if (ray1(5)**2 + ray1(6)**2 .GT. R**2) then
+*        .. miss
+         goto 1001
+      endif
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*     In our frame o=(1,0,0) and (o*ray) = ray(1)
+*
+      if (ray(1) .GE. 0.) then
+*        .. (o*ray) > 0: ray hitted the back side of plane
+         goto 1002
+      endif
+*     .. to reflect enough invert z-component (already ray1(1:3)=ray(1:3))
+      ray1(1) = -ray(1) 
+
+*     .. normal reflection
+      MIRCIR = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the plane
+      MIRCIR = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of plane
+      MIRCIR = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'MIRCIR: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS PMT
+*                                         07-08-98 10:10pm
+*--------------- PMT ---------------
+*
+      SUBROUTINE PMT(Rpmt,ray,ray1,ierr)
+      IMPLICIT NONE
+      real Rpmt,ray(6),ray1(6)
+      integer ierr
+      real t
+      integer i
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+*
+*     Intersection point of line and plane z=0
+*     Line: direcrix cosines ray(3) and point aray(3)
+*     Solve system of linear equations:
+*     Ray: dir.cosines=(cosz,cosx,cosy), point aray=(z0,x0,y0)
+*     eq.: (x-x0)/cosx = (y-y0)/cosy = (z-z0)/cosz
+*     Plane: z=0
+*
+      if (ray(1) .NE. 0.) then
+         t = -ray(4)/ray(1)
+      else
+*        .. ray is parallel to PM plane
+         goto 1001
+      endif
+*      print*, 'PMT: t=', t
+      if (t .LT. 0.) then
+*        .. ray have missed the plane
+         goto 1001
+      endif
+
+*     .. intersection point ray1(3+i) = ray(3+i) + ray(i)*t
+      ray1(5) = ray(5) + ray(2)*t
+      ray1(6) = ray(6) + ray(3)*t
+*     .. z precisely on plane
+      ray1(4) = 0.
+
+*     .. test to hit
+      if (ray1(5)**2 + ray1(6)**2 .GT. Rpmt**2) then
+*        .. miss
+         goto 1001
+      endif
+
+*     .. hit the PM
+      ierr = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the PM
+      ierr = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of PM
+      ierr = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'PMT: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS PLOCYLBO
+*                                         07-09-98 03:02pm
+*--------------- PLOCYLBO ---------------
+*
+      SUBROUTINE PLOCYLBO(R,d,frame)
+      real R,d,frame(5)
+      real ray(6)
+      equivalence (ray(4),z), (ray(5),x), (ray(6),y)
+      y=0.
+      z = 0.
+      x = -R
+      call tolab(frame,ray,ray)
+      x1 = z
+      y1 = x
+
+      z = d
+      x = R
+      call tolab(frame,ray,ray)
+      x2 = z
+      y2 = x
+      call IGBOX(x1,x2,y1,y2)
+      END
+
+*                                         @METAGS CYLBOX
+*                                         08/07/98 21:19
+*--------------- CYLBOX ---------------
+*
+      SUBROUTINE CYLBOX(R,d,ray,ray1,ierr)
+*
+*     Intersection with cylinder x**2 + y**2 = R**2 with length d
+*
+*     Note: ray,ray1 in frame of cylinder
+*           (i.e. normal in left cap is (1,0,0))
+*
+*  Intersection point ray1(4:6) of cylinder x**2 + y**2 = R**2
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: absorbed inside of cylinder
+*      1: absorbed outside of cylinder
+*     -1: ray have missed the cylinder
+*
+*              x|       
+*               |       
+*              R|____         
+*               O____O-------                        
+*              /     d      z                        
+*            y/         
+*
+      IMPLICIT NONE
+      real R,d,ray(6),ray1(6)
+      integer ierr
+      integer ires
+      real zmin,zmax,raybuf(6)
+      double precision R2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+      integer MIRCIR
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+
+      R2 = DBLE(R)**2
+*     .. cylinder boundaries
+      z1 = 0.d0
+      z2 = d
+
+*     .. cosines of incident ray
+      c1 = ray(1)
+      c2 = ray(2)
+      c3 = ray(3)
+*     .. radiant of incident ray
+      x1 = ray(4)
+      x2 = ray(5)
+      x3 = ray(6)
+
+      do i=1,6
+         raybuf(i) = ray(i)
+      enddo
+*     .. intersection with left cap
+      ires = MIRCIR(R,raybuf,raybuf)
+*     .. assign only point
+      ray1(4) = raybuf(4)
+      ray1(5) = raybuf(5)
+      ray1(6) = raybuf(6)
+      if (ires.EQ.0) then
+*        .. inner absorbed
+         goto 1000
+      elseif (ires.EQ.1) then
+*        .. outer absorbed
+         goto 1002
+      endif
+
+*     .. here raybuf contains original ray
+
+*     .. transfer to right cap system (turn by 180 and shift by d)
+      raybuf(1) = -raybuf(1)
+      raybuf(2) = -raybuf(2)
+      raybuf(4) = -(raybuf(4) - d)
+      raybuf(5) = -raybuf(5)
+*     .. intersection with right cap
+      ires = MIRCIR(R,raybuf,raybuf)
+*     .. assign only point perform transfer to cylinder system
+*     .. reflected directrix in cylinder system:
+*        raybuf(1) = -raybuf(1)
+*        raybuf(2) = -raybuf(2)
+      ray1(4) =  raybuf(4) + d
+      ray1(5) = -raybuf(5)
+      ray1(6) =  raybuf(6)
+      if (ires.EQ.0) then
+*        .. inner absorbed
+         goto 1000
+      elseif (ires.EQ.1) then
+*        .. outer absorbed
+         goto 1002
+      endif
+
+*     .. here ray missed the caps
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2 + y**2 = R**2
+*
+*     .. coeffs. of square equation
+      a = c2**2 + c3**2
+      b = 2.*(c2*x2 + c3*x3)
+      c = x2**2 + x3**2 - R2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'CYLBOX: idroot =', idroot
+*         call WAIT('CYLBOX: No roots of square equation')
+         goto 1001
+
+         if (idroot.LT.0) call MESS('CYLBOX: No roots')
+         if (idroot.EQ.1) call MESS('CYLBOX: Any roots')
+         if (idroot.EQ.2) call MESS('CYLBOX: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of cylinder. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of cylinder. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+*     .. intersection point
+      ray1(4) = REAL(x1 + c1*t)
+      ray1(5) = REAL(x2 + c2*t)
+      ray1(6) = REAL(x3 + c3*t)
+
+      ierr = 0
+      goto 1000
+      RETURN
+ 1001 continue
+*     .. ray have missed the cylinder
+      ierr = -1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of cylinder
+      ierr = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'CYLBOX: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS mkframe
+*                                         03/07/98 10:11
+*--------------- mkframe ---------------
+*
+      SUBROUTINE mkframe(iaxis,thdeg,d1,d2,frame)
+      real thdeg,d1,d2,frame(5)
+      double precision pi,torad,thrad
+      pi = ACOS(-1.d0)
+      torad = pi/180.d0
+      thrad = thdeg*torad
+      frame(1) = iaxis
+      frame(2) = COS(thrad)
+      frame(3) = SIN(thrad)
+      frame(4) = d1
+      frame(5) = d2
+      END
+
+*                                         @METAGS toloc
+*                                         16/06/98 09:40
+*--------------- toloc ---------------
+*
+      SUBROUTINE toloc(frame,raylab, rayloc)
+*
+*     Rotate the right coord. system round the INT(axis3) axis.
+*     frame = (axis3,cosA,sinA,d1,d2)
+*     d1 - shift along the axis1
+*     d2 - shift along the axis2
+*
+      real frame(5),raylab(6),rayloc(6),c(6),x(6)
+      i3 = frame(1)
+      if (i3.EQ.3) then
+         i1 = 1
+         i2 = 2
+      elseif (i3.EQ.1) then
+         i1 = 2
+         i2 = 3
+      elseif (i3.EQ.2) then
+         i1 = 3
+         i2 = 1
+      else
+         print*, 'ERROR toloc: Wrong axis number in frame(1):', frame(1)
+         STOP
+      endif
+
+      do i=1,3
+         c(i) = raylab(i)
+         x(i) = raylab(3+i)
+      enddo
+*     .. directrix cosines
+      rayloc(i1) =  c(i1)*frame(2) + c(i2)*frame(3)
+      rayloc(i2) = -c(i1)*frame(3) + c(i2)*frame(2)
+      rayloc(i3) =  c(i3)
+*     .. point
+      rayloc(3+i1)=  (x(i1)-frame(4))*frame(2)+(x(i2)-frame(5))*frame(3)
+      rayloc(3+i2)= -(x(i1)-frame(4))*frame(3)+(x(i2)-frame(5))*frame(2)
+      rayloc(3+i3)=  x(i3)
+      END
+
+*                                         @METAGS tolab
+*                                         16/06/98 09:40
+*--------------- tolab ---------------
+*
+      SUBROUTINE tolab(frame,rayloc, raylab)
+*
+*     Rotate the right coord. system round the INT(axis3) axis.
+*     frame = (axis3,cosA,sinA,d1,d2)
+*     d1 - shift along the axis1
+*     d2 - shift along the axis2
+*
+      real frame(5),rayloc(6),raylab(6),c(6),x(6)
+      i3 = frame(1)
+      if (i3.EQ.3) then
+         i1 = 1
+         i2 = 2
+      elseif (i3.EQ.1) then
+         i1 = 2
+         i2 = 3
+      elseif (i3.EQ.2) then
+         i1 = 3
+         i2 = 1
+      else
+         print*, 'ERROR tolab: Wrong axis number in frame(1):', frame(1)
+         STOP
+      endif
+
+      do i=1,3
+         c(i) = rayloc(i)
+         x(i) = rayloc(3+i)
+      enddo
+*     .. directrix cosines
+      raylab(i1) = c(i1)*frame(2) - c(i2)*frame(3)
+      raylab(i2) = c(i1)*frame(3) + c(i2)*frame(2)
+      raylab(i3) = c(i3)
+*     .. point
+      raylab(3+i1) = x(i1)*frame(2) - x(i2)*frame(3) + frame(4)
+      raylab(3+i2) = x(i1)*frame(3) + x(i2)*frame(2) + frame(5)
+      raylab(3+i3) = x(i3)
+      END
+
+*                                         @METAGS raycop
+*                                         08/06/98 20:16
+*--------------- raycop ---------------
+*
+      SUBROUTINE raycop(ray1,ray2)
+      real ray1(6),ray2(6)
+      do i=1,6
+         ray2(i) = ray1(i)
+      enddo
+      END
+
+*                                         @METAGS DROOT
+*                                         06-02-98 03:47am
+*--------------- DROOT ---------------
+*
+      subroutine DROOT(a,b,c,x1,x2,ierr)
+*
+*     For square equation a*x**2 + b*x + c = 0
+*     calculates REAL roots.F
+*     For COMPLEX returns in x1 real part and in x2 imaginary part
+*     of root -b/(2*a) + i*sqrt(-D)/(2*a)
+*     To preserve computer accuracy use formula x1 = 2*c/(-b-sqrt(D))
+*     Error flags:
+*      0: normal
+*      1: any roots: a=b=c=0
+*      2: complex roots
+*     -1: no roots: a=b=0, c<>0
+*
+      double precision a,b,c,x1,x2
+      integer ierr
+      double precision D
+
+      x1 = 0.d0
+      x2 = 0.d0
+      ierr = 0
+
+*      print*, a,b,c
+*      call WAIT('DROOT: a,b,c')
+      if (a .EQ. 0d0) then
+         if (b.EQ.0d0) then
+            if (c.EQ.0.d0) then
+*               print*, 'DROOT: Any roots: a=b=c=0'
+               ierr = 1
+            else
+               print*, 'DROOT ERROR: No roots: a=b=0, c<>0'
+               ierr = -1
+            endif
+            RETURN
+         endif
+         x1 = -c/b
+         x2 = x1
+         RETURN
+      endif
+
+      D = b**2 - 4d0*a*c
+*      print*, 'D =', D
+*      call WAIT('DROOT: D')
+      if (D .LT. 0.d0) then
+*         print*, 'DROOT: Complex roots'
+         x1 = -b/(2.d0*a)
+         x2 = sqrt(-D)/(2.d0*a)
+         ierr = 2
+         RETURN
+      elseif (D .EQ. 0.d0) then
+         x1 = -b/(2.d0*a)
+         x2 = x1
+         RETURN
+      endif
+
+      if (b .GT. 0.d0) then
+*        .. compute "minus" root
+         x1 = 2.d0*c/(-b - sqrt(D))
+      else
+*        .. compute "plus" root
+         x1 = 2.d0*c/(-b + sqrt(D))
+      endif
+
+*     .. use Viete formulae for the other root
+      if (x1 .NE. 0.d0) then
+*        .. to preserve computer accuracy
+         x2 =  (c/a) / x1
+      else
+         x2 = -(b/a) - x1
+      endif
+      END
+
+*                                         @METAGS plohis
+*                                         02/07/98 14:49
+*--------------- plohis ---------------
+*
+      SUBROUTINE plohis(nray,rayhis,ix,iy)
+      real rayhis(6,101)
+*      real vx(1000),vy(1000)
+      vector vx(101),vy(101)
+      do i=1,nray
+         vx(i) = rayhis(3+ix,i)
+         vy(i) = rayhis(3+iy,i)
+      enddo
+      call IGRAPH(1,vx,vy,'*')
+      call KUEXEL('set plci 1')
+      call IPL(nray,vx,vy)
+      call KUEXEL('set plci 2')
+      call IPL(2,vx(nray-1),vy(nray-1))
+      call KUEXEL('set plci 1')
+      END
+
+*                                         @METAGS mkray
+*                                         03/07/98 19:15
+*--------------- mkray ---------------
+*
+      SUBROUTINE mkray(z,x,y,dthmr,dphmr,ray)
+      real z,x,y,dthmr,dphmr,ray(6)
+      double precision pi,thr,phr
+      pi = ACOS(-1.d0)
+      thr = pi/2.d0 - .001*dthmr
+      phr = pi      - .001*dphmr
+*     .. spherical --> Cartesian
+      ray(1) = sin(thr)*cos(phr)
+      ray(2) = cos(thr)
+      ray(3) = sin(thr)*sin(phr)
+      ray(4) = z
+      ray(5) = x
+      ray(6) = y
+      END
+QUIT
+RETURN

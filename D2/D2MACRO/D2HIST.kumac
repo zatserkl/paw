@@ -1,0 +1,775 @@
+*                                         @METAGS D2HIST
+*--------------- D2HIST ---------------
+*
+MACRO D2HIST ali=CREATE
+g/cr D2HIST $WORD([0],1,1,#)
+D2FOR=''; g/imp D2FOR; if [D2FOR]='' then; exec D2FOR; endif
+exec FOR
+exec ALI [ali]
+RETURN
+
+*                                         @METAGS EHIST
+*--------------- EHIST ---------------
+*
+MACRO EHIST F rMBE=1 Rcm Nc idc id title ALPdeg=0
+if $UPPER([1])='HELP' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#) F rMBE=1 Rcm Nc idc id title ALPdeg=0
+   stopm
+endif
+
+SP02=''; g/imp SP02
+if [SP02] = '' then
+   mess --- Load SP02 support
+   exec SP02
+   mess --- SP02 support is loaded
+endif
+
+if $HEXIST([idc])=0 then
+   mess Histogram [idc] did not found
+   stopm
+endif
+if $HEXIST([id]) then
+   mess Histogram [id] will be replaced
+   wait
+endif
+
+if [title]='' then; title=$HTITLE([idc]); endif
+
+*len = $LEN([title])
+*rest = [len]-60
+*if [rest] > 20 then; rest=20; endif
+*tit1 = $SUBSTRING([title], 1,30)
+*tit2 = $SUBSTRING([title],31,30)
+*tit3 = $SUBSTRING([title],61,[rest])
+*if $LEN([tit1])=0 then; tit1=' '; endif
+*if $LEN([tit2])=0 then; tit2=' '; endif
+*if $LEN([tit3])=0 then; tit3=' '; endif
+
+len = $LEN([title])
+tit1 = ' '
+tit2 = ' '
+tit3 = ' '
+tit1 = $SUBSTRING([title], 1,30)
+if [len] > 30 then
+   tit2 = $SUBSTRING([title], 31,30)
+   if [len] > 60 then
+      tit3 = $SUBSTRING([title], 61,30)
+   endif
+endif
+
+*mess ---
+*mess $QUOTE([tit1])
+*mess $QUOTE([tit2])
+*mess $QUOTE([tit3])
+*mess ---
+
+t = $QUOTE([tit1]),$QUOTE([tit2]),$QUOTE([tit3])
+
+F    = $RSIGMA([F])
+rMBE = $RSIGMA([rMBE])
+Rcm  = $RSIGMA([Rcm])
+ALPr = $RSIGMA([ALPdeg]*pi/180)
+*mess ***
+*mess [tit1]
+*mess [tit2]
+*mess [tit3]
+*mess len1=$LEN([tit1]) len2=$LEN([tit2]) len3=$LEN([tit3])
+*mess 123456789 123456789 123456789 1234567890
+*mess [title]
+*mess -123456789 123456789 123456789 -+-1234567890
+*mess t:
+*mess [t]
+
+* Note!!!
+*a = a23456789012345678901234567890
+*b = $QUOTE([a]),$QUOTE([tit2])
+*mess b:
+*mess [b]
+
+*wait
+*call EHISTK([id],[idc],[F],[rMBE],[Rcm],[Nc],[ALPr],[t])
+call EHISTK([id],[idc],[F],[rMBE],[Rcm],[Nc],[ALPr],$QUOTE([tit1]),$QUOTE([tit2]),$QUOTE([tit3]))
+*mess $HTITLE([id])
+RETURN
+
+*                                         @METAGS AEHIST
+*--------------- AEHIST ---------------
+*
+MACRO AEHIST F rMBE=1 Rcm Nc idc TYPEorID title ALPdeg=0
+if $UPPER([1])='HELP' .OR. [TYPEorID]='' then
+   mess Usage:    $WORD([0],2,1,#) F rMBE=1 Rcm Nc idc TYPEorID title ALPdeg=0
+   mess title='.' forces AUTO title
+   stopm
+endif
+
+SP02=''; g/imp SP02
+if [SP02] = '' then; exec SP02; endif
+
+if $HEXIST([idc])=0 then
+   mess Histogram [idc] did not found
+   stopm
+endif
+
+type = ' '
+if $UPPER([OUT])=$LOWER([OUT]) then
+   * TYPEorID is ID
+   id = [TYPEorID]
+else
+   * TYPEorID is type
+   type = [TYPEorID]
+   F100 = $EVAL(INT([F]*100))
+
+   CASE $UPPER([type]) IN
+      (D2)   id=5000000+[F100]
+      (AL)   id=6000000+[F100]
+      (D2+)  id=7000000+[F100]
+      (D2P)  id=7000000+[F100]
+      (AL+)  id=8000000+[F100]
+      (ALP)  id=8000000+[F100]
+      (H2)   id=9000000+[F100]
+      (H)    id=9000000+[F100]; type=H2
+      (*)    goto ERROR
+   ENDCASE
+   GOTO NEXT
+
+   ERROR:
+   mess Unknown type [type]
+   mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  H2 (or H)
+   STOPM
+endif
+
+NEXT:
+
+exec EHIST [F] [rMBE] [Rcm] [Nc] [idc] [id] [title] [ALPdeg]
+RETURN
+
+*                                         @METAGS HTEMPL
+*--------------- HTEMPL ---------------
+*
+MACRO HTEMPL F id=1000000 Rcm Nc title ALPdeg=0
+if $UPPER([1])='HELP' .OR. [Nc]='' then
+   mess Usage:    $WORD([0],2,1,#) F id=1000000 Rcm Nc title ALPdeg=0
+   stopm
+endif
+
+SP02=''; g/imp SP02
+if [SP02] = '' then
+   mess --- Load SP02 support
+   exec SP02
+   mess --- SP02 support is loaded
+endif
+
+len = $LEN([title])
+rest = [len]-60
+if [rest] > 20 then; rest=20; endif
+tit1 = $SUBSTRING([title], 1,30)
+tit2 = $SUBSTRING([title],31,30)
+tit3 = $SUBSTRING([title],61,[rest])
+if $LEN([tit1])=0 then; tit1=' '; endif
+if $LEN([tit2])=0 then; tit2=' '; endif
+if $LEN([tit3])=0 then; tit3=' '; endif
+
+tit =$QUOTE([tit1]),$QUOTE([tit2]),$QUOTE([tit3])
+
+F    = $RSIGMA([F])
+Rcm  = $RSIGMA([Rcm])
+ALPr = $RSIGMA([ALPdeg]*pi/180)
+call HTEMPLK([id],[F],[Rcm],[Nc],[ALPr],[tit])
+RETURN
+
+*                             @METAGS HINFO
+*---------- HINFO ----------
+*
+MACRO HINFO id dir=$HCDIR() inquiry=SUM
+if $UPPER([1])='HELP' .OR. [id] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id dir=$HCDIR() [inquiry=SUM]'
+   mess Usage:    if inquiry=NONE then type histogram title only
+   stopm
+endif
+
+ldir = $HCDIR()
+cd [dir]
+if $IQUEST(1) then
+   cd [ldir]
+   exitm ***ERROR HINFO***
+endif
+
+if $HEXIST([id]) = 0 then
+   mess ERROR HINFO: Histogram [id] did not found in $HCDIR()
+   cd [ldir]
+   exitm ***ERROR HINFO***
+endif
+
+mess [id]: $HTITLE([id])
+if $UPPER([inquiry])='NONE' then
+   cd [ldir]
+   exitm ***ERROR HINFO***
+else
+   value = $HINFO([id],[inquiry])
+   mess [inquiry] = [value]
+endif
+cd [ldir]
+RETURN [value]
+
+*                                      @METAGS TIT
+*--------------- TIT ---------------
+*
+MACRO TIT id tit dir=$HCDIR() idbuf=-1 quiet=0
+if $UPPER([1])='HELP' .OR. [id] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id title dir=$HCDIR() idbuf=-1 quiet=0'
+   stopm
+endif
+
+ldir = $HCDIR()
+cd [dir]
+if $IQUEST(1) then
+   cd [ldir]
+   stopm
+endif
+
+if $HEXIST([id])=0 then
+   mess Histogram [id] do not exist.
+   cd [ldir]
+   stopm
+endif
+
+if [tit]<>'' then
+   if $HEXIST([idbuf]) then
+      mess $WORD([0],2,1,#): Histogram [idbuf] will be used as buffer!
+      cd [ldir]
+      wait
+      h/de [idbuf]
+   endif
+   h/cop [id] [idbuf]
+   h/de  [id]
+   h/cop [idbuf] [id] [tit]
+   h/de  [idbuf]
+endif
+
+titout = $HTITLE([id])
+if [quiet] = 0 then; mess [titout]; endif
+cd [ldir]
+RETURN [titout]
+
+*                                         @METAGS HDIR
+*--------------- HDIR ---------------
+*
+MACRO HDIR dir=$HCDIR() id verb=1
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#)//' dir=$HCDIR() id verb=1'
+   stopm
+endif
+
+find = 0
+ldir = $HCDIR()
+cd [dir]
+if $IQUEST(1) then
+   cd [ldir]
+   exitm [find]
+endif
+
+find = 0
+if [id] <> '' then
+   if $HEXIST([id]) then
+      find = 1
+      if [verb]=0 goto EXIT
+      mess $HCDIR()
+      exec HINFO [id] inquiry=NONE
+   else
+      find = 0
+      if [verb]=0 goto EXIT
+      str = Hist [id] did not found in $HCDIR(). List: (Q=Quit)
+      list = 'Continue'
+      read list [str]
+      if $UPPER([list]) <> 'Q' then; h/l S; endif
+   endif
+else
+   if [verb]=0 goto EXIT
+   h/l S
+endif
+
+EXIT:
+cd [ldir]
+RETURN [find]
+
+*                                         @METAGS HDEL
+*--------------- HDEL ---------------
+*
+MACRO HDEL dir=$HCDIR() id
+if $UPPER([1])='HELP' .OR. [id] = '' then
+   mess Usage:    $WORD([0],2,1,#) 'dir=$HCDIR() id'
+   stopm
+endif
+
+del = 0
+ldir = $HCDIR()
+cd [dir]
+if $IQUEST(1) then
+   cd [ldir]
+   exitm [del]
+endif
+
+if [id] = 0 then
+   del = 1
+   h/de [id]
+   cd [ldir]
+   exitm [del]
+endif
+
+if $HEXIST([id]) then
+   del = 1
+   h/de [id]
+else
+   mess Histogram [id] did not found in [dir]
+   list = 'Continue'
+   str = Histogram list of $HCDIR() (Q=Quit)
+   read list [str]
+   if $UPPER([list]) <> 'Q' then; h/l S; endif
+endif
+
+cd [ldir]
+RETURN [del]
+
+*                                         @METAGS HCOP
+*--------------- HCOP ---------------
+*
+MACRO HCOP dir1=$HCDIR() id dir2=$HCDIR() lunstart=19 delete=N
+copy = 0
+if $UPPER([1])='HELP' .OR. [id] = '' then
+   mess Usage:    $WORD([0],2,1,#) 'dir1=$HCDIR() id dir2=$HCDIR() lunstart=19 delete=N'
+   exitm [copy]
+endif
+
+ldir = $HCDIR()
+
+* Directory test
+CD [dir1]
+if $IQUEST(1) then
+   CD [ldir]
+   exitm [copy]
+else
+   dir1 = $HCDIR()
+endif
+
+if [id]<>0 then
+   if $HEXIST([id])=0 then
+      mess Hist [id] did not found in [dir1]
+      CD [ldir]
+      exitm
+   endif
+endif
+
+CD [ldir]
+CD [dir2]
+if $IQUEST(1) then
+   CD [ldir]
+   exitm [copy]
+else
+   dir2 = $HCDIR()
+endif
+
+if [id]<>0 then
+   * test
+   if $HEXIST([id])<>0 .AND. $UPPER([delete])='N' then
+      mess Hist [id] already exist in [dir2]
+      CD [ldir]
+      wait
+      CD [dir2]
+      h/de [id]
+   endif
+endif
+
+*unit = [lunstart]
+*mess Search free logical unit
+*AGAIN:
+*mess Try [unit]
+*CD //LUN[unit]
+*if $IQUEST(1) = 0 then
+*   mess Busy
+*   unit = [unit]+1
+*   GOTO AGAIN
+*endif
+*mess OK. Use free logical unit=[unit]
+*H/FILE [unit] SWAPFILE.TMP ! N
+*fdir = $HCDIR()
+
+H/FILE 0 swapfile.tmp ! N
+* get the number of logical unit
+fdir = $HCDIR()
+n = $INDEX([fdir],'//LUN') + 6
+unit = $SUBSTRING([fdir],6)
+
+CD [dir1]
+CD [fdir]
+HROUT [id]
+
+CD [dir2]
+CD [fdir]
+HRIN [id]
+HSCRATCH [id]
+CLOSE [unit]
+
+if [id]<>0 then
+   * test
+   CD [dir2]
+   if $HEXIST([id]) then; copy=1; endif
+endif
+
+CD [ldir]
+RETURN [copy]
+
+*                             @METAGS HSCAL
+*---------- HSCAL ----------
+*
+MACRO HSCAL id1 id2 factor tit
+if [factor]=''.OR.$UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#)//' id1 id2 factor [tit]'
+   stopm
+endif
+
+g/imp D2HIST
+
+if [tit]='' then
+   tit = Multiply [id1] by [factor]
+   read tit 'Enter title'
+endif
+
+if $HEXIST([id1])=0 then; mess Hist. ID=[id1] did not exist; stopm; endif
+if [id2]<>[id1] then
+   if $HEXIST([id2])=1 then
+      mess Hist. ID=[id2] already exist
+      wait
+   endif
+   h/cop [id1] [id2] [tit]
+else
+   * change title
+   h/cop [id1]  -1; h/cop -1 [id2] [tit]; h/de -1
+endif
+
+sum1 = $EXEC(SUMC [id1] verb=0)
+
+np = $HINFO([id1],'XBINS')
+
+sigma con=array([np])*0
+sigma err=array([np])*0
+get/con [id1] con
+get/err [id1] err
+sigma con=con*[factor]
+sigma err=err*[factor]
+put/con [id2] con
+put/err [id2] err
+v/de con,err
+
+sum2 = $EXEC(SUMC [id2] verb=0)
+mess Ratio sum2/sum1 $EVAL([sum2]/[sum1])
+exec [D2HIST]#HINFO [id2]
+RETURN
+
+*                                         @METAGS SUMC
+*--------------- SUMC ---------------
+*
+MACRO SUMC id n1='' n2='' verb=1
+if [id] = '' .OR. $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) id n1=minc n2=maxc
+   stopm
+endif
+
+minc=''; maxc=''
+g/imp minc,maxc
+
+if [n1]='' then
+   if [minc]='' then
+      minc = 1
+      read minc 'Enter global minc'
+      g/cr minc [minc]
+   endif
+   if [maxc]='' then
+      maxc = 96
+      read maxc 'Enter global maxc'
+      g/cr maxc [maxc]
+   endif
+   n1 = [minc]
+endif
+
+if [n2]='' then; n2 = [maxc]; endif
+
+XMIN = $HINFO([id],'XMIN')
+if [XMIN] > [maxc] then
+   * its energy hist.
+   nbuf = [n1]
+   n1 = 97-[n2]
+   n2 = 97-[nbuf]
+endif
+
+sigma buf=array(96)*0
+get/con [id] buf
+if $VEXIST(buf1) then; v/de buf1; endif
+v/cop buf([n1]:[n2]) buf1
+sum = $RSIGMA(VSUM(buf1))
+v/de buf,buf1
+
+if [verb] = 1 then; mess [sum]; endif
+RETURN [sum]
+
+*                                         @METAGS HINVERT
+*--------------- HINVERT ---------------
+*
+MACRO HINVERT id1 id2 tit
+if $UPPER([1])='HELP' .OR. [id2] = '' then
+   mess Usage:    $WORD([0],2,1,#) id1 id2 tit
+   stopm
+endif
+
+if [tit]='' then
+   tit = Invert channels from ID=[id1]
+   read tit 'Enter title'
+endif
+
+if $HEXIST([id1]) = 0 then
+   mess Hist. [id1] did not exist
+   stopm
+endif
+
+np = $HINFO([id1],'XBINS')
+sigma buf  = array([np])*0
+sigma buf1 = array([np])*0
+get/con [id1] buf
+get/err [id1] buf1
+
+if [id2] <> [id1] then
+   h/cop [id1] [id2] [tit]
+else
+   exec TIT [id1] [tit]
+endif
+
+sigma buf  = ORDER(buf, array([np],[np]#1))
+sigma buf1 = ORDER(buf1,array([np],[np]#1))
+put/con [id2] buf
+put/err [id2] err
+RETURN
+
+*                                         @METAGS HMULT
+*--------------- HMULT ---------------
+*
+MACRO HMULT id1 id2 id3 tit
+if $UPPER([1])='HELP' .OR. [id3] = '' then
+   mess Usage:    $WORD([0],2,1,#) id1 id2 id3 tit
+   stopm
+endif
+
+if [tit]='' then
+   tit = Multiply ID=[id1] and ID=[id2]
+   read tit 'Enter title'
+endif
+
+if $HEXIST([id1]) = 0 then
+   mess Hist. [id1] did not exist
+   stopm
+endif
+if $HEXIST([id2]) = 0 then
+   mess Hist. [id2] did not exist
+   stopm
+endif
+
+np = $HINFO([id1],'XBINS')
+*sigma con  = array([np])*0
+sigma con1 = array([np])*0
+sigma con2 = array([np])*0
+sigma err  = array([np])*0
+sigma err1 = array([np])*0
+sigma err2 = array([np])*0
+get/con [id1] con1
+get/con [id2] con2
+get/err [id1] err1
+get/err [id2] err2
+
+if [id3] <> [id1] then
+   h/cop [id1] [id3] [tit]
+else
+   exec TIT [id1] [tit]
+endif
+
+mult [id1] [id2] [id3]
+
+goto SIMPLE
+
+* correct errors
+mess Waiting..
+do i=1,[np]
+   x1 = con1([i])
+   s1 = err1([i])
+   x2 = con2([i])
+   s2 = err2([i])
+   error = $RSIGMA(sqrt([s1]**2*[x2]**2 + [s2]**2*[x1]**2 + ([s1]*[s2])**2))
+   v/inp err([i]) [error]
+enddo
+goto PUT
+
+SIMPLE:
+mess Simple errors
+sigma err = err1+err2
+
+PUT:
+put/err [id3] err
+v/de con1,con2,err1,err2
+RETURN
+
+*                                         @METAGS FOR.MACRO
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+*                                         @METAGS .HTEMPLK
+      SUBROUTINE HTEMPLK(id,F,Rcm,Nc,ALPr,tit1,tit2,tit3)
+      character*(*) tit1,tit2,tit3
+      character*80 title
+      call KUIP2STR(tit1,tit2,tit3,title)
+      call HTEMPL(id,F,Rcm,Nc,ALPr,title)
+      END
+*                                         @METAGS .HTEMPL.COMIS
+*                                         01-29-98 08:37pm
+*--------------- HTEMPL ---------------
+*
+*
+      SUBROUTINE HTEMPL(id,F,Rcm,Nc,ALPr,title)
+      character*(*) title
+      character*80  chtitl
+*     .. for spectrometer SP-02
+      parameter (F2E=17.61)
+      parameter (MAXCH=100)
+      real E(MAXCH)
+      logical HEXIST
+COMMON /CHAMB/ NCHAN,NCENTR,CWIDTH
+      use CHAMB
+
+*     .. Set NCENTR
+      Nc0 = NCENTR
+      NCENTR = Nc
+
+      NX = NCHAN
+*     .. Normalize F up do 3 decimal digit
+      F3 = AINT(F*1000.)/1000.
+      Ec = F2E*F3
+
+*     .. Dispersion with respect to central particle
+*        as function of Emev, Rcm and ALPr
+*     .. call routine from SP02
+      call DvsER(Ec,Rcm,ALPr, Dmm,slope)
+
+*     .. cycle up to NCHAN+1
+      do k=1, NX+1
+*        .. No. of the chamber channel
+         kchamb = NX-k + 1
+*        .. chamber channel distance to central particle
+         xmm = CWIDTH*(kchamb-NCENTR)
+*        .. dispersion with respect to central particle
+         Dk = Dmm + slope*xmm
+*        .. Energy of the center of channel
+         E(k) = Ec - Ec*0.01*xmm/Dk
+      enddo
+
+*     .. compute the lower edge of the channels
+      do k=1, NX
+         dE = E(k+1) - E(k)
+*        .. lower edge
+         E(k) = E(k) - dE/2.
+      enddo
+*     .. upper edge of the last channel
+      E(NX+1) = E(NX)+dE
+
+*     .. restore NCENTR
+      NCENTR = Nc0
+
+      if (title.GT.' ') then
+         chtitl = title
+      else
+         chtitl = ' '
+         write (chtitl,1) F
+    1    format ('Template for F=', F5.2)
+      endif
+      call HBOOKB(id,chtitl,NX,E,0.)
+      if (.NOT.HEXIST(id)) then
+         print*, 'Template histogram ID =', id, ' did not created'
+         call WAIT('*** ERROR HTEMPL')
+      endif
+      END
+
+*                                         @METAGS .EHISTK
+      SUBROUTINE EHISTK(id,idc,F,rMBE,Rcm,Nc,ALPr,tit1,tit2,tit3)
+      character*(*) tit1,tit2,tit3
+*      character*30 tit1,tit2,tit3
+      character*80 title
+      call KUIP2STR(tit1,tit2,tit3,title)
+*      call WAIT(title)
+      call EHIST(id,idc,F,rMBE,Rcm,Nc,ALPr,title)
+      END
+*                                         @METAGS .EHIST.COMIS
+*                                         01-29-98 08:37pm
+*--------------- EHIST ---------------
+*
+      SUBROUTINE EHIST(id,idc,F,rMBE,Rcm,Nc,ALPr,title)
+*     .. rMBE is MBE in terms of 1.E6
+      character*(*) title
+      character*80 chbuf,chtitl, ch*1
+      parameter (MAXCH=100)
+      real X(MAXCH),Y(MAXCH),dX(MAXCH),dY(MAXCH)
+      real C(MAXCH),dC(MAXCH), S(MAXCH),dS(MAXCH)
+      logical HEXIST
+
+*     .. Get info about count histogram
+      call HGIVE(idc,chbuf,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      chtitl = ' '
+      do i=1, 4*NWT
+         write(chtitl(i:i),1) chbuf(i:i)
+    1    format(A1)
+      enddo
+*     .. Get contents and errors from count histogram
+      call HUNPAK(idc, C,' ',0)
+      call HUNPKE(idc,dC,' ',0)
+*     .. Note: we don't need in hist id further and id may be equal idc
+
+*     .. Create template histogram
+      if (title.GT.' ') chtitl=title
+      call HTEMPL(id,F,Rcm,Nc,ALPr,chtitl)
+      if (.NOT.HEXIST(id)) STOP
+
+*     .. Get X errors from template histogram
+      call HREBIN(id,X,Y,dX,dY,NX,1,NX)
+
+      do k=1,NX
+         w = 2.*dX(k)
+         nchan = NX-k+1
+         S(k)  =  C(nchan)/(w*rMBE)
+         dS(k) = dC(nchan)/(w*rMBE)
+      enddo
+
+      call HPAK(id,S)
+      call HPAKE(id,dS)
+      END
+QUIT
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if $UPPER([1])='HELP' then
+   op = CREATE
+   ask = MACRO $WORD([0],2,1,#): CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):    Aliases are created.
+
+ali/[op] -C TIT         'exec '//$WORD([0],1,1,#)#TIT
+ali/[op] -C EHIST       'exec '//$WORD([0],1,1,#)#EHIST
+ali/[op] -C HTEMPL      'exec '//$WORD([0],1,1,#)#HTEMPL
+ali/[op] -C HINFO       'exec '//$WORD([0],1,1,#)#HINFO
+ali/[op] -C HDIR        'exec '//$WORD([0],1,1,#)#HDIR
+ali/[op] -C HDEL        'exec '//$WORD([0],1,1,#)#HDEL
+ali/[op] -C HCOP        'exec '//$WORD([0],1,1,#)#HCOP
+ali/[op] -C HSCAL       'exec '//$WORD([0],1,1,#)#HSCAL
+ali/[op] -C SUMC        'exec '//$WORD([0],1,1,#)#SUMC
+ali/[op] -C HINVERT     'exec '//$WORD([0],1,1,#)#HINVERT
+ali/[op] -C HMULT       'exec '//$WORD([0],1,1,#)#HMULT
+RETURN

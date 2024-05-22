@@ -1,0 +1,27 @@
+*fhdel 16.24 2237
+*fhdel 16.24 2737
+*fhdel 16.24 3637
+*fhdel 16.24 4937
+*fhdel 16.24 141
+*fhdel 16.24 241
+*fhdel 16.24 741
+*fhdel 16.24 2641
+
+*fhdel 16.24 11001624
+*fhdel 16.24 12001624
+*fhdel 16.24 13001624
+*fhdel 16.24 14001624
+*fhdel 16.24 15001624
+*fhdel 16.24 16001624
+*fhdel 16.24 17001624
+*fhdel 16.24 18001624
+
+readat 2237; ehist 16.24 .2 82 2237 9011624 'H2 F=16.24 MBE=2e5 BIN=2237'; hput 16.24 9011624; h/de 0
+readat 2737; ehist 16.24 .2 82 2737 9021624 'H2 F=16.24 MBE=2e5 BIN=2737'; hput 16.24 9021624; h/de 0
+readat 3637; ehist 16.24 .2 82 3637 9031624 'H2 F=16.24 MBE=2e5 BIN=3637'; hput 16.24 9031624; h/de 0
+readat 4937; ehist 16.24 .2 82 4937 9041624 'H2 F=16.24 MBE=2e5 BIN=4937'; hput 16.24 9041624; h/de 0
+readat  141; ehist 16.24 .2 82  141 9051624 'H2 F=16.24 MBE=2e5 BIN=141';  hput 16.24 9051624; h/de 0
+readat  241; ehist 16.24 .1 82  241 9061624 'H2 F=16.24 MBE=2e5 BIN=241';  hput 16.24 9061624; h/de 0
+readat  741; ehist 16.24 .2 82  741 9071624 'H2 F=16.24 MBE=2e5 BIN=741';  hput 16.24 9071624; h/de 0
+readat 2641; ehist 16.24 .2 82 2641 9081624 'H2 F=16.24 MBE=2e5 BIN=2641'; hput 16.24 9081624; h/de 0
+

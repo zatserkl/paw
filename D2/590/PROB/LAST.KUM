@@ -1,0 +1,112 @@
+*** Begin of history file: Wed Jan 20 10:20:51 1999
+me
+x prob
+h/cop 1 100
+h/cop 1 100 bt=.1
+h/cop 1 100
+x prob bt=.1
+h/pl 100 s
+h/pl 100 s*
+x prob E0=100 bt=.1
+fu/pl Ie(100.,x,.1) 0 100 s
+fu/pl 1000*Ie(100.,x,.1) 0 100 s
+fu/pl 10000*Ie(100.,x,.1) 0 100 s
+fu/pl 10000*Ie(100.,x,.01) 0 100 s
+h/pl 1
+fu/pl 10000*Ie(100.,x,.01) 0 100 s
+fu/pl 10000*Ie(100.,x,.1) 0 100 s
+alp
+debug on
+edpaw
+call EranIe(100.,.01,.0)
+call EranIe(100.,.1,.0)
+call EranIe(100.,.01,.0)
+me
+x prob#FOR
+call EranIe(100.,.01,.0)
+fu/pl Ie(100.,x,.01) 0 100
+call EranIe(100.,.1,.0)
+call EranIe(100.,.01,.0)
+fu/pl Ie(100.,5.,.01)*95/(100-x) 0 100 s
+fu/pl Ie(100.,x,.01) 0 100; fc 2; fu/pl Ie(100.,5.,.01)*95/(100-x) 0 100 s; fc 1
+fu/pl Ie(100.,x,.01) 0 100; fc 2; fu/pl 1.29*Ie(100.,5.,.01)*95/(100-x) 0 100 s; fc 1
+alp
+fu/pl Ie(100.,x,.01)/(1.29*Ie(100.,5.,.01)*95/(100-x)) 0 100
+fu/pl Ie(100.,x,.01)/(1.415*Ie(100.,5.,.01)*95/(100-x)) 0 100
+fu/pl Ie(100.,x,.01)/(1.29*Ie(100.,5.,.01)*95/(100-x)) 0 100
+lin
+fu/pl Ie(100.,x,.01)/(1.29*Ie(100.,5.,.01)*95/(100-x)) 0 100
+prompt '.'
+fu/pl Ie(100.,x,.01)/(1.29*Ie(100.,5.,.01)*95/(100-x)) 0 100
+me
+x prob help
+x prob E0=100 Emin=0 bt=.01
+fu/pl 10000*Ie(100.,x,.01) 0 100 s
+fu/pl 100000*Ie(100.,x,.01) 0 100 s
+fu/pl 100000*Ie(100.,x,.1) 0 100 s
+h/cop 1 100
+x prob E0=100 Emin=0 bt=.1
+h/cop 1 10
+fu/pl 100000*Ie(100.,x,.1) 0 100 s
+fu/pl 10000*Ie(100.,x,.1) 0 100 s
+mess $HINFO(1,'SUM')
+mess $HINFO(1,'SUM')
+fu/pl Ie(100.,x,.1) 0 100
+us point
+point 100
+fu/pl Ie(100.,x,.1) 0 100
+x prob E0=100 Emin=0 bt=.001
+x prob E0=100 Emin=0 bt=.0001
+h/de 1
+x prob E0=100 Emin=0 bt=.0001
+h/pl 10 s*
+fu/pl Ie(100.,x,.0001) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+fu/pl Ie(100.,x,.01) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+fu/pl Ie(100.,x,.01) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+fu/pl Ie(100.,x,.1) 0 100; fc 1; fu/pl Ie(100.,x,.0001) 0 100 s; fc 1
+fu/pl Ie(100.,x,.1) 0 100; fc 1; fu/pl Ie(100.,x,.01) 0 100 s; fc 1
+fu/pl 10*Ie(100.,x,.01) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+a/l fc
+fc 2
+fu/pl 10*Ie(100.,x,.01) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+set plci 2
+fu/pl 10*Ie(100.,x,.01) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+set plci 1
+a/cr hc 'set hcol'
+hc 2
+a/cr hc 'set hcol'
+fu/pl 10*Ie(100.,x,.01) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+fu/pl 10*Ie(100.,x,.01) 0 100; fc 1; fu/pl Ie(100.,x,.1) 0 100 s; fc 1
+messfun Ie 100.,1.,.1
+messfun Ie 100.,01.,.1
+me
+messfun Ie 100.,1.,.1; messfun Ie 100.,01.,.1
+me
+x prob#FOR
+messfun Ie 100.,1.,.1; messfun Ie 100.,01.,.1
+me
+edpaw
+prompt .
+me
+edpaw
+me
+messfun Ie 100.,1.,.1; messfun Ie 100.,1.,.01
+x prob#FOR
+messfun Ie 100.,1.,.1; messfun Ie 100.,1.,.01
+messfun Ie 100.,99.,.1; messfun Ie 100.,99.,.01
+messfun Ie 100.,99.99,.1; messfun Ie 100.,99.99,.01
+fu/pl 10*Ie(100.,x,.01) 99.99 100; fc 1; fu/pl Ie(100.,x,.1) 99.99 100 s; fc 1
+fu/pl 5*Ie(100.,x,.01) 99.99 100; fc 1; fu/pl Ie(100.,x,.1) 99.99 100 s; fc 1
+fu/pl 1*Ie(100.,x,.01) 99.99 100; fc 1; fu/pl Ie(100.,x,.1) 99.99 100 s; fc 1
+fu/pl 2*Ie(100.,x,.01) 99.99 100; fc 1; fu/pl Ie(100.,x,.1) 99.99 100 s; fc 1
+fu/pl .01*(1.e-5)**.01 1.e-6 1.e-5
+fu/pl .1*(1.e-5)**.1 1.e-6 1.e-5
+fu/pl .01*(1.e-5)**.01 1.e-6 1.e-5; fu/pl .1*(1.e-5)**.1 1.e-6 1.e-5 s
+fu/pl .1*(1.e-5)**.1 1.e-6 1.e-5; fu/pl .01*(1.e-5)**.01 1.e-6 1.e-5 s
+mess $SIGMA(0.1*(1.e-5)**.01)
+mess $SIGMA(0.01*(1.e-5)**.01)
+messfun Ie 100.,90.,.01
+mess Ie(100.,90.,.01)
+mess 1.e-5*$CALL('Ie(100.,90.,.01)')
+exit
+*** End   of history file: Wed Jan 20 13:36:15 1999

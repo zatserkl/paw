@@ -1,0 +1,62 @@
+*                                         @METAGS pass
+*--------------- pass ---------------
+*
+MACRO pass id idp
+if [idp]='' then
+   mess Usage:    [0] id idp
+   stopm
+endif
+
+idc = 1[id]
+idd = 2[id]
+
+if $HEXIST([idc])=0 then; exec d2look#readat [id]; endif
+if $HEXIST([idc])=0 then
+   Hist. ID = [id] did not found in the data file
+   stopm
+endif
+
+if $HEXIST([idp]) then
+   mess Hist. ID=[idp] already exist
+   wait
+endif
+
+tit = p?ASS! for ID=[id]
+h/cop [idc] [idp] [tit]
+
+nc = $HINFO([idc],'XBINS')
+
+sigma conc = array([nc])*0
+sigma cond = array([nc])*0
+sigma cont = array([nc])*0
+sigma conp = array([nc])*0
+sigma errc = array([nc])*0
+sigma errd = array([nc])*0
+sigma errt = array([nc])*0
+sigma errp = array([nc])*0
+
+get/con [idc] conc
+get/err [idc] errc
+get/con [idd] cond
+get/err [idd] errd
+
+sigma cont=conc-cond
+Ntot = $SIGMA(VSUM(cont))
+
+do i=1,[nc]
+   v/inp conp([i]) $EVAL(cond([i])/([Ntot] - cont([i])))
+   v/inp errp([i]) $EVAL(errd([i])/[Ntot])
+enddo
+
+put/con [idp] conp
+put/err [idp] errp
+
+v/de conc,cond,cont,conp,errc,errd,errt,errp
+
+wait 'Plot (Q=Quit)'
+zon 1 3
+h/pl [idc] E0
+h/pl [idd] E0
+h/pl [idp] E0
+zon
+RETURN

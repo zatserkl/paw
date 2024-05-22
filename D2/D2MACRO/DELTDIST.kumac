@@ -1,0 +1,43 @@
+*                                         @METAGS deltdist
+*--------------- deltdist ---------------
+*
+MACRO deltdist
+exec gra
+RETURN
+
+*                                         @METAGS d
+*--------------- d ---------------
+*
+MACRO d n
+ddelt = delt([n]+1) - delt([n])
+ddist = dist([n]+1) - dist([n])
+mess Dispersion in the point n=[n] is $EVAL([ddist]/[ddelt])
+RETURN
+
+*                                         @METAGS gra
+*--------------- gra ---------------
+*
+MACRO gra
+gra $VLEN(delt) delt dist awp
+RETURN
+
+*                                         @METAGS fit
+*--------------- fit ---------------
+*
+MACRO fit
+opt fit
+np = $VLEN(delt)
+exec gra
+v/fit delt(1:[np]) dist(1:[np]) $SIGMA(.1*dist) p2 qs
+RETURN
+
+*                                         @METAGS Dmm
+*--------------- Dmm ---------------
+*
+MACRO Dmm
+graph $VLEN(Xmm) Xmm Dmm awp
+atitle 'x, mm' 'SP-02 dispersion, mm/"Y#'
+
+np = $VLEN(Xmm)
+v/fit Xmm(1:[np]) Dmm(1:[np]) $SIGMA(.1*Dmm) p2 qs
+RETURN

@@ -1,0 +1,39 @@
+*                                         @METAGS NT1PAR
+*--------------- NT1PAR ---------------
+*
+MACRO NT1PAR
+NT1xmin=0
+NT1xlen=0
+xscal=1
+NT0 = $GRAFINFO('NT')
+nt = [NT0]/10
+xzones = $GRAFINFO('XZONES')
+yzones = $GRAFINFO('YZONES')
+* row of current window (start from 0)
+row = INT( ([nt]-1)/[xzones] )
+* column of current window (start from 1)
+col = [nt] - [xzones]*[row]
+* x-parameters
+xsiz = $GRAFINFO('?xsiz')
+xmgl = $GRAFINFO('?xmgl')
+xmgr = $GRAFINFO('?xmgr')
+xwin = $GRAFINFO('?xwin')
+xmin = $GRAFINFO('WNXMIN')
+xmax = $GRAFINFO('WNXMAX')
+NT1xlen = ([xsiz]-[xmgl]-[xmgr] - ([xzones]-1)*[xwin]) / [xzones]
+xscal = [NT1xlen]/([xmax]-[xmin])
+NT1xmin = [xmgl] + ([col]-1)*([NT1xlen]+[xwin])
+* y-parameters
+ysiz = $GRAFINFO('?ysiz')
+ymgu = $GRAFINFO('?ymgu')
+ymgl = $GRAFINFO('?ymgl')
+ywin = $GRAFINFO('?ywin')
+ymin = $GRAFINFO('WNYMIN')
+ymax = $GRAFINFO('WNYMAX')
+NT1ylen = ([ysiz]-[ymgu]-[ymgl] - ([yzones]-1)*[ywin]) / [yzones]
+yscal = [NT1ylen]/([ymax]-[ymin])
+ytop = [ysiz] - [ymgu] - [row]*([NT1ylen]+[ywin])
+NT1ymin = [ytop] - [NT1ylen]
+*  1     2      3         4         5       6      7         8         9
+s=[NT0] [xmin] [NT1xmin] [NT1xlen] [xscal] [ymin] [NT1ymin] [NT1ylen] [yscal]
+RETURN [s]

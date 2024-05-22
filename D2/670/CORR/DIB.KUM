@@ -1,0 +1,10 @@
+*                                         @METAGS dib
+*--------------- dib ---------------
+*
+MACRO dib E=640 W=1922 th=143.5
+MD = 1874
+eta = $SIGMA(1 + 2*[E]/[MD]*sin([th]*pi/180/2)**2)
+k = $SIGMA(([W]**2 - [MD]**2)/(2*[MD]))
+E2 = ([E]-[k])/[eta]
+mess E2(E=[E],W=[W]) = [E2] MeV
+RETURN [E2]

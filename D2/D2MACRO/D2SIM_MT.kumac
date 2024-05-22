@@ -1,0 +1,4179 @@
+*                                         @METAGS d2sim
+*--------------- d2sim ---------------
+*
+MACRO d2sim
+g/cr d2sim $WORD([0],1,1,#)
+d2hist=''; g/imp d2hist; if [d2hist]='' then; exec d2hist; endif
+sp02=''; g/imp sp02; if [sp02]='' then; exec sp02; endif
+
+exec FOR
+exec ALI
+RETURN
+
+*                                         @METAGS urad
+*--------------- urad ---------------
+*
+MACRO urad del=0.010
+exec for
+
+call SetMTkin(0.,0.,6.,.93827,.140)
+
+call ClearMT
+
+np = $VDIM(Ep1)
+
+Es = 7.0
+call FillMT([np],$RSIGMA([Es]),Ep1,srad1,snon1)
+Es = 10.0
+call FillMT([np],$RSIGMA([Es]),Ep2,srad2,snon2)
+Es = 13.5
+call FillMT([np],$RSIGMA([Es]),Ep3,srad3,snon3)
+Es = 16.0
+call FillMT([np],$RSIGMA([Es]),Ep4,srad4,snon4)
+
+debug on
+
+call urad($RSIGMA([del]))
+RETURN
+
+*                                         @METAGS uradplot
+*--------------- uradplot ---------------
+*
+MACRO uradplot n=1 opt=AWL
+plci0 = $GRAFINFO('?plci')
+fcol0 = $GRAFINFO('?fcol')
+dmod0 = $GRAFINFO('?dmod')
+Ep = Ep[n]
+srad  = srad[n]
+sudat = sudat[n]
+snon  = snon[n]
+np = $VLEN([Ep])
+*set fcol 4
+set plci 1
+set dmod 1
+graph [np] [Ep] [snon] [opt]
+*set fcol 1
+set plci 4
+set dmod 1
+graph [np] [Ep] [srad] SL
+*set fcol 2
+set plci 2
+set dmod 1
+graph [np] [Ep] [sudat] SL
+*set fcol [fcol0]
+set plci [fcol0]
+set dmod [dmod0]
+RETURN
+
+*                                         @METAGS uradread
+*--------------- uradread ---------------
+*
+MACRO uradread np=200
+sigma buf=array([np])*0
+sigma sudat1=array([np])*0
+sigma sudat2=array([np])*0
+sigma sudat3=array([np])*0
+sigma sudat4=array([np])*0
+v/re buf,sudat1 urad1.dat
+v/re buf,sudat2 urad2.dat
+v/re buf,sudat3 urad3.dat
+v/re buf,sudat4 urad4.dat
+v/de buf
+RETURN
+
+*                                         @METAGS fnMf
+*--------------- fnMf ---------------
+*
+MACRO fnMf Mf=1.25 Mott=0
+call SetMTkin(0.,0.,6.,.93827,.140)
+
+call ClearMT
+
+np = $VDIM(Ep1)
+
+Es = 7.0
+call FillMT([np],$RSIGMA([Es]),Ep1,srad1,snon1)
+Es = 10.0
+call FillMT([np],$RSIGMA([Es]),Ep2,srad2,snon2)
+Es = 13.5
+call FillMT([np],$RSIGMA([Es]),Ep3,srad3,snon3)
+Es = 16.0
+call FillMT([np],$RSIGMA([Es]),Ep4,srad4,snon4)
+
+debug on
+
+APPL COMIS QUIT
+*                                         @METAGS .snMf
+*                                         12-30-98 12:27pm
+*--------------- snMf ---------------
+*
+      real function snMf(Mf,NS)
+      IMPLICIT NONE
+      integer NS
+      real Mf
+*      real EsMT,EpMT,thetaMT,Mtar,mthr,spMT,trMT,fsMT,fpMT
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr,spMT,trMT,fsMT,fpMT
+*      parameter (NSDIM=9)
+*      parameter (NPDIM=400)
+*      integer NStot,NScur,nptot,npcur
+*      real Esdat,Epma,Epdat,Mfdat,srdat,sudat,sndat
+*      COMMON/URADMT/
+*     & NStot,NScur,nptot(NSDIM),npcur(NSDIM),Esdat(NSDIM),Epma(NSDIM),
+*     & Epdat(NPDIM,NSDIM),Mfdat(NPDIM,NSDIM),
+*     & srdat(NPDIM,NSDIM),sudat(NPDIM,NSDIM),sndat(NPDIM,NSDIM)
+      use MoTsai,URADMT
+      real eps
+      parameter (eps=0.00001)
+      real sec,dS,dMf,Mfmin,Mfmax
+      integer np,nlow,nhigh
+      snMf = 0.
+      if (Mf.LE.(Mtar+mthr)) RETURN
+      if (Mf.GE.Mfdat(nptot(NS),NS)) then
+*        .. Note: Mf decrease along the spectrum
+         do np=nptot(NS),1,-1
+            nhigh = np
+            if (Mfdat(nhigh,NS).GT.Mf) goto 1000
+         enddo
+      else
+*        .. extrapolate using points nptot(NS)-1, nptot(NS)
+         nhigh = nptot(NS) - 1
+      endif
+ 1000 nlow = nhigh+1
+*     .. interpolation(extrapolation)
+      dMf = Mfdat(nhigh,NS)-Mfdat(nlow,NS)
+      if (dMf.GT.eps) then
+         dS  = sndat(nhigh,NS)-sndat(nlow,NS)
+         sec = sndat(nlow,NS) + dS*(Mf-Mfdat(nlow,NS))/dMf
+      else
+         sec = (sndat(nhigh,NS) + sndat(nlow,NS))/2.
+      endif
+      if (sec .LT. 0.) sec=0.
+*     .. realible Mf range for extrapolation
+      dMf = Mfdat(1,NS)-Mfdat(nptot(NS),NS)
+      Mfmin = Mfdat(nptot(NS),NS) - 0.10*dMf
+      Mfmax = Mfdat(1,NS) + 0.10*dMf
+      if ((Mf.GE.Mfmin) .AND. (Mf.LE.Mfmax)) then
+         snMf = sec
+      else
+*        .. invert sign of cross section for "unrealible" extrapolation
+         snMf = -sec
+      endif
+      END
+
+*                                         @METAGS .sinter
+*                                         12-30-98 05:48pm
+*--------------- sinter ---------------
+*
+      real function sinter(E0,np,Es,sec)
+      IMPLICIT NONE
+      integer np
+      real E0,Es(np),sec(np)
+      real a,b
+      real x,sumx,sumx2,lny,sumlny,sumxlny,arg
+      integer i
+      sinter = 0.
+      if (np.LT.2) RETURN
+*     .. fit exp(a+b*x)
+      sumlny  = 0.
+      sumxlny = 0.
+      sumx  = 0.
+      sumx2 = 0.
+      do i=1,np
+         x = Es(i)
+         sumx  = sumx  + x
+         sumx2 = sumx2 + x**2
+         lny = log(sec(i))
+         sumlny  = sumlny  + lny
+         sumxlny = sumxlny  + x*lny
+      enddo
+      b = (sumxlny - sumlny*sumx/np)/(sumx2-sumx**2/np)
+      a = (sumlny - b*sumx)/np
+*     .. get interpolated value
+      arg = a + b*E0
+      if (ABS(arg).GT.50.) RETURN
+      sinter = exp(arg)
+      END
+QUIT
+
+Es(1) = 7
+Es(2) = 10
+Es(3) = 13.5
+Es(4) = 16
+*do i=1,4
+*   mess [Es([i])]
+*enddo
+sigma Es=array(4)*0
+sigma Snon=array(4)*0
+np=0
+do NS=1,4
+   fu=snMf($RSIGMA([Mf]),[NS])
+   f = $CALL([fu])
+   if [f] > 0 then
+      if [Mott] then
+         * norm. to Mott
+         E0 = [Es([NS])]
+         f = [f]*[E0]*[E0]
+      endif
+      np = [np]+1
+      v/inp Es([np]) [Es([NS])]
+      v/inp Snon([np]) [f]
+   endif
+enddo
+gra $VLEN(Snon) Es Snon AW*
+xtit=Es for Mf=[Mf]
+atitle [xtit] 'Snon'
+
+opt fit
+if [Mott] then
+   if [np] > 2 then
+      v/fit Es(1:[np]) Snon(1:[np]) $SIGMA(.1*Snon) p2 qs
+   elseif [np] > 1 then
+      v/fit Es(1:[np]) Snon(1:[np]) $SIGMA(.1*Snon) p1 qs
+   endif
+else
+   if [np] > 1 then
+      v/fit Es(1:[np]) Snon(1:[np]) $SIGMA(.1*Snon) e qs
+   endif
+endif
+
+E0 = 0
+AGAIN:
+read E0 'Enter E0 (0=Quit)'
+if [E0]=0 then; EXITM; endif
+fu=sinter($RSIGMA([E0]),[np],Es,Snon)
+
+s = $CALL([fu])
+if [Mott] then
+   * norm. to Mott
+   E02 = [E0]*[E0]
+   s = [s]/[E02]
+endif
+mess [s]
+goto AGAIN
+RETURN
+
+*                                         @METAGS GeVplot
+*--------------- GeVplot ---------------
+*
+MACRO GeVplot Ep1=17.3 Ep2=18.5 opt Es=20 theta=5 del=0.010
+if $UPPER([1])='HELP' then
+   mess Usage:    [0] Ep1 Ep2 opt Es theta del=0.010
+   stopm
+endif
+
+if [Ep1]='' then; Ep1=$GRAFINFO('WNXMIN'); endif
+if [Ep2]='' then; Ep2=$GRAFINFO('WNXMAX'); endif
+
+fcol0 = $GRAFINFO('?fcol')
+dmod0 = $GRAFINFO('?dmod')
+
+set fcol 1
+set dmod 1
+fun = delta($RSIGMA([Es]),x,$RSIGMA([theta]))
+f/pl [fun] [Ep1] [Ep2] [opt]
+if $INDEX($UPPER([opt]),'S') = 0 then
+   atitle 'E, GeV' 'd^2![s]/d[W]/dE, nb/GeV/sr'
+endif
+
+*alp
+
+*ans='N'
+ans='Y'
+read ans 'Radiate? (Y/N)'
+if $UPPER([ans])='Y' then
+   set fcol 4
+   set dmod 2
+
+   * set Mo & Tsai kinematic (optional Ep)
+   call SetMTkin($RSIGMA([Es]),0.,$RSIGMA([theta]),.93827,.140)
+
+   fun = RadMT($RSIGMA([Es]),x,$RSIGMA([del]))
+   fu/pl [fun] [Ep1] [Ep2] S
+endif
+
+set fcol [fcol0]
+set dmod [dmod0]
+RETURN
+
+*                                         @METAGS srad
+*--------------- srad ---------------
+*
+*MACRO srad Ep1=6 np=400 del=.010
+MACRO srad Ep1=6 np=200 del=.010
+theta = 6
+Es = 7
+*Ep1 = 5
+Ep2 = 6.6
+exec fillrad 1 [Es] [Ep1] [Ep2] [theta] [del] [np]
+mess [Es] GeV complete
+*wait
+
+Es = 10
+*Ep1 = 5
+Ep2 = 9.3
+exec fillrad 2 [Es] [Ep1] [Ep2] [theta] [del] [np]
+mess [Es] GeV complete
+
+Es = 13.5
+*Ep1 = 5
+Ep2 = 12.4
+exec fillrad 3 [Es] [Ep1] [Ep2] [theta] [del] [np]
+mess [Es] GeV complete
+
+Es = 16
+*Ep1 = 5
+Ep2 = 14.5
+exec fillrad 4 [Es] [Ep1] [Ep2] [theta] [del] [np]
+mess [Es] GeV complete
+
+exec sradplot 0 Ep
+RETURN
+*                                         @METAGS fillrad
+*--------------- fillrad ---------------
+*
+MACRO fillrad n Es Ep1 Ep2 theta=6 del np=200
+step = ([Ep2]-[Ep1])/([np]-1)
+
+sigma Ep[n]=array([np])*0
+sigma Wp[n]=array([np])*0
+sigma Snon[n]=array([np])*0
+sigma Srad[n]=array([np])*0
+sigma Urad[n]=array([np])*0
+
+* set Mo & Tsai kinematic (optional Ep)
+call SetMTkin($RSIGMA([Es]),0.,$RSIGMA([theta]),.93827,.140)
+
+Ep = [Ep1]
+Snon0  = 0
+dSnon0 = 0
+j = 0
+do i=1,[np]
+   fcall = delta($RSIGMA([Es]),$RSIGMA([Ep]),$RSIGMA([theta]))
+   Snon = $CALL([fcall])
+   *mess $EVAL(ABS([Snon]-[Snon0])) [dSnon0]; wait
+   if ABS([Snon]-[Snon0]) < [dSnon0] goto CYCLE
+   Snon0  = [Snon]
+   dSnon0 = .05*[Snon0]
+   fcall = RadMT($RSIGMA([Es]),$RSIGMA([Ep]),$RSIGMA([del]))
+   Srad = $CALL([fcall])
+   fcall = MfEsEp($RSIGMA([Es]),$RSIGMA([Ep]),$RSIGMA([theta]))
+   Mf = $CALL([fcall])
+   if [Mf] = 0. goto WRITE
+   
+   j = [j]+1
+   *mess [i] [Ep]
+   v/inp Ep[n]([j]) [Ep]
+   v/inp Wp[n]([j]) [Mf]
+   v/inp Snon[n]([j]) [Snon]
+   v/inp Srad[n]([j]) [Srad]
+   CYCLE:
+   Ep = [Ep]+[step]
+   *if [Ep] > [Ep2] goto WRITE
+enddo
+
+WRITE:
+Esint = INT([Es])
+file = Es[Esint].dat
+v/wr Ep[n],Wp[n],Snon[n],Srad[n] [file]
+RETURN
+
+*                                         @METAGS minjGE
+*--------------- minjGE ---------------
+*
+MACRO minjGE v xmin
+np = $VDIM([v])
+f = minjGE([np],[v],$RSIGMA([xmin]))
+j = $ICALL([f])
+mess j=[j], val=$EVAL([v]([j]))
+RETURN
+*                                         @METAGS maxjLE
+*--------------- maxjLE ---------------
+*
+MACRO maxjLE v xmax
+np = $VDIM([v])
+f = maxjLE([np],[v],$RSIGMA([xmax]))
+j = $ICALL([f])
+mess j=[j], val=$EVAL([v]([j]))
+RETURN
+*                                         @METAGS sradplot
+*--------------- sradplot ---------------
+*
+MACRO sradplot n x=Ep x1 x2 opt=AWP
+if [n]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] n x=Ep
+   mess Example:  [0] n Wp
+   stopm
+endif
+
+if [n]=0 then
+   zon 1 4
+   do i=1,4
+      exec sradplot [i] [x] [x1] [x2]
+   enddo
+   zon
+   EXITM
+endif
+
+Ep = [x][n]
+Snon = Snon[n]
+Srad = Srad[n]
+
+np = $VLEN([Snon])
+i1 = 1
+i2 = [np]
+
+if [x1]<>'' .AND. [x2]<>'' then
+   fu = minjGE([np],[Ep],$RSIGMA([x1]))
+   i1 = $ICALL([fu])
+*   mess After fu i1=[i1]
+   if [i1]=0 then; i1=1; endif
+   fu = maxjLE([np],[Ep],$RSIGMA([x2]))
+   i2 = $ICALL([fu])
+*   mess After fu i2=[i2]
+   if [i2]=0 then; i2=[np]; endif
+endif
+if [i1] > [i2] then
+   ibuf = [i1]
+   i1 = [i2]
+   i2 = [ibuf]
+endif
+np = [i2]-[i1]+1
+
+*mess i1=[i1], i2=[i2], np=[np]; wait
+
+*   i2 = 0
+*   do i=1,[np]
+*      val = [Ep]([i])
+*      if [i1]=0 .AND. [val] >= [x1] then
+*         i1 = [i]
+*      endif
+*      *if [i2]=0 .AND. [val] <= [x2] then
+*      if [val] <= [x2] then
+*         i2 = [i]
+*      endif
+*      *if [i1]<>0 .AND. [i2]<>0 goto NEXT
+*   enddo
+*   NEXT:
+*   np = ABS([i2]-[i1]) + 1
+*endif
+*mess i1=[i1], [Ep]([i1]) = $EVAL([Ep]([i1]))
+*mess i2=[i2], [Ep]([i2]) = $EVAL([Ep]([i2]))
+*mess np=[np]
+*wait
+
+mtyp0 = $GRAFINFO('?mtyp')
+plci0 = $GRAFINFO('?plci')
+set mtyp 24
+set plci 1
+*graph [np] [Ep] [Snon] AWL
+*graph [np] [Ep]([i1]:[i2]) [Snon]([i1]:[i2]) AWL
+graph [np] [Ep]([i1]:[i2]) [Snon]([i1]:[i2]) [opt]
+set mtyp 31
+set plci 4
+*graph [np] [Ep] [Srad] SL
+*graph [np] [Ep]([i1]:[i2]) [Srad]([i1]:[i2]) SL
+graph [np] [Ep]([i1]:[i2]) [Srad]([i1]:[i2]) SP
+set mtyp [mtyp0]
+set plci [plci0]
+xtit = [x], GeV
+atitle [xtit] 'd^2![s]/d[W]dEp, nb/GeV/sr'
+RETURN
+*                                         @METAGS sradread
+*--------------- sradread ---------------
+*
+MACRO sradread
+i = 0
+for Es in 7 10 13.5 16
+   i = [i]+1
+   Esint = INT([Es])
+   file = Es[Esint].dat
+   v/re Ep[i],Wp[i],Snon[i],Srad[i] [file]
+   sigma Urad[i]=0*Srad[i]
+endfor
+
+ans='N'
+read ans 'Plot? (Y/N)'
+if $UPPER([ans])='Y' then
+   exec sradplot 0 Ep
+endif
+RETURN
+
+*                                         @METAGS plane
+*--------------- plane ---------------
+*
+MACRO plane Epmin=6
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] Epmin
+   stopm
+endif
+
+np = $VLEN(Ep4)
+Ep4max = 1.05*Ep4([np])
+null 5 20 [Epmin] [Ep4max]
+atit 'Es^1!, GeV' 'Ep^1!, GeV'
+
+pmci0 = $GRAFINFO('?pmci')
+set pmci 2
+
+n = 0
+for Es in 7 10 13.5 16
+   n = [n]+1
+   Ep = Ep[n]
+   np = $VLEN([Ep])
+   fu=minjGE([np],[Ep],$RSIGMA([Epmin]))
+   j = $ICALL([fu])
+   if [j]=0 goto NEXT
+   do i=[j],[np]
+      key [Es] [Ep]([i]) 1
+   enddo
+   NEXT:
+endfor
+set pmci [pmci0]
+RETURN
+
+*                                         @METAGS uRADone
+*--------------- uRADone ---------------
+*
+MACRO uRADone n=1 Es=7 theta=6 del=.010
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] n Es=7 theta=6 delta=.010
+   stopm
+endif
+
+Ep = Ep[n]
+*Wp = Wp[n]
+Snon = Snon[n]
+Srad = Srad[n]
+*mess Ep vector is [Ep]
+if $VEXIST([Ep])=0 then
+   mess Data did not exist
+   stopm
+endif
+
+Urad = Urad[n]
+sigma [Urad] = 0*[Srad]
+
+* thresold
+M = .93827
+mthr = .140
+fu = Ethresh($RSIGMA([Es]),$RSIGMA([theta]),$RSIGMA([M]),$RSIGMA([mthr]))
+Ethr = $CALL([fu])
+mess Macro [0]: Ethr=[Ethr] GeV
+
+np = $VDIM([Ep])
+pars=$RSIGMA([M]),$RSIGMA([Es]),$RSIGMA([theta]),$RSIGMA([del])
+pars=[pars],[np],$RSIGMA([mthr]),[Ep],[Srad],[Snon],[Urad]
+call uRADone([pars])
+
+ASK:
+read ans 'Plot the result (Y/N)?'
+if     $UPPER([ans])='Y' then
+   exec uRADplot [n]
+elseif $UPPER([ans])='N' then
+   exitm
+else
+   goto ASK
+endif
+RETURN
+*                                         @METAGS uRADplot
+*--------------- uRADplot ---------------
+*
+MACRO uRADplot n=1
+Ep = Ep[n]
+*Wp = Wp[n]
+Snon = Snon[n]
+Srad = Srad[n]
+Urad = Urad[n]
+np = $VLEN([Srad])
+mtyp0 = $GRAFINFO('?mtyp')
+pmci0 = $GRAFINFO('?pmci')
+plci0 = $GRAFINFO('?plci')
+set plci 1
+graph [np] [Ep] [Snon] AWL
+set plci 2
+graph [np] [Ep] [Urad] SL
+set plci 4
+graph [np] [Ep] [Srad] SL
+set mtyp [mtyp0]
+set plci [plci0]
+set pmci [pmci0]
+RETURN
+
+*                                         @METAGS fuRADone
+*--------------- fuRADone ---------------
+*
+MACRO fuRADone n=1 Es=7 theta=6 del=.010
+exec for
+exec uRADone [n] [Es] [theta] [del]
+RETURN
+
+*                                         @METAGS H2hist
+*--------------- H2hist ---------------
+*
+MACRO H2hist npoint=1000 Es=.590 Ec=.0 Rcm=82 theta=143.5 id1=1 id2=2 id3=3
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] npoint=1000 Es=.590 Ec=.0 Rcm=82 theta=143.5 id1=1 id2=2 id3=3
+   stopm
+endif
+
+if [Ec] = .0 then
+   E1MeV = [Es]*1000.
+   EHMeV = $EXEC(d2for#EH [E1MeV] [theta])
+   EH = 0.001*[EHMeV]
+   Ec = 0.97*[EH]
+   mess Ec = [Ec] GeV
+endif
+
+opt stat
+
+exec for
+*wait
+
+debug ON
+
+if $HEXIST([id1]) then; h/de [id1]; endif
+
+if $HEXIST([id2]) then; h/de [id2]; endif
+*1dh [id2] 'Counts' 96 .5 96.5
+
+if $HEXIST([id3]) then; h/de [id3]; endif
+1dh [id3] 'Incident energy' 100 $EVAL(0.90*1000.*[Es]) $EVAL(1.02*1000.*[Es])
+
+call SetTradH
+pars=[id1],[id2],[id3],[npoint],$RSIGMA([Es]),$RSIGMA([theta])
+pars=[pars],$RSIGMA([Ec]),$RSIGMA([Rcm])
+call H2hist([pars])
+call SetTrad0
+
+*exitm
+if $HEXIST([id1]) then
+   mess Plot hists [id1] and [id2]; wait
+   zon 1 2
+   h/pl [id1]
+   h/pl [id2]
+   zon
+endif
+RETURN
+
+*                                         @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR
+*--- COMMON KINEMA
+g/imp d2sim
+COMMON_KINEMA=''; g/imp COMMON_KINEMA
+DECLARE_KINEMA:
+IF [COMMON_KINEMA] = '' THEN
+   APPL COMIS QUIT
+*                                         @METAGS .COMMON_KINEMA
+*                                         01-24-97 10:14pm
+*--------------- COMMON_declaration ---------------
+*
+      COMMON /KINEMA/ E0,THETA,Ee
+      END
+   QUIT
+
+   g/cr COMMON_KINEMA [d2sim]
+   mess [d2sim]: COMMON /KINEMA/ is declared
+ELSEIF [COMMON_KINEMA] <> [d2sim] THEN
+   ans = 'N'
+   mess --- [d2sim]:
+   mess COMMON /KINEMA/ already declared by [COMMON_KINEMA]
+   read ans 'Redeclare (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      COMMON_KINEMA = ''
+      goto DECLARE_KINEMA
+   endif
+ENDIF
+*---
+
+
+*--- COMMON EXPER
+g/imp d2sim
+COMMON_EXPER=''; g/imp COMMON_EXPER
+DECLARE_EXPER:
+IF [COMMON_EXPER] = '' THEN
+   APPL COMIS QUIT
+*                                         @METAGS .COMMON_EXPER
+*                                         01-24-97 10:14pm
+*--------------- COMMON_declaration ---------------
+*
+      COMMON /EXPER/ accept,dEbeam,dEsp02
+      accept = 10.
+      dEbeam = .005
+      dEsp02 = .002
+      END
+   QUIT
+
+   g/cr COMMON_EXPER [d2sim]
+   mess [d2sim]: COMMON /EXPER/ is declared
+ELSEIF [COMMON_EXPER] <> [d2sim] THEN
+   ans = 'N'
+   mess --- [d2sim]:
+   mess COMMON /EXPER/ was already declared by [COMMON_EXPER]
+   read ans 'Redeclare (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      COMMON_EXPER = ''
+      goto DECLARE_EXPER
+   endif
+ENDIF
+*---
+
+*--- COMMON MoTsai
+g/imp d2sim
+COMMON_MoTsai=''; g/imp COMMON_MoTsai
+DECLARE_MoTsai:
+IF [COMMON_MoTsai] = '' THEN
+   APPL COMIS QUIT
+*                                         @METAGS .COMMON_MoTsai
+*                                         01-24-97 10:14pm
+*--------------- COMMON_declaration ---------------
+*
+      real EsMT,EpMT,thetaMT,Mtar,mthr,spMT,trMT,fsMT,fpMT
+      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr,spMT,trMT,fsMT,fpMT
+      real Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      real    Mf,Mp,M33
+      parameter (Mp=.93827, M33=1.236)
+      real me2
+      parameter (me2 =.511e-3*.511e-3)
+      parameter (alp=1./137.036, pi=3.141593)
+*     .. fill by some values
+      EsMT = 20.
+***      thetaMT = 5.
+      thetaMT = 6.
+      Mtar = Mp
+      Mthr = .140
+      Mf = M33
+      costheta = cos(thetaMT*pi/180.)
+      recoil = 1. + (EsMT/Mp)*(1-costheta)
+*     .. scattered energy in 1236
+      EpMT = (EsMT - (Mf**2-Mp**2)/(2.*Mp)) / recoil
+      spMT = EsMT*EpMT*(1.-costheta)
+
+*     .. target - D2
+      Ztar = 1.
+*     .. window - Al
+      Zwin = 13.
+
+      Z = Ztar
+*     .. formula (A5)
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+*     .. formula (A4)
+      b  = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bMT = b
+      Z = Zwin
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+      bw = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bwMT = bw
+
+      Trad   = .02
+      tiwrad = .005
+      tfwrad = .005
+*     .. equivalent radiator
+      trMT = (alp/pi)*(log(2.*spMT/me2)-1.) / b
+*     .. fs,fp terms
+      fsMT = b*trMT + bw*tiwrad + b*Trad/2.
+      fpMT = b*trMT + bw*tfwrad + b*Trad/2.
+      END
+   QUIT
+
+   g/cr COMMON_MoTsai [d2sim]
+   mess [d2sim]: COMMONs /MoTsai/ and /TradMT/ are declared
+ELSEIF [COMMON_MoTsai] <> [d2sim] THEN
+   ans = 'N'
+   mess --- [d2sim]:
+   mess COMMON /MoTsai/ and /TradMT/ was already declared by [COMMON_MoTsai]
+   read ans 'Redeclare (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      COMMON_MoTsai = ''
+      goto DECLARE_MoTsai
+   endif
+ENDIF
+*---
+
+*--- COMMON URADMT
+g/imp d2sim
+COMMON_URADMT=''; g/imp COMMON_URADMT
+DECLARE_URADMT:
+IF [COMMON_URADMT] = '' THEN
+   APPL COMIS QUIT
+*                                         @METAGS .COMMON_URADMT
+*                                         01-24-97 10:14pm
+*--------------- COMMON_declaration ---------------
+*
+      integer NSDIM,NPDIM
+      parameter (NSDIM=9)
+      parameter (NPDIM=400)
+      integer NStot,NScur,nptot,npcur
+      real Esdat,Epma,Epdat,Mfdat,srdat,sudat,sndat
+      COMMON/URADMT/
+     & NStot,NScur,nptot(NSDIM),npcur(NSDIM),Esdat(NSDIM),Epma(NSDIM),
+     & Epdat(NPDIM,NSDIM),Mfdat(NPDIM,NSDIM),
+     & srdat(NPDIM,NSDIM),sudat(NPDIM,NSDIM),sndat(NPDIM,NSDIM)
+      COMMON/URADMT1/
+     & npdata,ncdata,Epmax,Epdata(NPDIM),srdata(NPDIM),sudata(NPDIM)
+      COMMON /URADNSNP/ NSmax,NPmax
+      NSmax = NSDIM
+      NPmax = NPDIM
+      NStot = 0
+      END
+
+*                                         @METAGS .Getsudat
+*                                         12-24-98 04:13pm
+*--------------- Getsudat ---------------
+*
+      SUBROUTINE Getsudat(NS,NP,Epdata,sudata)
+      integer NS,NP
+      real Epdata(NP),sudata(NP)
+*       COMMON/URADMT/
+*      & NStot,NScur,nptot(NS),npcur(NS),Esdat(NS),Epma(NS),
+*      & Epdat(NP,NS),Mfdat(NP,NS),srdat(NP,NS),sudat(NP,NS),sndat(NP,NS)
+      use URADMT
+      if (NS.GT.NStot) then
+         print*, 'The maximum number of spectrum is', NStot
+         STOP
+      endif
+      if (NP.LT.nptot(NS)) then
+         print*, 'The maximum number of restored points is', nptot(NS)
+         STOP
+      endif
+      do i=1,nptot(NS)
+         sudata(i) = sudat(i,NS)
+         Epdata(i) = Epdat(i,NS)
+      enddo
+      END
+
+*                                         @METAGS .ClearMT
+*                                         12-24-98 04:21pm
+*--------------- ClearMT ---------------
+*
+      SUBROUTINE ClearMT()
+*       COMMON/URADMT/
+*      & NStot,NScur,nptot(NS),npcur(NS),Esdat(NS),Epma(NS),
+*      & Epdat(NP,NS),Mfdat(NP,NS),srdat(NP,NS),sudat(NP,NS),sndat(NP,NS)
+      use URADMT
+      NStot = 0
+      END
+   QUIT
+
+   g/cr COMMON_URADMT [d2sim]
+   mess [d2sim]: COMMONs /URADMT1/,/URADMT/,/URADNSNP/ are declared
+ELSEIF [COMMON_URADMT] <> [d2sim] THEN
+   ans = 'N'
+   mess --- [d2sim]:
+   mess COMMONs /URADMT1/,/URADMT/,/URADNSNP/ were already declared by [COMMON_URADMT]
+   read ans 'Redeclare (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      COMMON_URADMT = ''
+      goto DECLARE_URADMT
+   endif
+ENDIF
+*---
+
+APPL COMIS QUIT
+*                                         @METAGS .SETKIN
+*                                         11-19-98 04:49pm
+*--------------- SETKIN ---------------
+*
+      SUBROUTINE SETKIN(E0in,Eein,THETAin)
+*      COMMON /KINEMA/ E0,THETA,Ee
+      use KINEMA
+      E0 = E0in
+      if (Eein .NE. 0.) Ee=Eein
+      THETA = THETAin
+      END
+
+*                                         @METAGS .SETEXPER
+*                                         11-19-98 04:49pm
+*--------------- SETEXPER ---------------
+*
+      SUBROUTINE SETEXPER(accept1,dEbeam1,dEsp021)
+*      COMMON /EXPER/ accept,dEbeam,dEsp02
+      use EXPER
+      accept = accept1
+      dEbeam = dEbeam1
+      dEsp02 = dEsp021
+      END
+
+*                                         @METAGS .SetAcc
+*                                         11-19-98 04:49pm
+*--------------- SetAcc ---------------
+*
+      SUBROUTINE SetAcc(accept1)
+*      COMMON /EXPER/ accept,dEbeam,dEsp02
+      use EXPER
+      accept = accept1
+      END
+
+*                                         @METAGS .SetTrad
+*                                         11-19-98 04:49pm
+*--------------- SetTrad ---------------
+*
+      SUBROUTINE SetTrad(Trad1,tiwrad1,tfwrad1,Zt,Zw)
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use TradMT
+      Trad   = Trad1
+      tiwrad = tiwrad1
+      tfwrad = tfwrad1
+      Ztar = Zt
+      Zwin = Zw
+      Z = Ztar
+*     .. formula (A5)
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+*     .. formula (A4)
+      b  = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bMT = b
+      Z = Zwin
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+      bw = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bwMT = bw
+      END
+
+*                                         @METAGS .SetTrad0
+*                                         11-19-98 04:49pm
+*--------------- SetTrad0 ---------------
+*
+      SUBROUTINE SetTrad0()
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use TradMT
+      Trad   = 0.02
+      tiwrad = 0.005
+      tfwrad = 0.005
+      Ztar = 1
+      Zwin = 13
+      Z = Ztar
+*     .. formula (A5)
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+*     .. formula (A4)
+      b  = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bMT = b
+      Z = Zwin
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+      bw = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bwMT = bw
+      END
+
+*                                         @METAGS .SetTradH
+*                                         11-19-98 04:49pm
+*--------------- SetTradH ---------------
+*
+      SUBROUTINE SetTradH()
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use TradMT
+      Trad   = 0.005637
+      tiwrad = 0.0051
+      tfwrad = 0.00067
+      Ztar = 1
+      Zwin = 13
+      Z = Ztar
+*     .. formula (A5)
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+*     .. formula (A4)
+      b  = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bMT = b
+      Z = Zwin
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+      bw = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bwMT = bw
+      END
+
+*                                         @METAGS .SetMTkin
+*                                         11-19-98 04:49pm
+*--------------- SetMTkin ---------------
+*
+      SUBROUTINE SetMTkin(Es,Ep,theta,Mtarget,mthresh)
+      real Es,Ep,theta,Mtarget,mthresh
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+      use MoTsai
+      if (Es .NE. 0.) EsMT=Es
+      if (Ep .NE. 0.) EpMT=Ep
+      if (theta.NE.0.) thetaMT = theta
+      if (Mtarget.NE.0.) Mtar = Mtarget
+      if (mthresh.NE.0.) mthr = mthresh
+      END
+
+*                                         @METAGS .SetMT
+*                                         11-19-98 04:49pm
+*--------------- SetMT ---------------
+*
+      SUBROUTINE SetMT(Es,Ep,theta,Mtarget,mthre,Trad1,tiwrad1,tfwrad1)
+      real Es,Ep,theta,Mtarget,mthre,Trad1,tiwrad1,tfwrad1
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      real Mp
+      parameter (Mp =.93827)
+      parameter (b=4./3., bw=4./3.)
+      real me2
+      parameter (me2 =.511e-3*.511e-3)
+      parameter (alp=1./137.036, pi=3.141593)
+
+      EsMT = Es
+      EpMT = Ep
+      thetaMT = theta
+      Mtar = Mtarget
+      mthr = Mthre
+
+      Trad   = Trad1
+      tiwrad = tiwrad1
+      tfwrad = tfwrad1
+
+      spMT = EsMT*EpMT*(1.-cos(thetaMT*pi/180.))
+*     .. equivalent radiator
+      trMT = (alp/pi)*(log(2.*spMT/me2)-1.) / b
+*     .. fs,fp terms
+      fsMT = b*trMT + bw*tiwrad + b*Trad/2.
+      fpMT = b*trMT + bw*tfwrad + b*Trad/2.
+      END
+
+*                                         @METAGS .SetMTdef
+*                                         11-19-98 04:49pm
+*--------------- SetMTdef ---------------
+*
+      SUBROUTINE SetMTdef()
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      real    Mf,Mp,M33
+      parameter (Mp=.93827, M33=1.236)
+      real me2
+      parameter (me2 =.511e-3*.511e-3)
+      parameter (alp=1./137.036, pi=3.141593)
+*     .. fill by some values
+      EsMT = 20.
+***      thetaMT = 5.
+      thetaMT = 6.
+      Mtar = Mp
+      mthr = .140
+      Mf = M33
+      costheta = cos(thetaMT*pi/180.)
+      recoil = 1. + (EsMT/Mp)*(1-costheta)
+*     .. scattered energy in 1236
+      EpMT = (EsMT - (Mf**2-Mp**2)/(2.*Mp)) / recoil
+      spMT = EsMT*EpMT*(1.-costheta)
+
+*     .. target - D2
+      Ztar = 1.
+*     .. window - Al
+      Zwin = 13.
+
+      Z = Ztar
+*     .. formula (A5)
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+*     .. formula (A4)
+      b  = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bMT = b
+      Z = Zwin
+      xi = log(1440.*Z**(-2./3.)) / log(183.*Z**(-1./3.))
+      bw = (4./3.)*(1. + (1./9.)*((Z+1.)/(Z+xi))/log(183.*Z**(-1./3.)))
+      bwMT = bw
+
+      Trad   = .02
+      tiwrad = .005
+      tfwrad = .005
+*     .. equivalent radiator
+      trMT = (alp/pi)*(log(2.*spMT/me2)-1.) / b
+*     .. fs,fp terms
+      fsMT = b*trMT + bw*tiwrad + b*Trad/2.
+      fpMT = b*trMT + bw*tfwrad + b*Trad/2.
+      END
+
+*                                         @METAGS .SetMT1236
+*                                         11-19-98 04:49pm
+*--------------- SetMT1236 ---------------
+*
+      SUBROUTINE SetMT1236(Es,theta,Mtarget,mthre,Trad1,tiwrad1,tfwrad1)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      real    Mf,Mp,M33
+      parameter (Mp =.93827, M33 =1.236)
+      parameter (b=4./3., bw=4./3.)
+      real me2
+      parameter (me2 =.511e-3*.511e-3)
+      parameter (alp=1./137.036, pi=3.141593)
+
+      Mtar = Mp
+      mthr = .140
+*     .. Ep for 1236
+      Mf = M33
+      recoil = 1. + (EsMT/Mp)*(1-cos(theta*pi/180.))
+      Ep = (Es - (Mf**2-Mp**2)/(2.*Mp)) / recoil
+      call SetMT(Es,Ep,theta,Mtarget,mthre,Trad1,tiwrad1,tfwrad1)
+      END
+
+*                                         @METAGS .PriMT
+*                                         11-19-98 04:49pm
+*--------------- PriMT ---------------
+*
+      SUBROUTINE PriMT()
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      print*, 'EsMT,EpMT,thetaMT:',  EsMT,EpMT,thetaMT
+      print*, 'Trad,tiwrad,tfwrad:', Trad,tiwrad,tfwrad
+      print*, 'Ztar,Zwin, bMT,bwMT:', Ztar,Zwin, bMT,bwMT
+      END
+
+*                                         @METAGS .PRIKIN
+*                                         11-19-98 04:49pm
+*--------------- PRIKIN ---------------
+*
+      SUBROUTINE PRIKIN()
+*      COMMON /KINEMA/ E0,THETA,Ee
+      use KINEMA
+      print*, E0, THETA, Ee
+      END
+
+*                                         @METAGS .delta
+*                                         11-25-98 06:06pm
+*--------------- delta ---------------
+*
+      function delta(Es,Ep,theta)
+      real Mp
+      parameter (Mp=.93827)
+      parameter (GeV2nb=.38938e6)
+      external Fdelta,Gdelta
+      delta = GeV2nb*dsdp(Es,Ep,theta,Mp,Fdelta,Gdelta)
+      END
+
+*                                         @METAGS .dsdp
+*                                         11-25-98 03:58pm
+*--------------- dsdp ---------------
+*
+      function dsdp(Es,Ep,theta,M,F,G)
+      real M,Mf2
+      parameter (alp=1./137.036)
+      dsdp = 0.
+      if (Ep.GE.Es) RETURN
+      pi = acos(-1.)
+      thr2 = theta*pi/360.
+      sin2 = (sin(thr2))**2
+      cos2 = 1.-sin2
+      tan2 = sin2/cos2
+      q2 = -4.*Es*Ep*sin2
+      Mf2 = M**2 + 2.*M*(Es-Ep) + q2
+*      bracket = F(q2,Mf2) + (2./M**2)*tan2*G(q2,Mf2)
+      a = F(q2,Mf2)
+      b = (2./M**2)*tan2*G(q2,Mf2)
+      bracket = a + b
+*      print*, '--- bracket, a,b:', bracket, a,b
+      dsdp = 2.*(alp*Ep/q2)**2*M*cos2*bracket
+      END
+
+*                                         @METAGS .funEs
+*                                         12-01-98 01:06pm
+*--------------- funEs ---------------
+*
+      function funEs(Es1)
+*     .. The integrand over Es1. Es,Ep,theta supplies commom /MoTsai/
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/  Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2=.511e-3*.511e-3)
+      real Is
+
+      funEs = 0.
+*     .. Es,Ep,theta from common /MoTsai/
+      Es = EsMT
+      Ep = EpMT
+      theta = thetaMT
+
+      b  = bMT
+      bw = bwMT
+
+      xs = Es1/Es
+*     .. get already calculated sp,fs from common /MoTsai/
+      sp = spMT
+      fs = fsMT
+
+      ts = (alp/pi)*(.5*(1.+xs**2)*log(2.*sp/me2) - xs)
+*     .. probability to emit photon in the initial state
+      Is = (ts + (bw*tfwrad+b*Trad/2.)*(xs + (3./4.)*(1-xs)**2))*
+     &     log(1./xs)**fs / (Es-Es1)
+      funEs = Is*delta(Es1,Ep,theta)
+      END
+*                                         @METAGS .funEp
+*                                         12-01-98 01:06pm
+*--------------- funEp ---------------
+*
+      function funEp(Ep1)
+*     .. The integrand over Ep1. Es,Ep,theta supplies commom /MoTsai/
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2=.511e-3*.511e-3)
+      real Ip
+
+      funEp = 0.
+*     .. Es,Ep,theta from common /MoTsai/
+      Es = EsMT
+      Ep = EpMT
+      theta = thetaMT
+
+      b  = bMT
+      bw = bwMT
+
+      xp = Ep/Ep1
+*     .. get already calculated sp,fp from common /MoTsai/
+      sp = spMT
+      fp = fpMT
+
+      tp = (alp/pi)*(.5*(1.+xp**2)*log(2.*sp/me2) - xp)
+*     .. probability to emit photon in the final state
+      Ip = (tp + (bw*tfwrad+b*Trad/2.)*(xp + (3./4.)*(1-xp)**2))*
+     &     log(1./xp)**fp / (Ep1-Ep)
+      funEp = Ip*delta(Es,Ep1,theta)
+      END
+
+*                                         @METAGS .RadMT
+*                                         12-02-98 10:51am
+*--------------- RadMT ---------------
+*
+      function RadMT(Es,Ep,del)
+*     .. scattering angle thetaMT supplies common /MoTsai/
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2 =.511e-3*.511e-3)
+      real mpi,mpi2
+      parameter (mpi =.140, mpi2=.140*.140)
+      real Mp
+      parameter (Mp=.93827)
+      real lnEsdel,lnEpdel,lnqme2, IdEs,IdEp
+      external funEs,funEp
+
+      RadMT = 0.
+*     .. store given values Es,Ep in common /MoTsai/
+      EsMT = Es
+      EpMT = Ep
+
+      b  = bMT
+      bw = bwMT
+
+      costheta = cos(thetaMT*pi/180.)
+      sp = Es*Ep*(1.-costheta)
+      lnqme2 = log(2.*sp/me2)
+
+*     .. equivalent radiator
+      tr = (alp/pi)*(lnqme2-1.) / b
+*     .. fs,fp terms
+      fs = b*tr + bw*tiwrad + b*Trad/2.
+      fp = b*tr + bw*tfwrad + b*Trad/2.
+*     .. store in common /MoTsai/ for following usage by funEs,funEp
+      spMT = sp
+      trMT = tr
+      fsMT = fs
+      fpMT = fp
+
+      relerr = 1.e-6
+      abserr = 0.
+*     .. integral over Es
+      termEs = 0.
+      Esmin = (mpi2+2.*Mp*mpi+2.*Mp*Ep)/(2.*Mp - 2.*Ep*(1-costheta))
+      Es1 = Esmin
+      Es2 = Es-del
+      if (Es1.GE.Es2) goto 1000
+      call quanc8(funEs,Es1,Es2, abserr,relerr, IdEs,errest,nofun,flag)
+*      print*, 'IdEs =', IdEs
+      termEs = (del/Ep)**(fp/2.)*IdEs
+*      print*, 'termEs =', termEs
+ 1000 continue
+*     .. integral over Ep
+      Epmax = (2.*Mp*Es-2.*Mp*mpi-mpi2)/(2.*Mp + 2.*Es*(1-costheta))
+      Ep1 = Ep+del
+      Ep2 = Epmax
+      if (Ep1.GE.Ep2) goto 2000
+      call quanc8(funEp,Ep1,Ep2, abserr,relerr, IdEp,errest,nofun,flag)
+*      print*, 'IdEp =', IdEp
+      termEp = (del/Es)**(fs/2.)*IdEp
+*      print*, 'termEp =', termEp
+
+ 2000 continue
+      lnEsdel = log(Es/del)
+      lnEpdel = log(Ep/del)
+      deltat = -( (bw*tiwrad+b*Trad/2.)*lnEsdel +
+     +            (bw*tfwrad+b*Trad/2.)*lnEpdel )
+
+      deltar = -(alp/pi) * ( 28./9. - (13./6)*lnqme2 +
+     +                       (lnEsdel+lnEpdel)*(lnqme2-1.) -
+     -                       Spence(-(Es-Ep)/Ep) - Spence( (Es-Ep)/Es) )
+
+      sum = delta(Es,Ep,thetaMT)*exp(deltat+deltar) + termEs + termEp
+*      print*, 'sum =', sum
+      RadMT = sum
+      END
+
+*                                         @METAGS .Ethresh
+*                                         12-11-98 02:06pm
+*--------------- Ethresh ---------------
+*
+      function Ethresh(Es,theta,M,mthr)
+      parameter (pi=3.141593)
+      real Es,theta,M,mthr
+      real Mf
+      Mf = M+mthr
+      recoil = 1. + (Es/M)*(1.-cos(theta*pi/180.))
+      Ep = (Es - (Mf**2-M**2)/(2.*M))/recoil
+      Ethresh = Ep
+      END
+
+*                                         @METAGS .unEp
+*                                         12-01-98 01:06pm
+*--------------- unEp ---------------
+*
+      function unEp(Ep1)
+*     .. The integrand over Ep1. Es,Ep,theta supplies commom /MoTsai/
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      COMMON/URADMT1/npdata,ncdata,Epmax,Epdata(NP),srdata(NP),sudata(NP)
+      use MoTsai,TradMT,URADMT1
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2=.511e-3*.511e-3)
+      parameter (eps=0.00001)
+      real Ip
+
+      unEp = 0.
+      if (Ep1.GE.Epmax) RETURN
+
+*     .. Es,Ep,theta from common /MoTsai/
+      Es = EsMT
+      Ep = EpMT
+      theta = thetaMT
+
+      b  = bMT
+      bw = bwMT
+
+      xp = Ep/Ep1
+*     .. get already calculated sp,fp from common /MoTsai/
+      sp = spMT
+      fp = fpMT
+
+      tp = (alp/pi)*(.5*(1.+xp**2)*log(2.*sp/me2) - xp)
+*     .. probability to emit photon in the final state
+      Ip = (tp + (bw*tfwrad+b*Trad/2.)*(xp + (3./4.)*(1-xp)**2))*
+     &     log(1./xp)**fp / (Ep1-Ep)
+
+*     .. interpolate already unfolded cross section
+      sec = 0.
+      nlow  = 0.
+      nhigh = 0.
+      if (Epdata(ncdata).LE.Ep1) then
+*        .. search forward
+         do np=ncdata,npdata
+            E = Epdata(np)
+            if (abs(Ep1-E).LE.eps) then
+*              .. hit precisely
+               sec = sudata(np)
+               goto 1000
+            endif
+            if (E.LT.Ep1) nlow=np
+            if (E.GT.Ep1) then
+               nhigh=np
+*              .. nlow,nhigh are defened, goto interpolation
+               goto 2000
+            endif
+         enddo
+*        .. Ep1 outside the spectrum: nlow=npdata, nhigh is not defened
+         nlow  = npdata-1
+         nhigh = npdata
+*        .. goto extrapolation using last two spectrum highest points
+         goto 2000
+      else
+*        .. view backward
+         if (abs(Ep1-Epdata(ncdata)).LE.eps) then
+*           .. hit precisely
+            sec = sudata(ncdata)
+            goto 1000
+         endif
+         nlow  = ncdata
+         nhigh = ncdata+1
+*        .. goto extrapolation using two higher restored points
+         goto 2000
+      endif
+ 2000 continue
+*     .. interpolation(extrapolation)
+      dS = sudata(nhigh)-sudata(nlow)
+      dE = Epdata(nhigh)-Epdata(nlow)
+      sec = sudata(nlow) + dS*(Ep1-Epdata(nlow))/dE
+      if (sec .LT. 0.) sec=0.
+ 1000 continue
+      unEp = Ip*sec
+      END
+*                                         @METAGS .uRADone
+*                                         12-02-98 10:51am
+*--------------- uRADone ---------------
+*
+      subroutine uRADone(M,Es,theta,del,npoint,mthre,E2,srad,snon,surad)
+*     .. Restores stand alone spectrum
+*     .. scattering angle thetaMT supplies common /MoTsai/
+      real M,Es,theta,del
+      integer npoint
+      real mthre, E2(npoint),srad(npoint),snon(npoint),surad(npoint)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      COMMON/URADMT1/npdata,ncdata,Epmax,Epdata(NP),srdata(NP),sudata(NP)
+      use MoTsai,TradMT,URADMT1, DEBUG
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2 =.511e-3*.511e-3)
+      parameter (eps=0.00001)
+      real Kmin,Mf2
+      real lnEsdel,lnEpdel,lnqme2, IdEs,IdEp
+      external unEp
+
+*     .. save old kinematics of common /MoTsai/
+      Es0 = EsMT
+      theta0 = thetaMT
+
+*     .. store kinematics in common /MoTsai/
+      EsMT = Es
+      thetaMT = theta
+
+*     .. store kinematics in common /MoTsai/, /TradMT/
+*     ................................................
+
+*     .. store data in common
+      npdata = npoint
+      do i=1,npoint
+         Epdata(i) = E2(i)
+         srdata(i) = srad(i)
+         sudata(i) = 0.
+*        .. clear output array
+         surad(i) = 0.
+      enddo
+
+      b  = bMT
+      bw = bwMT
+
+      err = ((b*Trad/2.)*log(Es/del))**3
+      print*, 'Error due to neglect region IV for del=', del, ' is', err
+      call WAIT(' ')
+
+      costheta = cos(thetaMT*pi/180.)
+
+*     .. minimum energy of equivalent gamma-quantum
+      Kmin = ((M+mthre)**2 - M**2)/(2.*M)
+*     .. threshold energy
+      Epmax = (Es - Kmin)/(1.+(Es/M)*(1-costheta))
+      if(DEBUG)print*, 'Kmin,Epmax:', Kmin,Epmax
+
+*     .. find the last non-zero spectrum point lower the threshold
+      do i=npoint,1,-1
+         npdata = i
+         if ((Epdata(i).NE.0.) .AND. (Epdata(i).LT.Epmax)) goto 100
+      enddo
+  100 continue
+
+*     .. estimate the two highest points using only the first term of (IV.2)
+*     .. Note: for the second point we can use some interpolation
+      do np=npdata,(npdata-1),-1
+         Ep = Epdata(np)
+         sp = Es*Ep*(1.-costheta)
+         lnqme2 = log(2.*sp/me2)
+
+*        .. equivalent radiator
+         tr = (alp/pi)*(lnqme2-1.) / b
+*        .. fs,fp terms
+         fs = b*tr + bw*tiwrad + b*Trad/2.
+         fp = b*tr + bw*tfwrad + b*Trad/2.
+
+         lnEsdel = log(Es/del)
+         lnEpdel = log(Ep/del)
+         deltat = -( (bw*tiwrad+b*Trad/2.)*lnEsdel +
+     +               (bw*tfwrad+b*Trad/2.)*lnEpdel )
+
+         deltar = -(alp/pi)*( 28./9. - (13./6)*lnqme2 +
+     +                        (lnEsdel+lnEpdel)*(lnqme2-1.) -
+     -                        Spence(-(Es-Ep)/Ep) - Spence((Es-Ep)/Es) )
+
+         sudata(np) = srdata(np)*exp(-deltat-deltar)
+         print*, 'srdata(', np, ') =', srdata(np)
+         print*, 'sudata(', np, ') =', sudata(np)
+         print*, 'snon(', np, ') =', snon(np)
+      enddo
+
+*     .. Points Nos. ncdata,ncdata-1 are restored here.
+*     .. No of last restored point
+      ncdata = npdata-1
+
+      call DWAIT('Restore the whole spectrum in a common way')
+
+*     .. restore the whole spectrum in a common way start from highest point
+*     .. (for highest points we use just calculated estimations)
+      
+      do np=npdata,1,-1
+         if(DEBUG)
+     +   print*,'np =', np, ' last Epdata(',ncdata,') =', Epdata(ncdata)
+         if(DEBUG)print*,'termEp,termEs,srdata(np),sudata(np),snon(np)'
+         Ep = Epdata(np)
+*        .. store Ep in common /MoTsai/
+         EpMT = Ep
+
+         sp = Es*Ep*(1.-costheta)
+         lnqme2 = log(2.*sp/me2)
+
+*        .. equivalent radiator
+         tr = (alp/pi)*(lnqme2-1.) / b
+*        .. fs,fp terms
+         fs = b*tr + bw*tiwrad + b*Trad/2.
+         fp = b*tr + bw*tfwrad + b*Trad/2.
+*        .. store in common /MoTsai/ for following usage by unEp
+         spMT = sp
+         trMT = tr
+         fsMT = fs
+         fpMT = fp
+
+         relerr = 1.e-6
+         abserr = 0.
+*        .. integral over Ep
+         termEp = 0.
+         Epl = Ep+del
+         Eph = Epmax
+         if(DEBUG)print*, 'for IdEp: Ep,Epl,Eph:', Ep,Epl,Eph
+         if (Eph-Epl .LE. eps) then
+            if(DEBUG)print*, '--- IdEp: Epl > Eph. Skip integration'
+            goto 1000
+         endif
+         call quanc8(unEp,Epl,Eph,abserr,relerr, IdEp,errest,nofun,flag)
+         termEp = (del/Es)**(fs/2.)*IdEp
+         if(DEBUG)print*, 'IdEp,termEp:', IdEp,termEp
+
+ 1000    continue
+
+         termEs = 0.
+         Esmin = (Ep + Kmin)/(1.-(Ep/M)*(1-costheta))
+         Esl = Esmin
+         Esh = Es-del
+         if(DEBUG)print*, 'for IdEs: Es,Esl,Esh:', Es,Esl,Esh
+         if (Esh-Esl .LE. eps) then
+            if(DEBUG)print*, '--- IdEs: Esl > Esh. Skip integration'
+            goto 2000
+         endif
+
+*        .. replace the dEs1 integration by corresponding dEp1 integration
+
+*        .. Eph corresponding Esl
+*        .. process missing mass
+         Mf2 = M**2 + 2.*M*(Esmin-Ep) - 2.*Esmin*Ep*(1.-costheta)
+*        .. Ep of this process for incident energy Es
+         recoil = 1. + (Es/M)*(1.-costheta)
+         Eph = (Es - (Mf2-M**2)/(2.*M))/recoil
+         if(DEBUG)print*, 'Eph =', Eph
+
+*        .. Epl corresponding Esh
+*        .. process missing mass
+         Mf2 = M**2 + 2.*M*(Esh-Ep) - 2.*Esh*Ep*(1.-costheta)
+*        .. Ep of this process for incident energy Es
+         recoil = 1. + (Es/M)*(1.-costheta)
+         Epl = (Es - (Mf2-M**2)/(2.*M))/recoil
+
+         if(DEBUG)print*, '--- IdEs: Ep,Epl,Eph:', Ep,Epl,Eph
+         if (Eph-Epl .LE. eps) then
+            if(DEBUG)print*, '--- IdEs: Epl > Eph. Skip integration'
+            goto 2000
+         endif
+         call quanc8(unEp,Epl,Eph,abserr,relerr, IdEs,errest,nofun,flag)
+         termEs = (del/Ep)**(fp/2.)*IdEs
+         if(DEBUG)print*, 'IdEs,termEs:', IdEs,termEs
+
+ 2000    continue
+         lnEsdel = log(Es/del)
+         lnEpdel = log(Ep/del)
+         deltat = -( (bw*tiwrad+b*Trad/2.)*lnEsdel +
+     +               (bw*tfwrad+b*Trad/2.)*lnEpdel )
+
+         deltar = -(alp/pi)*( 28./9. - (13./6)*lnqme2 +
+     +                        (lnEsdel+lnEpdel)*(lnqme2-1.) -
+     -                        Spence(-(Es-Ep)/Ep) - Spence((Es-Ep)/Es) )
+
+         sum = (srdata(np) - termEs - termEp)*exp(-deltat-deltar)
+         sudata(np) = sum
+         surad(np) = sum
+         
+*        .. store in common /URADMT1/ current No of restored point
+         if (np.LT.ncdata) ncdata=np
+
+         if(DEBUG)print*, termEp,termEs,srdata(np),sudata(np),snon(np)
+         call DWAIT('uRADone: point is complete')
+      enddo
+
+*     .. restore old kinematics
+      EsMT = Es0
+      thetaMT = theta0
+      RETURN
+      END
+
+*                                         @METAGS .URAD
+*                                         12-02-98 10:51am
+*--------------- URAD ---------------
+*
+      subroutine URAD(del)
+      IMPLICIT NONE
+*     .. scattering angle thetaMT supplies common /MoTsai/
+      real del
+*      COMMON/URADMT/
+*     & NStot,NScur,nptot(NS),npcur(NS),Esdat(NS),Epma(NS),
+*     & Epdat(NP,NS),Mfdat(NP,NS),srdat(NP,NS),sudat(NP,NS),sndat(NP,NS)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      LOGICAL DEBUG
+*      COMMON /DEBUG/ DEBUG
+      use MoTsai,TradMT,URADMT, DEBUG
+      real alp,pi
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2 =.511e-3*.511e-3)
+      real eps
+      parameter (eps=0.00001)
+      real Kmin,Mf,Mf2,Mfmin
+      real lnEsdel,lnEpdel,lnqme2, IdEs,IdEp
+      real fEs,fEp,Spence
+      external fEs,fEp
+      real Es0,Ep0,b,bw,Es,Ep,sp,tr,fs,fp,Epmax,Esmin,termEs,termEp
+      real deltat,deltar,relerr,abserr,errest,Epl,Eph,Esl,Esh
+      real costheta,flag,recoil,sum
+      integer NS,NSminMf,np,nofun
+
+*     .. save old kinematics of common /MoTsai/
+      Es0 = EsMT
+
+      b  = bMT
+      bw = bwMT
+      costheta = cos(thetaMT*pi/180.)
+
+*     .. estimate the two highest points using only the first term of (IV.2)
+*     .. Note: for the second point we can use some interpolation
+      DO NS=1,NStot
+      Es = Esdat(NS)
+      print*, 'Es =', Es, '   np, Ep, srdat, sudat, sndat:'
+      do np=nptot(NS), nptot(NS)-1, -1
+*      np=nptot(NS)
+         Ep = Epdat(np,NS)
+         sp = Es*Ep*(1.-costheta)
+         lnqme2 = log(2.*sp/me2)
+
+*        .. equivalent radiator
+         tr = (alp/pi)*(lnqme2-1.) / b
+*        .. fs,fp terms
+         fs = b*tr + bw*tiwrad + b*Trad/2.
+         fp = b*tr + bw*tfwrad + b*Trad/2.
+
+         lnEsdel = log(Es/del)
+         lnEpdel = log(Ep/del)
+         deltat = -( (bw*tiwrad+b*Trad/2.)*lnEsdel +
+     +               (bw*tfwrad+b*Trad/2.)*lnEpdel )
+
+         deltar = -(alp/pi)*( 28./9. - (13./6)*lnqme2 +
+     +                        (lnEsdel+lnEpdel)*(lnqme2-1.) -
+     -                        Spence(-(Es-Ep)/Ep) - Spence((Es-Ep)/Es) )
+
+         sudat(np,NS) = srdat(np,NS)*exp(-deltat-deltar)
+         print*, np, Ep, srdat(np,NS), sudat(np,NS), sndat(np,NS)
+      enddo
+*     .. Note: really in this initial procedure we unfolded two points
+      npcur(NS) = nptot(NS)
+      ENDDO
+
+*     .. Points Nos. ncdata,ncdata-1 are restored here.
+*     .. No of last restored point
+*      npcur(NS) = nptot(NS)-1
+*      npcur(NS) = nptot(NS)
+
+      call DWAIT('Restore the whole spectrum in a common way')
+10000 continue
+*     .. look for the any spectrum with non unfolded point
+      do NS=1,NStot
+         if (npcur(NS).GT.1) goto 11000
+      enddo
+
+*     .. If we just here then all specra are unfolded
+      print*, 'Work is complete'
+      RETURN
+
+11000 NSminMf=NS
+*     .. find the number of spectrum have unfolded point with min Mf
+      Mfmin = Mfdat(npcur(NSminMf)-1,NSminMf)
+      do NS=1,NStot
+*        .. the last unfolded point
+         if (npcur(NS).EQ.1) goto 10100
+         if (Mfdat(npcur(NS)-1,NS).LT.Mfmin) NSminMf=NS
+10100 enddo
+
+*     .. current spectrum No.
+      NS = NSminMf
+*     .. store in common URADMT the current spectrum No.
+      NScur = NS
+*     .. No. of current unfolding point
+      np = npcur(NScur)-1
+
+      if ((NS.EQ.2).AND.(np.EQ.198)) then
+         print*, 'Danger!'
+         DEBUG=.TRUE.
+      endif
+
+      Es = Esdat(NS)
+      Epmax = Epma(NS)
+      Ep = Epdat(np,NS)
+*     .. store in common /MoTsai/ Es,Ep of current point
+      EsMT = Es
+      EpMT = Ep
+
+      print*, 'NS,np,Ep,Epmax', NS,np,Ep,Epmax
+      if ((NS.EQ.1).AND.(np.EQ.1)) then
+         print*, Epdat(np,NS),Mfdat(np,NS),srdat(np,NS)
+         print*, 'At the other hand for NS=1,np=1'
+         print*, Epdat(1,1),Mfdat(1,1),srdat(1,1)
+         call WAIT(' ')
+      endif
+
+      sp = Es*Ep*(1.-costheta)
+      lnqme2 = log(2.*sp/me2)
+
+*     .. equivalent radiator
+      tr = (alp/pi)*(lnqme2-1.) / b
+*     .. fs,fp terms
+      fs = b*tr + bw*tiwrad + b*Trad/2.
+      fp = b*tr + bw*tfwrad + b*Trad/2.
+*     .. store in common /MoTsai/ for following usage by fEs,fEp
+      spMT = sp
+      trMT = tr
+      fsMT = fs
+      fpMT = fp
+
+      relerr = 1.e-6
+      abserr = 0.
+*     .. integral over Ep
+      termEp = 0.
+      Epl = Ep+del
+      Eph = Epmax
+      if(DEBUG)print*, 'for IdEp: Ep,Epl,Eph:', Ep,Epl,Eph
+      if (Eph-Epl .LE. eps) then
+         if(DEBUG)print*, '--- IdEp: Epl > Eph. Skip integration'
+         goto 1000
+      endif
+      call quanc8(fEp,Epl,Eph,abserr,relerr, IdEp,errest,nofun,flag)
+      termEp = (del/Es)**(fs/2.)*IdEp
+      if(DEBUG)print*, 'IdEp,termEp:', IdEp,termEp
+
+ 1000 continue
+
+      termEs = 0.
+*     .. minimum energy of equivalent gamma-quantum
+      Kmin = ((Mtar+mthr)**2 - Mtar**2)/(2.*Mtar)
+      Esmin = (Ep + Kmin)/(1.-(Ep/Mtar)*(1-costheta))
+      Esl = Esmin
+      Esh = Es-del
+      if(DEBUG)print*, 'for IdEs: Es,Esl,Esh:', Es,Esl,Esh
+      if (Esh-Esl .LE. eps) then
+         if(DEBUG)print*, '--- IdEs: Esl > Esh. Skip integration'
+         goto 2000
+      endif
+
+*     .. replace the dEs1 integration by corresponding dEp1 integration
+
+*     .. Eph corresponding Esl
+*     .. process missing mass
+      Mf2 = Mtar**2 + 2.*Mtar*(Esmin-Ep) - 2.*Esmin*Ep*(1.-costheta)
+*     .. Ep of this process for incident energy Es
+      recoil = 1. + (Es/Mtar)*(1.-costheta)
+      Eph = (Es - (Mf2-Mtar**2)/(2.*Mtar))/recoil
+      if(DEBUG)print*, 'Eph =', Eph
+
+*     .. Epl corresponding Esh
+*     .. process missing mass
+      Mf2 = Mtar**2 + 2.*Mtar*(Esh-Ep) - 2.*Esh*Ep*(1.-costheta)
+*     .. Ep of this process for incident energy Es
+      recoil = 1. + (Es/Mtar)*(1.-costheta)
+      Epl = (Es - (Mf2-Mtar**2)/(2.*Mtar))/recoil
+
+      if(DEBUG)print*, '--- IdEs: Ep,Epl,Eph:', Ep,Epl,Eph
+      if (Eph-Epl .LE. eps) then
+         if(DEBUG)print*, '--- IdEs: Epl > Eph. Skip integration'
+         goto 2000
+      endif
+      call quanc8(fEp,Epl,Eph,abserr,relerr, IdEs,errest,nofun,flag)
+      termEs = (del/Ep)**(fp/2.)*IdEs
+      if(DEBUG)print*, 'IdEs,termEs:', IdEs,termEs
+
+ 2000 continue
+
+      lnEsdel = log(Es/del)
+      lnEpdel = log(Ep/del)
+      deltat = -( (bw*tiwrad+b*Trad/2.)*lnEsdel +
+     +            (bw*tfwrad+b*Trad/2.)*lnEpdel )
+
+      deltar = -(alp/pi)*( 28./9. - (13./6)*lnqme2 +
+     +                     (lnEsdel+lnEpdel)*(lnqme2-1.) -
+     -                     Spence(-(Es-Ep)/Ep) - Spence((Es-Ep)/Es) )
+
+      sum = (srdat(np,NS) - termEs - termEp)*exp(-deltat-deltar)
+      sudat(np,NS) = sum
+*     .. point np is unfolded now. Store its number in npcur(NS)
+      npcur(NS) = np
+
+      if(DEBUG)
+     &   print*,'termEp,termEs,srdat(np,NS),sudat(np,NS),sndat(np,NS)'
+      if(DEBUG)
+     &   print*,termEp,termEs,srdat(np,NS),sudat(np,NS),sndat(np,NS)
+      call DWAIT('URAD: point is complete')
+
+      goto 10000
+
+*     .. restore old kinematics
+      EsMT = Es0
+      END
+*                                         @METAGS .fEp
+*                                         12-01-98 01:06pm
+*--------------- fEp ---------------
+*
+      real function fEp(Ep1)
+*     .. The integrand over Ep1. Es,Ep,theta supplies commom /MoTsai/
+      IMPLICIT NONE
+      real Ep1
+*      real EsMT,EpMT,thetaMT,Mtar,mthr,spMT,trMT,fsMT,fpMT
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr,spMT,trMT,fsMT,fpMT
+*      real Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      parameter (NSDIM=9)
+*      parameter (NPDIM=400)
+*      integer NStot,NScur,nptot,npcur
+*      real Esdat,Epma,Epdat,Mfdat,srdat,sudat,sndat
+*      COMMON/URADMT/
+*     & NStot,NScur,nptot(NSDIM),npcur(NSDIM),Esdat(NSDIM),Epma(NSDIM),
+*     & Epdat(NPDIM,NSDIM),Mfdat(NPDIM,NSDIM),
+*     & srdat(NPDIM,NSDIM),sudat(NPDIM,NSDIM),sndat(NPDIM,NSDIM)
+      use MoTsai,TradMT,URADMT
+      real alp,pi
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2=.511e-3*.511e-3)
+      real eps
+      parameter (eps=0.00001)
+      real Ip
+      integer NS,np,nlow,nhigh
+      real Es,Ep,theta,b,bw,xp,sp,fp,tp,sec,dS,dE
+
+*      logical that
+*      that = (NScur.EQ.2).AND.(npcur(NScur).EQ.199)
+
+*     .. current spectrum No.
+      NS = NScur
+
+      fEp = 0.
+      if (Ep1.GE.Epma(NScur)) RETURN
+
+*     .. Es,Ep,theta from common /MoTsai/
+      Es = EsMT
+      Ep = EpMT
+      theta = thetaMT
+      b  = bMT
+      bw = bwMT
+
+      xp = Ep/Ep1
+*     .. get already calculated sp,fp from common /MoTsai/
+      sp = spMT
+      fp = fpMT
+
+      tp = (alp/pi)*(.5*(1.+xp**2)*log(2.*sp/me2) - xp)
+*     .. probability to emit photon in the final state
+      Ip = (tp + (bw*tfwrad+b*Trad/2.)*(xp + (3./4.)*(1-xp)**2))*
+     &     log(1./xp)**fp / (Ep1-Ep)
+
+*     .. interpolate already unfolded cross section
+      if (Epdat(npcur(NS),NS).LE.Ep1) then
+*        .. search forward
+         do np=npcur(NS),nptot(NS)
+            nhigh = np
+            if (Epdat(nhigh,NS).GT.Ep1) goto 1000
+         enddo
+      else
+*        .. extrapolate using points npcur(NS), npcur(NS)+1
+         nhigh = npcur(NS)+1
+      endif
+
+ 1000 nlow = nhigh-1
+*     .. interpolation(extrapolation)
+      dE = Epdat(nhigh,NS)-Epdat(nlow,NS)
+      if (dE.GT.eps) then
+         dS = sudat(nhigh,NS)-sudat(nlow,NS)
+         sec = sudat(nlow,NS) + dS*(Ep1-Epdat(nlow,NS))/dE
+      else
+         sec = (sudat(nhigh,NS) + sudat(nlow,NS))/2.
+      endif 
+      if (sec .LT. 0.) sec=0.
+      fEp = Ip*sec
+      END
+
+*                                         @METAGS .FillMT
+*                                         12-24-98 04:13pm
+*--------------- FillMT ---------------
+*
+      SUBROUTINE FillMT(np,Es,Epdata,srdata,sndata)
+      integer np
+      real Es,Epdata(np),srdata(np),sndata(np)
+*      COMMON/URADMT/
+*     & NStot,NScur,nptot(NS),npcur(NS),Esdat(NS),Epma(NS),
+*     & Epdat(NP,NS),Mfdat(NP,NS),srdat(NP,NS),sudat(NP,NS),sndat(NP,NS)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /URADNSNP/ NSmax,NPmax
+      use URADMT,URADNSNP,MoTsai
+      parameter (pi=3.141593)
+      real Kmin,Mf2
+
+      if (NStot.EQ.NSmax) then
+         print*, 'COMMON /URADMT/ is full. No space to arrange data'
+         STOP
+      endif
+      if (np.GT.NPmax) then
+         print*, 'Dimension of common /URADMT/ is overflowed'
+         print*, 'The maximum number of data point is', NPmax
+         STOP
+      endif
+
+      NStot = NStot+1
+      Esdat(NStot) = Es
+      npcur(NStot) = 0
+
+      theta = thetaMT
+      costheta = cos(theta*pi/180.)
+
+*     .. minimum energy of equivalent gamma-quantum
+      Kmin = ((Mtar+mthr)**2 - Mtar**2)/(2.*Mtar)
+*     .. threshold energy
+      Epmax = (Es - Kmin)/(1.+(Es/Mtar)*(1-costheta))
+
+      E2max = Epdata(1)
+      do i=1,np
+         Ep = Epdata(i)
+         if ((Ep.EQ.0.) .OR. (Ep.GT.Epmax)) goto 1000
+         nptot(NStot) = i
+         E2max=Ep
+         Epdat(i,NStot) = Ep
+         Mf2 = Mtar**2+2.*Mtar*(Es-Ep)-2.*Es*Ep*(1.-costheta)
+         Mfdat(i,NStot) = sqrt(Mf2)
+         srdat(i,NStot) = srdata(i)
+         sudat(i,NStot) = 0.
+         sndat(i,NStot) = sndata(i)
+      enddo
+ 1000 continue
+      Epma(NStot)  = MIN(E2max,Epmax)
+
+      do i=nptot(NStot)+1,NPmax
+         Epdat(i,NStot) = 0.
+         Mfdat(i,NStot) = 0.
+         srdat(i,NStot) = 0.
+         sudat(i,NStot) = 0.
+         sndat(i,NStot) = 0.
+      enddo
+      END
+
+*                                         @METAGS .Spence
+*                                         12-02-98 12:07pm
+*--------------- Spence ---------------
+*
+      FUNCTION Spence(X) 
+*     .. Spence function
+      parameter (pi2=3.141593*3.141593)
+      IF (ABS(X).LE.1.) GO TO 1 
+      IF (X.GT.1.) GO TO 2
+
+      Y = -pi2/6. - .5*LOG(-X)**2 
+      Y1=-1.
+      X=1./X
+      GOTO 3 
+
+1     Y=0.
+      Y1=1. 
+      GOTO 3
+
+2     Y =  pi2/3. - .5*LOG(X)**2 
+      Y1=-1.
+      X=1./X
+
+3     CONTINUE
+      N=1
+4     Y1=Y1*X 
+      Y0=Y1/real(N**2)
+      Y=Y+Y0
+      N=N+1
+      IF(ABS(Y0).GT.ABS(.00001*Y)) GOTO 4 
+      Spence=Y 
+      END 
+
+*                                         @METAGS .Fdelta
+*                                         11-25-98 03:47pm
+*--------------- Fdelta ---------------
+*
+      real function Fdelta(q2,Mf2)
+*     .. (III.5)-(III.9) for (B1)
+*     .. Mo & Tsai metric: q2 < 0. Main dimension - GeV.
+      IMPLICIT NONE
+      real q2,Mf2
+*     .. x denotes variables in the rest system of final hadron state (Nx)
+      real px,px2, Gamma, QQ2,QQx2, q, C32, Eix, pi, Breit, G1,G2
+      real pxR
+      real    Mf,Mp, M33, mpi
+      real       Mp2,M332,mpi2
+      parameter (Mp =.93827,        M33 =1.236,       mpi =.140)
+      parameter (Mp2=.93827*.93827, M332=1.236*1.236, mpi2=.140*.140)
+
+      Fdelta = 0.
+      if (Mf2.LE.(Mp+mpi)**2) RETURN
+      Mf = sqrt(Mf2)
+*     .. px is momentum of decaing pion in the rest system of Nx
+      px2 = (Mf2-Mp2+mpi2)**2/(4.*Mf2) - mpi2
+      px = sqrt(px2)
+      Gamma = .1293*(.85*px/mpi)**3 / (1.+(.85*px/mpi)**2)
+**--
+**        another form of Gamma(Mf2) from
+**        A.J.Dufner and Y.S.Tsai, Phys.Rev.,168,1801(1968)
+**        The metric of Dufner & Tsai the same:
+**        q2 < 0, e**2/4*pi = alpha, r0*me = alpha.
+**        Notice: both forms are agree very well with examples from
+**        Dufner & Tsai and contradict with Mo & Tsai examples
+**        of "Non-Radiative" curve at low Ep slope of 1236.
+**        May be they included the higher resonances 1525 and 1688 MeV?
+**
+**        Here pxR is the value of px at the resonance;
+**        i.e., they let Mf=M33=1.236 GeV
+*      pxR = sqrt( (M332-Mp2+mpi2)**2/(4.*M332) - mpi2 )
+*      Gamma = .12*(px/pxR)**3
+**--
+*     .. QQ is 3-momentum transferred in lab, QQ2=(Es-Ep)**2-q2
+      QQ2  = (Mf2-q2-Mp2)**2/(2.*Mp)**2 - q2
+*     .. QQx is 3-momentum transferred in the rest system of Nx
+      QQx2 = QQ2*Mp2/Mf2
+      q = sqrt(-q2)
+      C32 = (1./Mp2) * 2.05**2 * exp(-6.3*q) * (1.+9.0*q)
+*     .. Eix is energy of initial proton in the rest system of Nx
+      Eix = (Mf2+Mp2-q2)/(2.*Mf)
+      pi = acos(-1.)
+      Breit = (1./pi) * Gamma*M33 / ((Mf2-M332)**2 + (Gamma*M33)**2)
+      G1 = Breit*Mf*QQx2*2.*C32*(Eix+Mp)/(3.*Mp)
+      G2 = (-q2/QQ2)*G1
+      Fdelta = (2./Mp)*G2
+      END
+*                                         @METAGS .Gdelta
+*                                         11-25-98 03:47pm
+*--------------- Gdelta ---------------
+*
+      real function Gdelta(q2,Mf2)
+*     .. (III.5)-(III.9) for (B1)
+*     .. Mo & Tsai metric: q2 < 0. Main dimension - GeV.
+      IMPLICIT NONE
+      real q2,Mf2
+*     .. x denotes variables in the rest system of final hadron state (Nx)
+      real px,px2, Gamma, QQ2,QQx2, q, C32, Eix, pi, Breit, G1,G2
+      real pxR
+      real    Mf,Mp, M33, mpi
+      real       Mp2,M332,mpi2
+      parameter (Mp =.93827,        M33 =1.236,       mpi =.140)
+      parameter (Mp2=.93827*.93827, M332=1.236*1.236, mpi2=.140*.140)
+
+      Gdelta = 0.
+      if (Mf2.LE.(Mp+mpi)**2) RETURN
+      Mf = sqrt(Mf2)
+*     .. px is momentum of decaing pion in the rest system of Nx
+      px2 = (Mf2-Mp2+mpi2)**2/(4.*Mf2) - mpi2
+      px = sqrt(px2)
+      Gamma = .1293*(.85*px/mpi)**3 / (1.+(.85*px/mpi)**2)
+**--
+**        another form of Gamma(Mf2) from
+**        A.J.Dufner and Y.S.Tsai, Phys.Rev.,168,1801(1968)
+**        The metric of Dufner & Tsai the same:
+**        q2 < 0, e**2/4*pi = alpha, r0*me = alpha.
+**        Notice: both forms are agree very well with examples from
+**        Dufner & Tsai and contradict with Mo & Tsai examples
+**        of "Non-Radiative" curve at low Ep slope of 1236.
+**        May be they included the higher resonances 1525 and 1688 MeV?
+**
+**        Here pxR is the value of px at the resonance;
+**        i.e., they let Mf=M33=1.236 GeV
+*      pxR = sqrt( (M332-Mp2+mpi2)**2/(4.*M332) - mpi2 )
+*      Gamma = .12*(px/pxR)**3
+**--
+*     .. QQ is 3-momentum transferred in lab, QQ2=(Es-Ep)**2-q2
+      QQ2  = (Mf2-q2-Mp2)**2/(2.*Mp)**2 - q2
+*     .. QQx is 3-momentum transferred in the rest system of Nx
+      QQx2 = QQ2*Mp2/Mf2
+      q = sqrt(-q2)
+      C32 = (1./Mp2) * 2.05**2 * exp(-6.3*q) * (1.+9.0*q)
+*     .. Eix is energy of initial proton in the rest system of Nx
+      Eix = (Mf2+Mp2-q2)/(2.*Mf)
+      pi = acos(-1.)
+      Breit = (1./pi) * Gamma*M33 / ((Mf2-M332)**2 + (Gamma*M33)**2)
+      G1 = Breit*Mf*QQx2*2.*C32*(Eix+Mp)/(3.*Mp)
+*      G2 = (-q2/QQ2)*G1
+      Gdelta = 2.*Mp*G1
+      END
+
+*                                         @METAGS .Ie
+*                                         12-15-98 02:27pm
+*--------------- Ie ---------------
+*
+      real function Ie(E0,E,bt)
+*     .. (A.3) from Mo & Tsai
+      parameter (eps=1e-5)
+      Emax = (1.-eps)*E0
+      Emin = .05*E0
+      if (E.GT.Emin) then
+*        .. correction due to the multiple photon emission
+         Cmult = (log(E0/E))**bt
+      else
+*        .. the complete screening formula is unreliable
+         Cmult = 1.
+      endif
+      if (E .LE. Emax) then
+         Ie = bt/(E0-E) * ( (E/E0) + (3./4.)*((E0-E)/E0)**2 )*Cmult
+      else
+         Ie = bt/(E0-Emax)*((Emax/E0) + (3./4.)*((E0-Emax)/E0)**2)*Cmult
+      endif
+      END
+*                                         @METAGS .EranIe
+*                                         12-17-98 05:32pm
+*--------------- EranIe ---------------
+*
+      real function EranIe(E0,Emin,bt)
+*
+*  Generates random energy with respect to Ie in range (Emin,E0-delta)
+*  Uses generalized Von Neumann acceptance-rejection method:
+*  Distribution density for Ie p(E)=C*Ie is represented as
+*  p(E) = p1(E)*f(E), where p1(E) is auxiliary distribution density.
+*  Here p1(E)=C1*(E0-Emin)*Ie(Emin)/(E0-E)
+*  C,C1 are normalizing constants.
+*  Function (E0-Emin)*Ie(Emin)/(E0-E) = Ie(E0,E,bt) at E=Emin
+*  f(E) has maximum C/C1 at E=Emin
+*  Random Etry for p1 is generated using inverted functions method.
+*  Condition to accept Etry is f(Etry) > (C/C1)*r2,
+*  where r2 is uniformly distributed in (0,1).
+*  To simplicity we use modified function f1(E)=(C/C1)*f(E).
+*  Condition with f1 is modified to f1(Etry) > r2
+*  The actual selection efficiency is about 98%
+*  Uses RNDM as a random generator
+*
+      IMPLICIT NONE
+      real E0,Emin,bt
+      real Ie, RNDM
+      real eps,delta,dE,r1,r2,f1,Etry
+      parameter (eps=1.E-6)
+
+      delta = eps*E0
+
+      if (E0-Emin .LT. delta) then
+         EranIe = E0-delta
+         RETURN
+      endif
+      
+      dE = E0-Emin
+  100 continue
+      r1 = RNDM(r1)
+*     .. random energy with respect to (E0-Emin)*Ie(E0,Emin,bt)/(E0-E)
+      Etry = E0 - dE*(delta/dE)**r1
+      r2 = RNDM(r2)
+      f1 = (E0-Etry)/dE * Ie(E0,Etry,bt)/Ie(E0,Emin,bt)
+      if (f1 .GT. r2) then
+*        .. Success: Etry is distributed with respect to Ie
+         EranIe = Etry
+      else
+*        .. generate new pair Etry,r2
+         goto 100
+      endif
+      END
+
+*                                         @METAGS .D2TOT
+*                                         11-19-98 04:53pm
+*--------------- D2TOT ---------------
+*
+      function D2TOT(E0,E,THETA)
+*     .. D2TOT in nb
+*
+*   Programm calculation cross section for deutron,namely:
+*   cross section of delta exitation(in approximation free nucleons),
+*   cross section of quasielastic peak(Durand)
+*   and they sum.
+*            30-jun-89, A.Zatserkljanyi.
+*
+      REAL MOTT,PROTON,NEUTR,MATR,K,KMEV
+      REAL M,MD,MPION,KPION,KDELTA
+*
+      DATA PROTON,NEUTR/1.,1./
+      DATA M/.93828/,MD/1.87563/,MPION/.1396/,KPION/.150/
+
+*      print*, 'D2TOT: E0,E,THETA:', E0,E,THETA
+*      call WAIT('D2TOT begin')
+      
+      D2TOT = 0.
+
+      PI=acos(-1.)
+
+      WR=1.236 !| will be inputed in future,disarable
+      KDELTA=.345
+*
+      TETA=THETA*PI/180.
+      E1 = .001*E0
+      E2 = .001*E
+
+*     .. elastic peak
+      Eel = E1/(1.+(2.*E1/MD)*(sin(TETA/2.))**2)
+      if (E2.GE.Eel) then
+*         print*, 'D2TOT: E2 > Eel: ', E2*1000., ' >', Eel*1000.
+         RETURN
+      endif
+*
+      CALL ROSTOT(E1,TETA,PROTON,NEUTR, EH,ROSP,ROSN,ROSPN)
+*
+      SIN2=SIN(TETA/2.)**2
+      ETAH=1.+2.*E1*SIN2/M
+      ETAD=1.+2.*E1*SIN2/MD
+*      EH=E1/ETAH   ! Calculated by subroutine ROSTOT
+      ED=E1/ETAD
+      EDELTA=(E1-KDELTA)/ETAH
+      EPION=(E1-KPION)/ETAH
+*
+*
+*   BEGINING OF CALCULATION
+*
+      SDUR = 0.
+      SDUR = DURAND(E1,E2,TETA)
+      SDUR=SDUR*ROSPN ! cm2/GeV/sr
+      SDUR=SDUR*(E1/E2) ! For omitting of recoil
+
+*
+*      CALL DELTATIT(E1,E2,TETA,WR,  K,PRES,PNONR,PDELTA)
+**
+**   We are assumed,that contributions in delta region
+**   of proton and neutron are equal.
+**
+*      D2RES =2.*PRES
+*      D2NONR=2.*PNONR
+*      D2DELT=2.*PDELTA
+*      QM2=4.*E1*E2*SIN2
+*      Q=SQRT(QM2+(E1-E2)**2)
+*      E2MEV=E2*1000.
+*      ELOSS=(E1-E2)*1000. ! ELOSS in MeV !!!
+*      KMEV=K*1000.
+
+*     .. delta from Mo & Tsai
+      d2delt = 2.*delta(E1,E2,THETA)
+*
+      SUM=SDUR+D2DELT      
+*      print*, 'D2TOT: SUM =', SUM
+      D2TOT=SUM
+      END
+
+*                                         @METAGS .D2th
+*                                         11-21-98 03:07am
+*--------------- D2th ---------------
+*
+      function D2th(th)
+*      COMMON /KINEMA/ E0,THETA,Ee
+      use KINEMA
+      D2th = D2TOT(E0,Ee,th)
+      END
+
+*                                         @METAGS .D2accept
+*                                         11-21-98 03:14am
+*--------------- D2accept ---------------
+*
+      function D2accept(E)
+*      COMMON /KINEMA/ E0,THETA,Ee
+*      COMMON /EXPER/  accept,dEbeam,dEsp02
+      use KINEMA,EXPER
+      external D2th
+
+      Ee = E
+      a = THETA - accept/2.
+      b = THETA + accept/2.
+      relerr = 1.e-6
+      abserr = 0.
+      call quanc8(D2th,a,b, abserr,relerr, result,errest, nofun,flag)
+      D2accept = result/accept
+      END
+
+*                                         @METAGS .Sval
+*                                         11-19-98 04:53pm
+*--------------- Sval ---------------
+*
+      function Sval(E)
+*      COMMON /KINEMA/ E0,THETA,Ee
+      use KINEMA
+      Sval = D2TOT(E0,E,THETA)
+      END
+
+*                                         @METAGS .ROS
+*                                         04-01-97 08:52pm
+*--------------- ROS ---------------
+*
+      SUBROUTINE ROS(E1,TETA, EH,ROSP,ROSN)
+C
+C     Calculates Rosenbluth cross sections
+C     for proton and neutron in mcbarn/sr
+C     Input parameters:
+C        E1   - energy of incident electron, GeV
+C        TETA - scatering angle, rad
+C     Output parameters:
+C        EH   - scattering energy, GeV
+C        ROSP - Rosenbluth for proton
+C        ROSN - Rosenbluth for neutron
+C
+      REAL MOTT,M,MAGP2,MAGN2
+      DATA M/.93828/, MAGP2/7.800/, MAGN2/3.658/, CONST/5.1818E-3/
+C
+      SIN2=SIN(TETA/2.)**2
+      COS2=1.-SIN2
+      TAN2=SIN2/COS2
+C
+      MOTT=CONST/(E1**2)*COS2/SIN2**2
+C
+      EH=E1/(1.+2.*E1*SIN2/M)
+      QM2=4.*E1*EH*SIN2
+      TAU=QM2/4./M**2
+      G2=(1./(1+QM2/0.71)**2)**2
+C
+      GPE2=G2
+      GPM2=MAGP2*G2
+      GNE2=0.
+      GNM2=MAGN2*G2
+C
+      SIGNS=MOTT*EH/E1
+      ROSP=SIGNS*((GPE2+TAU*GPM2)/(1.+TAU)+2.*TAU*GPM2*TAN2)
+      ROSN=SIGNS*((GNE2+TAU*GNM2)/(1.+TAU)+2.*TAU*GNM2*TAN2)
+C
+      RETURN
+      END
+
+*                                         @METAGS .DURAND
+*                                         11-23-98 09:22pm
+*--------------- DURAND ---------------
+*
+      function DURAND(E1,E2,THETA)
+*     
+*   This subroutine calculate factor SDUR for Durand cross section.
+*   Durand cross section=SDUR*(sum Rosenbluths for proton and neutron)       
+*   NB! In Rosenbluth recoiling factor E2/E1 must be omitted!
+*   (In general,in Durand recoiling factor E2/E1 is absend!)
+*   Inputing parameters(all REAL*4):
+*     E1-energy of incident electron,GeV;
+*     E2-energy of scattering electron,GeV;
+*     THETA-scattering angle,rad
+*   Outputing parametr(REAL*4) SDUR,1/GeV  
+*              30-jun-89, A.Zatserkljanyi
+*
+      REAL M,M2,N2,MATR
+*
+      DATA PI/3.14159/
+      DATA M/.9389/,EBIND/.002226/,A2/.0020905/,B2/.075116/,N2/.1533/ 
+*
+      DURAND=0.
+*
+      M2=M**2
+      QM2=4.*E1*E2*SIN(THETA/2.)**2
+      PCM2=M*(E1-E2-EBIND)-QM2/4.
+      IF(PCM2.LE.0.) GOTO 10000  ! Threshold of electrodesintegration
+      ECM2=PCM2+M2
+      QCM2=QM2+(QM2/4.-PCM2-A2)**2/ECM2
+*
+      X=(A2+PCM2+QM2/4.)/SQRT(PCM2*QCM2)
+      Y=(B2+PCM2+QM2/4.)/SQRT(PCM2*QCM2)
+      X2=X**2
+      Y2=Y**2
+*
+      MATR=N2/PCM2/QCM2*
+     *( 1./(X2-1.)+1./(Y2-1.)-ALOG((X+1.)/(X-1.)*(Y-1.)/(Y+1.))/(Y-X) ) 
+*
+      SDUR=M2/PI*SQRT(PCM2/ECM2)*MATR
+      DURAND = SDUR
+*
+10000 RETURN
+      END
+
+*                                         @METAGS .quanc8.MAIN
+*                                         11-19-98 04:45pm
+*--------------- quanc8.MAIN ---------------
+*
+**
+**     Иллюстpитующая пpогpамма для quanc8
+**     Demo program for quanc8
+**
+*      real function fun(x)
+*      real x
+*      if (x .eq. 0.) fun = 1.
+*      if (x .ne. 0.) fun = sin(x)/x
+*      return
+*      end
+**
+**     .. main ..
+**
+*      external fun
+*      real a, b, abserr, relerr, result, errest, flag
+*      integer nofun
+*
+*      a = 0.
+*      b = 2.
+*      relerr = 1.e-10
+*      abserr = 0.
+*      call quanc8(fun,a,b, abserr,relerr, result,errest, nofun,flag)
+*      write(*,1) result, errest
+*      if (flag .ne. 0.) write(*,2) flag
+*    1 format (8h result=, f15.10, 10h errest=  , e10.2)
+*    2 format (44h Warning.. result may be unreliable.Flag=    , f6.2)
+*      stop
+*      end
+*
+*
+*
+*                                         @METAGS .quanc8
+*                                         11-19-98 04:45pm
+*--------------- quanc8 ---------------
+*
+      subroutine quanc8
+     &           (fun,a,b, abserr,relerr, result,errest, nofun,flag)
+*
+      real fun,a,b,abserr,relerr,result,errest,flag
+      integer nofun
+*
+*     Estimate the integral for fun(x) from a to b to given accuracy.
+*     Automatic adaptive routine bases on the Newton-Cotes formula of
+*     8th order
+*
+*     Input parameters ..
+*
+*     fun         function name
+*     a           low limit
+*     b           upper limit (may be less then a)
+*     abserr      absolute error boundary (must be positive)
+*     relerr      relative error boundary (must be positive)
+*
+*     Output parameters ..
+*
+*     result      approximation to the integral that satisfy (we hope)
+*                 less strict error boundary from the two ones
+*     errest      astimation of the actual error
+*     nofun       the number of function calls have been used for the
+*                 calculation of result
+*     flag        the indicator of the reliability. If flag equal zero then
+*                 result probably satisfies the given error boundary.
+*                 If flag = XXX.YYY then XXX = the number of the intervals
+*                 without convergence and 0.YYY = part of the main interval
+*                 have been remained to process when the routine reaches the
+*                 upper value for nofun.
+*
+      real w0, w1, w2, w3, w4, area, x0, f0, stone, step, cor11, temp
+      real qprev, qnow, qdiff, qleft, esterr, tolerr
+      real qright(31), f(16), x(16), fsave(8,30), xsave(8,30)
+      integer levmin, levmax, levout, nomax, nofin, lev, nim, i, j
+*
+*     *** Step 1 *** Assignment the initial values to the variables that
+*     not depend from the interval. Constants generation.
+*
+      levmin = 1
+      levmax = 30
+      levout = 6
+      nomax = 5000
+      nofin = nomax - 8*(levmax - levout + 2**(levout+1))
+*
+*     If nofun reaches the nofun then alarm
+*
+      w0 = 3956./14175.
+      w1 = 23552./14175.
+      w2 = -3712./14175.
+      w3 = 41984./14175.
+      w4 = -18160./14175.
+*
+*     Assign the zero values to the variable sums.
+*
+      flag = 0.
+      result = 0.
+      cor11 = 0.
+      errest = 0.
+      area = 0.
+      nofun = 0
+      if (a .eq. b) return
+*
+*     *** Step 2 *** Assignment the initial values to the variables that
+*     depend from the interval in accordance to the first interval
+*
+      lev = 0
+      nim = 1
+      x0 = a
+      x(16) = b
+      qprev = 0.
+      f0 = fun(x0)
+      stone = (b - a) / 16.
+      x(8) = (x0 + x(16)) / 2.
+      x(4) = (x0 + x(8)) /2.
+      x(12) = (x(8) + x(16)) /2.
+      x(2) = (x0 + x(4)) /2.
+      x(6) = (x(4) + x(8)) /2.
+      x(10) = (x(8) + x(12)) /2.
+      x(14) = (x(12) + x(16)) /2.
+      do 25 j = 2, 16, 2
+         f(j) = fun(x(j))
+   25 continue
+      nofun = 9
+*
+*     *** Step 3 *** Main calculations.
+*     Have been require qprev, x0,x(2),x(4),...,x(16), f0,f(2),f(4),...,f(16)
+*     Have been calculate x(1),x(3),...,x(15), f(1),f(3),...,f(15),
+*     qleft, qright, qnow, qdiff, area
+*
+   30 x(1) = (x0 + x(2)) / 2.
+      f(1) = fun(x(1))
+      do 35 j = 3, 15, 2
+         x(j) = (x(j-1) + x(j+1)) / 2.
+         f(j) = fun(x(j))
+   35 continue
+      nofun = nofun+8
+      step = (x(16) - x0) / 16.
+      qleft = ( w0*(f0+f(8)) + w1*(f(1)+f(7)) + w2*(f(2)+f(6)) +
+     +          w3*(f(3)+f(5)) + w4*f(4) ) * step
+      qright(lev+1) = ( w0*(f(8)+f(16)) + w1*(f(9)+f(15)) +
+     +                  w2*(f(10)+f(14)) + w3*(f(11)+f(13)) +
+     +                  w4*f(12) ) * step
+      qnow = qleft + qright(lev+1)
+      qdiff = qnow - qprev
+      area = area + qdiff
+*
+*     *** Step 4 *** Test of convergence for the interval
+*
+      esterr = abs(qdiff) / 1023.
+      tolerr = amax1(abserr, relerr*abs(area)) * (step/stone)
+      if (lev .lt. levmin) goto 50
+      if (lev .ge. levmax) goto 62
+      if (nofun .gt. nofin) goto 60
+      if (esterr .le. tolerr) goto 70
+*
+*     *** Step 5 *** Convergence is absend.
+*     Set the next interval.
+*
+   50 nim = 2*nim
+      lev = lev+1
+*
+*     Store for the future using the elements fall into the right
+*     half of the interval
+*
+      do 52 i = 1, 8
+         fsave(i,lev) = f(i+8)
+         xsave(i,lev) = x(i+8)
+   52 continue
+*
+*     Collect for the immediately using the elements fall into the left
+*     half of the interval
+*
+      qprev = qleft
+      do 55 i = 1, 8
+         j = -i
+         f(2*j + 18) = f(j+9)
+         x(2*j + 18) = x(j+9)
+   55 continue
+      goto 30
+*
+*     *** Step 6 *** "Fire part".
+*     The number of the function calls is close to overflow the
+*     established limit
+*
+   60 nofin = 2.*nofin
+      levmax = levout
+      flag = flag + (b-x0) / (b-a)
+      goto 70
+*
+*     The current limit value of the halving depth is equal to levmax
+*
+   62 flag = flag+1.
+*
+*     *** Step 7 *** Convergence for the interval have been occured.
+*     Add the next terms to the variable sums.
+*
+   70 result = result + qnow
+      errest = errest + esterr
+      cor11 = cor11 + qdiff/1023.
+*
+*     Set the next interval
+*
+   72 if (nim .eq. 2*(nim/2)) goto 75
+      nim = nim/2
+      lev = lev-1
+      goto 72
+   75 nim = nim+1
+      if (lev .le. 0) goto 80
+*
+*     Collect the elemets have been needed for the next interval
+*
+      qprev = qright(lev)
+      x0 = x(16)
+      f0 = f(16)
+      do 78 i = 1, 8
+         f(2*i) = fsave(i,lev)
+         x(2*i) = xsave(i,lev)
+   78 continue
+      goto 30
+*
+*     *** Step 8 *** Final operations and exit
+*
+   80 result = result + cor11
+*
+*     Supply the value of errest at least the round level
+*
+      if (errest .eq. 0.) return
+   82 temp = abs(result) + errest
+      if (temp .ne. abs(result)) return
+      errest = 2.*errest
+      goto 82
+      end
+
+*                                         @METAGS .minjGE
+*                                         12-09-98 06:47pm
+*--------------- minjGE ---------------
+*
+      integer function minjGE(np,v,xmin)
+      real v(np)
+      do i=1,np
+         n1 = i
+         if (v(i) .EQ. 0.) goto 100
+         goto 1000
+  100 enddo
+ 1000 do i=np,1,-1
+         n2 = i
+         if (v(i) .EQ. 0.) goto 200
+         goto 2000
+  200 enddo
+ 2000 continue
+      if (v(n1).LT.v(n2)) then
+         i1 = n1
+         i2 = n2
+         istep = 1
+      else
+         i1 = n2
+         i2 = n1
+         istep = -1
+      endif
+
+      do i=i1,i2,istep
+         if (v(i) .LT. xmin) then
+            goto 300
+         else
+            minjGE = i
+            RETURN
+         endif
+  300 enddo
+*     .. index did not found
+      minjGE = 0
+      END
+*                                         @METAGS .maxjLE
+*                                         12-09-98 06:47pm
+*--------------- maxjLE ---------------
+*
+      integer function maxjLE(np,v,xmax)
+      real v(np)
+      do i=1,np
+         n1 = i
+         if (v(i) .EQ. 0.) goto 100
+         goto 1000
+  100 enddo
+ 1000 do i=np,1,-1
+         n2 = i
+         if (v(i) .EQ. 0.) goto 200
+         goto 2000
+  200 enddo
+ 2000 continue
+      if (v(n1).LT.v(n2)) then
+         i1 = n2
+         i2 = n1
+         istep = -1
+      else
+         i1 = n1
+         i2 = n2
+         istep = 1
+      endif
+
+      do i=i1,i2,istep
+         if (v(i) .GT. xmax) then
+            goto 300
+         else
+            maxjLE = i
+            RETURN
+         endif
+  300 enddo
+*     .. index did not found
+      maxjLE = 0
+      END
+
+*                                         @METAGS .MfEsEp
+*                                         12-09-98 12:53pm
+*--------------- MfEsEp ---------------
+*
+      real function MfEsEp(Es,Ep,theta)
+      parameter (pi=3.141593)
+      real Mf,Mf2, Mp,mpi
+      parameter (Mp=.93827, mpi =.140)
+      MfEsEp = 0.
+      Mf2 = Mp**2 + 2.*Mp*(Es-Ep) - 2.*Es*Ep*(1.-cos(theta*pi/180.))
+      if (Mf2 .LE. (Mp+mpi)**2) RETURN
+      MfEsEp = sqrt(Mf2)
+      END
+QUIT
+RETURN
+
+*                                         @METAGS forRAN
+*--------------- forRAN ---------------
+*
+MACRO forRAN
+APPL COMIS QUIT
+*                                         @METAGS .EranIe
+*                                         12-17-98 05:32pm
+*--------------- EranIe ---------------
+*
+      real function EranIe(E0,Emin,bt)
+*
+*  Generates random energy with respect to Ie in range (Emin,E0-delta)
+*  Uses generalized Von Neumann acceptance-rejection method:
+*  Distribution density for Ie p(E)=C*Ie is represented as
+*  p(E) = p1(E)*f(E), where p1(E) is auxiliary distribution density.
+*  Here p1(E)=C1*(E0-Emin)*Ie(Emin)/(E0-E)
+*  C,C1 are normalizing constants.
+*  Function (E0-Emin)*Ie(Emin)/(E0-E) = Ie(E0,E,bt) at E=Emin
+*  f(E) has maximum C/C1 at E=Emin
+*  Random Etry for p1 is generated using inverted functions method.
+*  Condition to accept Etry is f(Etry) > (C/C1)*r2,
+*  where r2 is uniformly distributed in (0,1).
+*  To simplicity we use modified function f1(E)=(C/C1)*f(E).
+*  Condition with f1 is modified to f1(Etry) > r2
+*  The actual selection efficiency is about 98%
+*  Uses RNDM as a random generator
+*
+      IMPLICIT NONE
+      real E0,Emin,bt
+      real Ie, RNDM
+      real eps,delta,dE,r1,r2,f1,Etry
+      parameter (eps=1.E-6)
+
+      delta = eps*E0
+
+      if (E0-Emin .LT. delta) then
+         EranIe = E0-delta
+         RETURN
+      endif
+      
+      dE = E0-Emin
+  100 continue
+      r1 = RNDM(r1)
+*     .. random energy with respect to (E0-Emin)*Ie(E0,Emin,bt)/(E0-E)
+      Etry = E0 - dE*(delta/dE)**r1
+      r2 = RNDM(r2)
+      f1 = (E0-Etry)/dE * Ie(E0,Etry,bt)/Ie(E0,Emin,bt)
+      if (f1 .GT. r2) then
+*        .. Success: Etry is distributed with respect to Ie
+         EranIe = Etry
+      else
+*        .. generate new pair Etry,r2
+         goto 100
+      endif
+      END
+
+*                                         @METAGS .sRos
+*                                         11-25-98 03:58pm
+*--------------- sRos ---------------
+*
+      function sRos(Es,theta)
+*     .. Rosenbluth cross section, nb/sr (B.3). Es in GeV, theta in degree.
+      real Es,theta
+      real Mp
+      parameter (Mp=.93827)
+      parameter (GeV2nb=.38938e6)
+      parameter (alp=1./137.036, pi=3.141593)
+      thr2 = theta*pi/360.
+      sin2 = (sin(thr2))**2
+      cos2 = 1.-sin2
+      tan2 = sin2/cos2
+      recoil = 1.+(2.*Es/Mp)*sin2
+      Ep = Es/recoil
+      q2 = -4.*Es*Ep*sin2
+      bracket = F0(q2) + (2./Mp**2)*tan2*G0(q2)
+      sRos = GeV2nb*(alp*Ep/q2)**2/recoil*cos2*bracket
+      END
+
+*                                         @METAGS .H2strag
+*                                         12-21-98 09:45pm
+*--------------- H2strag ---------------
+*
+      real function H2strag(Es,Ep,theta,t)
+*     .. Effect of straggling on the radiative tail of elastic peak, (A.16)
+      real Es,Ep,theta,t
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use TradMT
+      real Mp
+      parameter (Mp=.93827)
+      parameter (pi=3.141593)
+      real Ie
+      costh = cos(theta*pi/180.)
+      h1 = 1./(1.-(Ep/Mp)*(1.-costh))
+      h2 = 1.+(Es/Mp)*(1.-costh)
+      H2strag = 0.
+      Epmax = Es/h2
+      if (Ep.GT.Epmax) RETURN
+*     .. get from common /TradMT/
+      b  = bMT
+      bw = bwMT
+
+      bt = b*t/2. + bw*tiwrad
+      sterm = Ie(Es,Ep*h1,bt) * h1**2 * sRos(Ep*h1,theta)
+      bt = b*t/2. + bw*tfwrad
+      pterm = Ie(Es/h2,Ep,bt) * sRos(Es,theta)
+      H2strag = sterm+pterm
+      END
+
+*                                         @METAGS .H2peak
+*                                         12-21-98 10:48pm
+*--------------- H2peak ---------------
+*
+      real function H2peak(Es,Ep,theta)
+*     .. H2 tail near the peak:
+*     .. only first term in Eq.(III.1) with T --> T+2tr
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use TradMT
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2 =.511e-3*.511e-3)
+      real Mp
+      parameter (Mp=.93827)
+      costh = cos(theta*pi/180.)
+      H2peak = 0.
+      Epmax = Es/(1.+(Es/Mp)*(1.-costh))
+      if (Ep.GT.Epmax) RETURN
+      q2 = -2.*Es*Ep*(1.-costh)
+      b = bMT
+      tr = (alp/b/pi)*(log(-q2/me2) - 1.)
+      t = Trad + 2.*tr
+      H2peak = H2strag(Es,Ep,theta,t)
+      END
+
+*                                         @METAGS .H2peakth
+*                                         12-21-98 10:48pm
+*--------------- H2peakth ---------------
+*
+      real function H2peakth(theta)
+*     .. H2 tail near the peak:
+*     .. only first term in Eq.(III.1) with T --> T+2tr
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      real Mp
+      parameter (Mp=.93827)
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2 =.511e-3*.511e-3)
+*      parameter (del=.0001)
+      parameter (del=.0001)
+*     .. get Es,Ep from common /MoTsai/
+      Es = EsMT
+      Ep = EpMT
+      costh = cos(theta*pi/180.)
+      H2peakth = 0.
+      Epmax = Es/(1.+(Es/Mp)*(1.-costh))
+      if (Ep.GT.Epmax) RETURN
+      if (Epmax-Ep .LT. del) Ep=Epmax-del
+      q2 = -2.*Es*Ep*(1.-costh)
+*     .. get b from common /TradMT/
+      b = bMT
+*     .. equivalent radiator thickness
+      tr = (alp/b/pi)*(log(-q2/me2) - 1.)
+      t = Trad + 2.*tr
+      H2peakth = H2strag(Es,Ep,theta,t)
+      END
+*                                         @METAGS .H2sp02
+*                                         12-22-98 01:54pm
+*--------------- H2sp02 ---------------
+*
+      real function H2sp02(Es,Ep,theta)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      COMMON   /EXPER/ accept,dEbeam,dEsp02
+      use MoTsai,TradMT,EXPER
+      real H2peakth
+      external H2peakth
+*     .. set KIPT liquid target parameters
+      call SetTradH
+*     .. save current /MoTsai/ settings
+      Es0 = EsMT
+      Ep0 = EpMT
+      theta0 = thetaMT
+*     .. load given /MoTsai/ settings
+      EsMT = Es
+      EpMT = Ep
+      thetaMT = theta
+*     .. integral over the acceptance
+      relerr = 1.e-6
+      abserr = 0.
+      th1 = theta - accept/2.
+      th2 = theta + accept/2.
+      call quanc8(H2peakth,th1,th2, abserr,relerr, S,errest,nofun,flag)
+      H2sp02 = S
+*      print*, 'errest,nofun,flag', errest,nofun,flag
+
+*     .. restore saved /MoTsai/ settings
+      EsMT = Es0
+      EpMT = Ep0
+      thetaMT = theta0
+*     .. restore Mo&Tsai target parameters
+      call SetTrad0
+      END
+
+*                                         @METAGS .IeE
+*                                         12-22-98 05:32pm
+*--------------- IeE ---------------
+*
+      real function IeE(E)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      real Ie
+      E0 = EpMT
+      t = Trad
+      b = bMT
+*      E0 = .590
+*      t = 0.01
+*      b = 4./3.
+      bt = b*t
+      IeE = Ie(E0,E,bt)
+      END
+*                                         @METAGS .pEtot
+*                                         12-22-98 05:42pm
+*--------------- pEtot ---------------
+*
+      real function pEtot(E0,E,t)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+      use MoTsai,TradMT
+      real IeE
+      external IeE
+      EpMT0 = EpMT
+      t0 = Trad
+      EpMT = E0
+      Trad = t
+      relerr = 1.e-6
+      abserr = 0.
+      call quanc8(IeE,E,E0, abserr,relerr, S,errest,nofun,flag)
+      pEtot = S
+      EpMT = EpMT0
+      Trad = t0
+      END
+
+*                                         @METAGS .H2hist
+*                                         12-15-98 03:40pm
+*--------------- H2hist ---------------
+*
+      SUBROUTINE H2hist(id1,id2,id3,npoint,Es,theta,Ec,Rcm)
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      COMMON /EXPER/ accept,dEbeam,dEsp02
+*      COMMON /CHAMB/ NCHAN,NCENTR,CWIDTH
+*      LOGICAL DEBUG
+*      COMMON /DEBUG/ DEBUG
+      use TradMT,EXPER,CHAMB,DEBUG
+      character*80 title
+      real Ie
+      LOGICAL XCROSS
+      real M
+      parameter (ntotmax=100000)
+      parameter (M=.93827)
+      parameter (dxbeam=5.)
+      parameter (alp=1./137.036, pi=3.141593)
+      real me,me2
+      parameter (me=.511e-3, me2 =.511e-3*.511e-3)
+      real X(96),Y(96),EX(96),EY(96)
+      real counts(96)
+
+      do i=1,96
+         counts(i) = 0.
+      enddo
+
+*     .. fill common CHAMB
+      call CHAMBER(96,52,2.)
+
+*     .. fit to experimental data
+      call FOCPAR(Ec, Dexp,Rfoc,amudeg)
+*     .. store current dispersion
+      Dold = GetDmm()
+*     .. set experimental dispersion
+      call SetDmm(Dexp)
+
+      b  = bMT
+      bw = bwMT
+
+      thr = theta*pi/180.
+      thrmin = (theta-accept/2.)*pi/180.
+      thrmax = (theta+accept/2.)*pi/180.
+*     .. the cosine of minimal angle
+      cosmin = cos(thrmin)
+
+      F = Ec*1000./17.61
+      Nc = NCENTR
+      ALPr = 0.
+      title = ' '
+      Ep = Es/(1.+(Es/M)*(1.-cos(thr)))
+      write(title,10) 1000.*Es, theta, 1000.*Ep, 1000.*Ec, INT(Rcm)
+   10 format(' Es =', F6.1,' MeV  [Q] =', F6.1,'^o!  Ep =',
+     &         F6.1, ' MeV  Ec =', F6.1,' MeV   Rcm =', I3,' cm')
+
+*     .. create energy hist
+      call HTEMPL(id1,F,Rcm,Nc,ALPr,title)
+*     .. create counts hist
+      call HBOOK1(id2,title,96,.5,96.5,0.)
+
+      call HREBIN(id1,X,Y,EX,EY,96,1,96)
+
+      Echmin = .001*(X(1)  - EX(1))
+      Echmax = .001*(X(96) + EX(96))
+
+*     .. the min energy can hit the chamber
+      Esmin = Echmin/(1.-(Echmin/M)*(1.-cosmin))
+
+      np = 0
+      ntot = 0
+*--
+ 1000 continue
+      ntot = ntot+1
+      if (ntot.EQ.ntotmax) RETURN
+*     .. incident beam energy
+      call RANNOR(r1,r2)
+      E1 = Es + dEbeam*Es*r1
+*     .. incident beam position
+      x0 = dxbeam*r2
+*      if(DEBUG)print*, 'E0,x0', E0,x0
+
+*     .. random energy before the scattering
+*      q2 = 2.*E1*Ep*(1.-cos(thr))
+*      tr = (alp/b)*(log(q2/me2)-1.)
+*      bt = b*(Trad/2.+tr) + bw*tiwrad
+      bt = b*Trad/2. + bw*tiwrad
+      E = EranIe(E1,Esmin,bt)
+      call HFILL(id3,1000.*E,0.,1.)
+*      if(DEBUG)print*, 'energy before the scattering', E
+
+*     .. random scattering angle
+      E1MeV = 1000.*E
+      call ROSRAN(E1MeV,thrmin,thrmax, E2MeV,thran)
+*     .. scattered energy
+      E2 = .001*E2MeV
+
+*     .. random energy after the scattering
+*      q2 = 2.*E1*E2*(1.-cos(thran))
+*      tr = (alp/b)*(log(q2/me2)-1.)
+*      bt = b*(Trad/2.+tr) + bw*tfwrad
+      bt = b*Trad/2. + bw*tfwrad
+      E = EranIe(E2,Echmin,bt)
+*      if(DEBUG)print*, 'energy after the scattering', E
+*      call DWAIT(' ')
+
+*     .. spectrometer error
+      call RANNOR(r1,r2)
+      E = E + dEsp02*E*r1
+
+      th0 = thran-thr
+      call RAY(E,Ec,x0,th0, x1,th1)
+      if (XCROSS(x1,th1,Rfoc,Rcm,ALPr, Xch,Nch)) then
+*        .. fill the counts hist
+         call HFILL(id2,REAL(Nch),0.,1.)
+*        .. store for energy hist
+         nE = 97-Nch
+         counts(nE) = counts(nE)+1.
+         np = np+1
+         if (np.EQ.100) then
+            eff = 100.*REAL(np)/REAL(ntot)
+            if (eff .LT. 50.) then
+               print 20, eff
+   20          format('After 100 events efficiency is', F5.1, '%')
+               print*, 'You are request totally', npoint, ' events'
+               print*, 'Enter new total amount you want.<CR>=unchanged'
+               read '(I10)', new
+               if (new.GT.0) npoint=new
+            endif
+         endif
+         if (MOD(np,1000).EQ.0) then
+            eff = 100.*REAL(np)/REAL(ntot)
+            print 30, np, eff
+   30       format('Processed', I7, ' events. Efficiency is', F5.1, '%')
+         endif
+*         if(DEBUG)print*, 'np =', np, ' ntot =', ntot
+      endif
+      if (np.LT.npoint) goto 1000
+*--
+
+      do i=1,96
+         j = 97-i
+         dE = 2.*EX(j)
+         counts(i) = counts(i)/dE
+      enddo
+      call HPAK(id1,counts)
+
+*     .. restore old dispersion
+      call SetDmm(Dold)
+
+      print*, 'Spent ntot =', ntot,' electrons for np =', np,' events'
+      END
+
+*                                         @METAGS .H2radiat
+*                                         12-15-98 03:40pm
+*--------------- H2radiat ---------------
+*
+      SUBROUTINE H2radiat(id1,id2,id3,npoint,Es,theta,Ec,Rcm)
+*      COMMON /TradMT/ Trad,tiwrad,tfwrad, Ztar,Zwin, bMT,bwMT
+*      COMMON /EXPER/ accept,dEbeam,dEsp02
+*      COMMON /CHAMB/ NCHAN,NCENTR,CWIDTH
+*      LOGICAL DEBUG
+*      COMMON /DEBUG/ DEBUG
+      use TradMT,EXPER,CHAMB,DEBUG
+      character*80 title
+      real Ie
+      LOGICAL XCROSS
+      real M
+      parameter (ntotmax=100000)
+      parameter (M=.93827)
+      parameter (dxbeam=5.)
+      parameter (alp=1./137.036, pi=3.141593)
+*      real me,me2
+*      parameter (me=.511e-3, me2 =.511e-3*.511e-3)
+      real X(96),Y(96),EX(96),EY(96)
+      real counts(96)
+
+      do i=1,96
+         counts(i) = 0.
+      enddo
+
+*     .. fill common CHAMB
+      call CHAMBER(96,52,2.)
+
+*     .. fit to experimental data
+      call FOCPAR(Ec, Dexp,Rfoc,amudeg)
+*     .. store current dispersion
+      Dold = GetDmm()
+*     .. set experimental dispersion
+      call SetDmm(Dexp)
+
+      b  = bMT
+      bw = bwMT
+
+      thr = theta*pi/180.
+      thrmin = (theta-accept/2.)*pi/180.
+      thrmax = (theta+accept/2.)*pi/180.
+*     .. the cosine of minimal angle
+      cosmin = cos(thrmin)
+
+      F = Ec*1000./17.61
+      Nc = NCENTR
+      ALPr = 0.
+      title = ' '
+      Ep = Es/(1.+(Es/M)*(1.-cos(thr)))
+      write(title,10) 1000.*Es, theta, 1000.*Ep, 1000.*Ec, INT(Rcm)
+   10 format(' Es =', F6.1,' MeV  [Q] =', F6.1,'^o!  Ep =',
+     &         F6.1, ' MeV  Ec =', F6.1,' MeV   Rcm =', I3,' cm')
+
+*     .. create energy hist
+      call HTEMPL(id1,F,Rcm,Nc,ALPr,title)
+*     .. create counts hist
+      call HBOOK1(id2,title,96,.5,96.5,0.)
+
+      call HREBIN(id1,X,Y,EX,EY,96,1,96)
+
+      Echmin = .001*(X(1)  - EX(1))
+      Echmax = .001*(X(96) + EX(96))
+
+*     .. the min energy can hit the chamber
+      Esmin = Echmin/(1.-(Echmin/M)*(1.-cosmin))
+
+      np = 0
+      ntot = 0
+*--
+ 1000 continue
+      ntot = ntot+1
+      if (ntot.EQ.ntotmax) RETURN
+*     .. incident beam energy
+      call RANNOR(r1,r2)
+      E0 = Es + dEbeam*Es*r1
+*     .. incident beam position
+      x0 = dxbeam*r2
+*      if(DEBUG)print*, 'E0,x0', E0,x0
+
+*     .. random energy before the scattering
+      bt = b*Trad/2. + bw*tiwrad
+      E = EranIe(E0,Esmin,bt)
+      call HFILL(id3,1000.*E,0.,1.)
+*      if(DEBUG)print*, 'energy before the scattering', E
+
+*     .. random scattering angle
+      E1MeV = 1000.*E
+      call ROSRAN(E1MeV,thrmin,thrmax, E2MeV,thran)
+*     .. scattered energy
+      E0 = .001*E2MeV
+
+*     .. random energy after the scattering
+      bt = b*Trad/2. + bw*tfwrad
+      E = EranIe(E0,Echmin,bt)
+*      if(DEBUG)print*, 'energy after the scattering', E
+*      call DWAIT(' ')
+
+*     .. spectrometer error
+      call RANNOR(r1,r2)
+      E = E + dEsp02*E*r1
+
+      th0 = thran-thr
+      call RAY(E,Ec,x0,th0, x1,th1)
+      if (XCROSS(x1,th1,Rfoc,Rcm,ALPr, Xch,Nch)) then
+*        .. fill the counts hist
+         call HFILL(id2,REAL(Nch),0.,1.)
+*        .. store for energy hist
+         nE = 97-Nch
+         counts(nE) = counts(nE)+1.
+         np = np+1
+         if (np.EQ.100) then
+            eff = 100.*REAL(np)/REAL(ntot)
+            if (eff .LT. 50.) then
+               print 20, eff
+   20          format('After 100 events efficiency is', F5.1, '%')
+               print*, 'You are request totally', npoint, ' events'
+               print*, 'Enter new total amount you want.<CR>=unchanged'
+               read '(I10)', new
+               if (new.GT.0) npoint=new
+            endif
+         endif
+         if (MOD(np,1000).EQ.0) then
+            eff = 100.*REAL(np)/REAL(ntot)
+            print 30, np, eff
+   30       format('Processed', I7, ' events. Efficiency is', F5.1, '%')
+         endif
+*         if(DEBUG)print*, 'np =', np, ' ntot =', ntot
+      endif
+      if (np.LT.npoint) goto 1000
+*--
+
+      do i=1,96
+         j = 97-i
+         dE = 2.*EX(j)
+         counts(i) = counts(i)/dE
+      enddo
+      call HPAK(id1,counts)
+
+*     .. restore old dispersion
+      call SetDmm(Dold)
+
+      print*, 'Spent ntot =', ntot,' electrons for np =', np,' events'
+      END
+
+*                                      @METAGS .ROSRAN
+*---------- ROSRAN ----------
+*
+      SUBROUTINE ROSRAN(E1MeV,thmin,thmax, E2MeV,theta)
+*
+*     Generates random angle from thmin to thmax
+*     in accordance to Rosenbluth cross section
+*     for incident electron energy E1MeV
+*     Uses Von Neumann acceptance-rejection method
+*     Uses RNDM as a random generator and
+*          ROS as a Rosenbluth (e,p) cross section
+*     E1MeV,E2MeV in MeV
+*     thmin,thmax,theta in rad
+*
+      IMPLICIT NONE
+      real E1MeV,thmin,thmax, E2MeV,theta
+      real RNDM
+      real E1GeV,E2GeV,ROSP,ROSN,dtheta,smax,sros,sran
+      real dummy
+      save dummy
+*
+      data dummy /1./
+      data nhit,miss /0,0/
+*
+      dtheta = thmax-thmin
+      E1GeV = .001*E1MeV
+*     .. max value
+      call ROS(E1GeV,thmin, E2GeV,ROSP,ROSN)
+      smax = ROSP
+ 1000 continue
+*     .. choose some angle
+      dummy = dummy+1.
+      theta = thmin + dtheta*RNDM(dummy)
+      call ROS(E1GeV,theta, E2GeV,ROSP,ROSN)
+      sros = ROSP
+*     .. get some random 0..smax
+      dummy = dummy+1.
+      sran = smax*RNDM(dummy)
+      if (sran.LE.sros) then
+*        .. success
+         E2MeV = 1000.*E2GeV
+      else
+*        .. try another angle
+         goto 1000
+      endif
+      END
+QUIT
+RETURN
+
+*                                         @METAGS forF0G0
+*--------------- forF0G0 ---------------
+*
+MACRO forF0G0
+APPL COMIS QUIT
+*                                         @METAGS .F0
+*                                         11-25-98 03:47pm
+*--------------- F0 ---------------
+*
+      function F0(q2)
+*     .. metric: q2 < 0
+      real Mp
+      parameter (Mp=.93827)
+      Ge = (1-q2/.71)**(-2)
+      Gm = 2.793*Ge
+      tau = -q2/(4.*Mp**2)
+      F0 = 4.*(Ge**2 + tau*Gm**2)/(1.+tau)
+      END
+*                                         @METAGS .G0
+*                                         11-25-98 03:47pm
+*--------------- G0 ---------------
+*
+      function G0(q2)
+*     .. metric: q2 < 0
+      Ge = (1-q2/.71)**(-2)
+      Gm = 2.793*Ge
+      G0 = -q2*Gm**2
+      END
+
+*                                         @METAGS .dsjdo
+*                                         11-25-98 03:58pm
+*--------------- dsjdo ---------------
+*
+      function dsjdo(Es,theta,M,F0,G0)
+*     .. elastic cross section, (B.3)
+      real Es,theta,M
+      parameter (alp=1./137.036, pi=3.141593)
+      thr2 = theta*pi/360.
+      sin2 = (sin(thr2))**2
+      cos2 = 1.-sin2
+      tan2 = sin2/cos2
+      recoil = 1.+(2.*Es/M)*sin2
+      Ep = Es/recoil
+      q2 = -4.*Es*Ep*sin2
+      bracket = F0(q2) + (2./M**2)*tan2*G0(q2)
+      dsjdo = (alp*Ep/q2)**2/recoil*cos2*bracket
+      END
+
+*                                         @METAGS .F0delta
+*                                         11-25-98 03:47pm
+*--------------- F0delta ---------------
+*
+      function F0delta(q2,Mf2)
+*--      ignore the Gamma width
+*     .. metric: q2 < 0
+      real q2,Mf2
+      real    Mf,Mp, M33, mpi
+      real       Mp2,M332,mpi2
+      parameter (Mp =.93827,        M33 =1.236,       mpi =.140)
+      parameter (Mp2=.93827*.93827, M332=1.236*1.236, mpi2=.140*.140)
+      F0delta = 0
+      if (Mf2 .LE. (Mp+mpi)**2) RETURN
+      Mf = sqrt(Mf2)
+*      px2 = ((Mf2-Mp2+mpi2)/(2.*Mf))**2 - mpi2
+*      if (px2 .LE. 0.) RETURN
+*      px = sqrt(px2)
+*      Gamma = .1293*(.85*px/mpi)**3 / (1.+(.85*px/mpi)**2)
+      QQ2  = (Mf2-q2-Mp2)**2/(2.*Mp)**2 - q2
+      QQx2 = QQ2*Mp2/Mf2
+      q = sqrt(-q2)
+      C32 = (1/Mp2)*2.05**2*exp(-6.3*q) * (1.+9.0*q)
+      Eix = (Mf2+Mp2-q2)/(2.*Mf)
+*--
+*      ignore the Gamma width:
+*      ы(Mf2-M332) <-- (1./pi)*Gamma*M33/((Mf2-M332)**2 + (Gamma*M33)**2)
+*--
+*      pi = acos(-1.)
+*      Breit = (1./pi) * Gamma*M33*Mf / ((Mf2-M332)**2 + Gamma**2*M332)
+*      G1 = Breit*QQx2*2.*C32*(Eix+Mp)/(3.*Mp)
+*      G2 = (-q2/QQ2)*G1
+      G1 = (4./3.)*M33*QQx2*2.*C32*(Eix+Mp)
+      F0delta = G1 / (Mp2*QQ2/(-q2))
+      END
+*                                         @METAGS .G0delta
+*                                         11-25-98 03:47pm
+*--------------- G0delta ---------------
+*
+      function G0delta(q2,Mf2)
+*--      ignore the Gamma width
+*     .. metric: q2 < 0
+      real q2,Mf2
+      real    Mf,Mp, M33, mpi
+      real       Mp2,M332,mpi2
+      parameter (Mp =.93827,        M33 =1.236,       mpi =.140)
+      parameter (Mp2=.93827*.93827, M332=1.236*1.236, mpi2=.140*.140)
+      G0delta = 0
+      if (Mf2 .LE. (Mp+mpi)**2) RETURN
+      Mf = sqrt(Mf2)
+*      px2 = ((Mf2-Mp2+mpi2)/(2.*Mf))**2 - mpi2
+*      if (px2 .LE. 0.) RETURN
+*      px = sqrt(px2)
+*      Gamma = .1293*(.85*px/mpi)**3 / (1.+(.85*px/mpi)**2)
+      QQ2  = (Mf2-q2-Mp2)**2/(2.*Mp)**2 - q2
+      QQx2 = QQ2*Mp2/Mf2
+      q = sqrt(-q2)
+      C32 = (1/Mp2)*2.05**2*exp(-6.3*q) * (1.+9.0*q)
+      Eix = (Mf2+Mp2-q2)/(2.*Mf)
+*--
+*      ignore the Gamma width:
+*      ы(Mf2-M332) <-- (1./pi)*Gamma*M33/((Mf2-M332)**2 + (Gamma*M33)**2)
+*--
+*      pi = acos(-1.)
+*      Breit = (1./pi) * Gamma*M33*Mf / ((Mf2-M332)**2 + Gamma**2*M332)
+*      G1 = Breit*QQx2*2.*C32*(Eix+Mp)/(3.*Mp)
+*      G2 = (-q2/QQ2)*G1
+      G1 = (4./3.)*M33*QQx2*2.*C32*(Eix+Mp)
+      G0delta = G1
+      END
+
+*                                         @METAGS .sRos
+*                                         11-25-98 03:58pm
+*--------------- sRos ---------------
+*
+      function sRos(Es,theta)
+*     .. Rosenbluth cross section, nb/sr (B.3). Es in GeV, theta in degree.
+      real Es,theta
+      real Mp
+      parameter (Mp=.93827)
+      parameter (GeV2nb=.38938e6)
+      parameter (alp=1./137.036, pi=3.141593)
+      thr2 = theta*pi/360.
+      sin2 = (sin(thr2))**2
+      cos2 = 1.-sin2
+      tan2 = sin2/cos2
+      recoil = 1.+(2.*Es/Mp)*sin2
+      Ep = Es/recoil
+      q2 = -4.*Es*Ep*sin2
+      bracket = F0(q2) + (2./Mp**2)*tan2*G0(q2)
+      sRos = GeV2nb*(alp*Ep/q2)**2/recoil*cos2*bracket
+      END
+QUIT
+RETURN
+
+*                                         @METAGS FORrest
+*--------------- FORrest ---------------
+*
+MACRO FORrest
+APPL COMIS QUIT
+*                                         @METAGS .Esmin
+*                                         12-04-98 09:35pm
+*--------------- Esmin ---------------
+*
+      function Esmin(Ep)
+*      real Mtar,mthr
+*      COMMON /MoTsai/ EsMT,EpMT,thetaMT,Mtar,mthr, spMT,trMT,fsMT,fpMT
+      use MoTsai
+      parameter (pi=3.141593)
+      real mpi,mpi2
+      parameter (mpi =.140, mpi2=.140*.140)
+      real Mp
+      parameter (Mp=.93827)
+      costheta = cos(thetaMT*pi/180.)
+      Esmin = (mpi2+2.*Mp*mpi+2.*Mp*Ep)/(2.*Mp - 2.*Ep*(1-costheta))
+      END
+
+*                                         @METAGS .sdelta
+*                                         11-25-98 03:58pm
+*--------------- sdelta ---------------
+*
+      function sdelta(Es,Ep,theta)
+*     .. ep cross section of delta-resonance, nb/GeV/sr.
+*     .. Es,Ep - in GeV, theta - in degrees.
+      real Mp,Mf2
+      parameter (alp=1./137.036, Mp=.93827)
+      parameter (GeV2nb=.38938e6)
+      sdelta = 0.
+      if (Ep.GE.Es) RETURN
+      pi = acos(-1.)
+      thr2 = theta*pi/360.
+      sin2 = (sin(thr2))**2
+      cos2 = 1.-sin2
+      tan2 = sin2/cos2
+      q2 = -4.*Es*Ep*sin2
+      Mf2 = Mp**2 + 2.*Mp*(Es-Ep) + q2
+
+      call G1G2(q2,Mf2,G1,G2)
+      Fdelta = (2./Mp)*G2
+      Gdelta = 2.*Mp*G1
+      bracket = Fdelta + (2./Mp**2)*tan2*Gdelta
+      sdelta = GeV2nb * 2.*(alp*Ep/q2)**2*Mp*cos2*bracket
+      END
+
+*                                         @METAGS .G1G2
+*                                         11-25-98 03:47pm
+*--------------- G1G2 ---------------
+*
+      SUBROUTINE G1G2(q2,Mf2,G1,G2)
+*     .. (B1) with (III.5)-(III.9)
+*     .. Mo & Tsai metric: q2 < 0. Main dimension - GeV.
+      IMPLICIT NONE
+      real q2,Mf2
+*     .. x denotes variables in the rest system of final hadron state (Nx)
+      real px,px2, Gamma, QQ2,QQx2, q, C32, Eix, pi, Breit, G1,G2
+      real pxR
+      real    Mf,Mp, M33, mpi
+      real       Mp2,M332,mpi2
+      parameter (Mp =.93827,        M33 =1.236,       mpi =.140)
+      parameter (Mp2=.93827*.93827, M332=1.236*1.236, mpi2=.140*.140)
+*      integer iprint
+*      real q2cur,Mf2cur
+*      data q2cur,Mf2cur /0.,0./
+
+      G1 = 0.
+      G2 = 0.
+      if (Mf2.LE.(Mp+mpi)**2) RETURN
+      Mf = sqrt(Mf2)
+*     .. px is momentum of decaing pion in the rest system of Nx
+      px2 = (Mf2-Mp2+mpi2)**2/(4.*Mf2) - mpi2
+      px = sqrt(px2)
+      Gamma = .1293*(.85*px/mpi)**3 / (1.+(.85*px/mpi)**2)
+**--
+**        another form of Gamma(Mf2) from
+**        A.J.Dufner and Y.S.Tsai, Phys.Rev.,168,1801(1968)
+**        The metric of Dufner & Tsai the same:
+**        q2 < 0, e**2/4*pi = alpha, r0*me = alpha.
+**        Notice: both forms are agree very well with examples from
+**        Dufner & Tsai and contradict with Mo & Tsai examples
+**        of "Non-Radiative" curve at low Ep slope of 1236.
+**        May be they included the higher resonances 1525 and 1688 MeV?
+**
+**        Here pxR is the value of px at the resonance;
+**        i.e., they let Mf=M33=1.236 GeV
+*      pxR = sqrt( (M332-Mp2+mpi2)**2/(4.*M332) - mpi2 )
+*      Gamma = .12*(px/pxR)**3
+**--
+*     .. QQ is 3-momentum transferred in lab, QQ2=(Es-Ep)**2-q2
+      QQ2  = (Mf2-q2-Mp2)**2/(2.*Mp)**2 - q2
+*     .. QQx is 3-momentum transferred in the rest system of Nx
+      QQx2 = QQ2*Mp2/Mf2
+      q = sqrt(-q2)
+      C32 = (1./Mp2) * 2.05**2 * exp(-6.3*q) * (1.+9.0*q)
+*     .. Eix is energy of initial proton in the rest system of Nx
+      Eix = (Mf2+Mp2-q2)/(2.*Mf)
+      pi = acos(-1.)
+      Breit = (1./pi) * Gamma*M33 / ((Mf2-M332)**2 + (Gamma*M33)**2)
+      G1 = Breit*Mf*QQx2*2.*C32*(Eix+Mp)/(3.*Mp)
+      G2 = (-q2/QQ2)*G1
+
+*      iprint=0
+*      if ((iprint.EQ.1) .AND. ((q2.NE.q2cur) .OR. (Mf2.NE.Mf2cur))) then
+*         q2cur = q2
+*         Mf2cur = Mf2
+**         print*, 'Mp,M33,mpi:', Mp,M33,mpi
+**         print*, 'Mp2,M332,mpi2:', Mp2,M332,mpi2
+*         print*, 'q2,Mf:', q2,Mf
+*         print*, 'Eix, px2:', Eix,px2
+*         print*, '--> Gamma, Breit:', Gamma, Breit
+*         print*, 'QQ2,QQx2,C32: ', QQ2,QQx2,C32
+*         print*, 'G1,G2:', G1,G2
+*      endif
+      END
+
+*                                         @METAGS .ROSTOT
+*                                         11-23-98 09:22pm
+*--------------- ROSTOT ---------------
+*
+      SUBROUTINE ROSTOT(E1,TETA,PROTON,NEUTR, EH,ROSP,ROSN,ROSPN)
+*
+*   This subroutine calculate Rosenbluth cross sections
+*   for proton,neutron and tney sum in nb/sr.
+*   Inputing parameters(all REAL*4):
+*       E1-energy of incidet electron,GeV;
+*       TETA-scatering angle,rad;
+*    if PROTON=1.,calculate Rosenbluth for proton;
+*    if NEUTR=1.,calculate rosenbluth for neutron;
+*   Outputing parametres(all REAL*4):
+*     EH- Position of elastic peak for proton
+*       ROSP-Rosenbluth for proton(if at least PROTON=1.);
+*       ROSN-Rosenbluth for neutron(if at least NEUTR=1.);
+*       ROSPN-sum Rosenbluths for p and n (if PROTON=1.and NEUTR=1.);    
+*               30-jun-89, A.Zatserkljanyi
+*
+      REAL MOTT,PROTON,NEUTR,M,MAGP2,MAGN2
+*
+*      DATA M/.93828/,MAGP2/7.800/,MAGN2/3.658/,CONST/5.1818E-33/
+      DATA M/.93828/,MAGP2/7.800/,MAGN2/3.658/,CONST/5.1818/
+*
+      ROSP=0.
+      ROSN=0.
+      ROSPN=0.
+*
+      SIN2=SIN(TETA/2.)**2
+      COS2=COS(TETA/2.)**2
+      TAN2=SIN2/COS2
+*
+      MOTT=CONST/(E1**2)*COS2/SIN2**2
+*
+      EH=E1/(1.+2.*E1*SIN2/M)
+      QM2=4.*E1*EH*SIN2
+      TAU=QM2/4./M**2
+      G2=(1./(1+QM2/0.71)**2)**2
+*
+      MAGP2=MAGP2*PROTON
+      MAGN2=MAGN2*NEUTR
+      GPE2=G2
+      GPM2=MAGP2*G2
+      GNE2=0.
+      GNM2=MAGN2*G2
+*
+      SIGNS=MOTT*EH/E1
+      ROSP=SIGNS*((GPE2+TAU*GPM2)/(1.+TAU)+2.*TAU*GPM2*TAN2)
+      ROSN=SIGNS*((GNE2+TAU*GNM2)/(1.+TAU)+2.*TAU*GNM2*TAN2)
+      ROSPN=ROSP+ROSN
+*
+      RETURN
+      END
+
+*                                         @METAGS .D2TOTTIT
+*                                         11-19-98 04:53pm
+*--------------- D2TOTTIT ---------------
+*
+      function D2TOTTIT(E0,E,THETA)
+*     .. D2TOTTIT in nb
+*
+*   Programm calculation cross section for deutron,namely:
+*   cross section of delta exitation(in approximation free nucleons),
+*   cross section of quasielastic peak(Durand)
+*   and they sum.
+*            30-jun-89, A.Zatserkljanyi.
+*
+      REAL MOTT,PROTON,NEUTR,MATR,K,KMEV
+      REAL M,MD,MPION,KPION,KDELTA
+*
+      DATA PROTON,NEUTR/1.,1./
+      DATA M/.93828/,MD/1.87563/,MPION/.1396/,KPION/.150/
+
+*      print*, 'D2TOTTIT: E0,E,THETA:', E0,E,THETA
+*      call WAIT('D2TOTTIT begin')
+      
+      D2TOTTIT = 0.
+
+      PI=acos(-1.)
+
+      WR=1.236 !| will be inputed in future,disarable
+      KDELTA=.345
+*
+      TETA=THETA*PI/180.
+      E1 = .001*E0
+      E2 = .001*E
+
+*     .. elastic peak
+      Eel = E1/(1.+(2.*E1/MD)*(sin(TETA/2.))**2)
+      if (E2.GE.Eel) then
+*         print*, 'D2TOTTIT: E2 > Eel: ', E2*1000., ' >', Eel*1000.
+         RETURN
+      endif
+*
+      CALL ROSTOT(E1,TETA,PROTON,NEUTR, EH,ROSP,ROSN,ROSPN)
+*
+      SIN2=SIN(TETA/2.)**2
+      ETAH=1.+2.*E1*SIN2/M
+      ETAD=1.+2.*E1*SIN2/MD
+*      EH=E1/ETAH   ! Calculated by subroutine ROSTOT
+      ED=E1/ETAD
+      EDELTA=(E1-KDELTA)/ETAH
+      EPION=(E1-KPION)/ETAH
+*
+*
+*   BEGINING OF CALCULATION
+*
+      SDUR = 0.
+      SDUR = DURAND(E1,E2,TETA)
+      SDUR=SDUR*ROSPN ! cm2/GeV/sr
+      SDUR=SDUR*(E1/E2) ! For omitting of recoil
+
+
+      CALL DELTATIT(E1,E2,TETA,WR,  K,PRES,PNONR,PDELTA)
+*
+*   We are assumed,that contributions in delta region
+*   of proton and neutron are equal.
+*
+      D2RES =2.*PRES
+      D2NONR=2.*PNONR
+      D2DELT=2.*PDELTA
+      QM2=4.*E1*E2*SIN2
+      Q=SQRT(QM2+(E1-E2)**2)
+      E2MEV=E2*1000.
+      ELOSS=(E1-E2)*1000. ! ELOSS in MeV !!!
+      KMEV=K*1000.
+
+**     .. delta from Mo & Tsai
+*      d2delt = 2.*delta(E1,E2,THETA)
+*
+      SUM=SDUR+D2DELT      
+*      print*, 'D2TOTTIT: SUM =', SUM
+      D2TOTTIT=SUM
+      END
+
+*                                         @METAGS .DELTATIT
+*                                         11-23-98 09:23pm
+*--------------- DELTATIT ---------------
+*
+      SUBROUTINE DELTATIT(E1,E2,TETA,WR,  K,PRES,PNONR,PDELTA)
+*
+*   This subroutine calculate cross section of
+*   delta exitation on proton.
+*   Inputing parameters(all REAL*4):
+*     E1-energy of incident electron,GeV;
+*     E2-eneggy of scattering electron,GeV;
+*     TETA-scattering angle,rad;
+*     WR-invarient massa of delta resonance,GeV.
+*   Outputing parameters(all REAL*4):
+*     K-energy of equvalence photon,GeV;
+*     PRES-resonance term,cm2/GeV/sr;
+*     PNONR-nonresonance term,cm2/GeV/sr;
+*     PDELTA-total cross section=PRES+PNONR,cm2/GeV/sr
+*              30-jun-89, A.Zatserkljanyi
+*
+      REAL M,M2,MPION,MPION2,K
+*
+      DATA M/.9389/,MPION/.1396/
+      DATA CGAMMA/3.69688E-4/,CRES/.0917012/,ACONST/.128/
+      DATA A0/39./    ! in mkb/(MeV**(1/2.))
+      DATA A1/-0.13/  ! in mkb/(MeV**(3/2.))
+*      A0=1.233E-27   !in cm2/(GeV**(1/2.)
+*      A1=-4.111E-27  !in cm2/(GeV**(3/2.)
+      A0=1.233E6      !in nb/(GeV**(1/2.)
+      A1=-4.111E6     !in nb/(GeV**(3/2.)
+*
+      PRES=0.
+      PNONR=0.
+*
+      SIN2=SIN(TETA/2.)**2
+      TAN2=SIN2/(1.-SIN2)
+*
+      M2=M**2
+      MPION2=MPION**2
+      ELOSS=E1-E2
+      QM2=4.*E1*E2*SIN2
+      Q2=QM2+ELOSS**2
+      W2=2.*M*ELOSS+M2-QM2
+      W=SQRT(W2)
+*
+      K=(W2-M2)/(2.*M)
+      WPION=M+MPION
+      IF(W.LT.WPION) GOTO 10000
+*
+      QCM2=((W2+MPION**2-M2)/(2.*W))**2-MPION2
+      QCM=SQRT(QCM2)
+*
+      EPS=1./(1.+2.*Q2/QM2*TAN2)
+      GAMMA=CGAMMA*(E2/E1)*(K/QM2)/(1.-EPS)
+*
+      C=0.85*QCM/MPION
+      GW=ACONST*(C**3)/(1.+C**2)
+      GW2=GW**2
+      SIND33=.25*GW2/((W-WR)**2+.25*GW2)
+*
+      G=3.02/(1.+QM2/.64)**2
+      G2=G**2
+*
+*  RESONANSES TERM
+*
+      PRES=GAMMA*CRES*Q2*SIND33*G2/(W*(W2-M2)*GW)
+*      PRES=3.894E-28*PRES ! in cm2/GeV/sr
+      PRES=3.894E5*PRES ! in nb/GeV/sr
+*
+*  NONRESONANSES TERM
+*
+      DW=W-WPION
+      C=(1+QM2/.55)**2
+      C0=A0/C
+      C1=A1/C	
+*
+      PNONR=GAMMA*SQRT(DW)*(C0+C1*DW)
+*
+10000 PDELTA=PRES+PNONR
+      if (PDELTA.LT.0.) PDELTA=0.
+      RETURN
+      END
+
+*                                         @METAGS .SFUN
+*                                         11-21-98 03:07am
+*--------------- SFUN ---------------
+*
+      function SFUN(E0,Ee,THETA)
+      SFUN = D2TOT(E0,Ee,THETA)
+      END
+
+*                                         @METAGS .SRAD
+*                                         11-19-98 04:53pm
+*--------------- SRAD ---------------
+*
+      real function SRAD(E)
+      IMPLICIT double precision (A-H,O-Z)
+      real E
+      real Ee0
+COMMON   /KINEMA/ E0,THETA,Ee
+      use KINEMA
+      real RADIATE,SFUN
+      external SFUN
+      Ee0 = Ee
+*      print*, 'SRAD: E =', E
+      SRAD = RADIATE(SFUN,E0,E,THETA)
+      Ee  = Ee0
+      END
+
+*                                         @METAGS .RADIATE
+*                                         11-20-98 07:54pm
+*--------------- RADIATE ---------------
+*
+      real function RADIATE(SFUN,E0,Ee,THETA)
+      IMPLICIT double precision (A-H,O-Z)
+      real SFUN,E0,Ee,THETA
+      external SFUN
+
+      W = E0 - Ee
+      SIGNR = SFUN(E0,Ee,THETA)
+*      print*, 'Ee,W, SIGNR =', Ee,W, ' : ', SIGNR
+
+      ALPH=1./137.03604
+      EMASS=0.511
+      DEL=10.
+      PI=ACOS(-1.)
+      PREC=.0005
+      THR=THETA*PI/180.  
+      ARG=COS(THR/2.)**2
+      SPENCE=PI**2/6.-LOG(ARG)*LOG(1.-ARG)
+      DO 10 NSP=1,50  
+         SPENCE=SPENCE-ARG**NSP/FLOAT(NSP)**2
+ 10   continue
+      QMS=4.*E0*(E0-W)*SIN(THR/2.)**2
+      D1=(2.*ALPH/PI)*(LOG(QMS/EMASS**2)-1.)
+      D2=13.*(LOG(QMS/EMASS**2)-1.)/12.-17./36.-0.5*(PI**2/6.-SPENCE) 
+      D2=D2*(2.*ALPH/PI)
+      EBAR=SQRT(E0*(E0-W))
+      SIGRAD=SIGNR*(1.+D2)*EXP(-D1*LOG(EBAR/DEL)) 
+*C     PRINT 20,D1,D2  
+* 20   FORMAT(' DELTA1 AND DELTA2 = ',2E14.6)
+      X1=0.
+      X2=W-DEL
+
+*      call WAIT('RADIATE: before call ROM')
+      CALL ROM(SFUN,W,X1,X2,PREC,ANS,KF)
+      ANS=ANS*1.D-26
+*     .. Convert ANS from 1/F**2 in nb
+      ANSnb = ANS*1.D7
+      IFLAG=0
+      ERR=0.
+*C     PRINT 25,X1,X2,PREC,ANS,ERR
+* 25   FORMAT(' X1,X2,PREC,ANS,ERR = ',5E10.3)
+*C     PRINT 30,KF,IFLAG
+* 30   FORMAT(' KF,IFLAG = ',2I5)
+      SIGRAD=SIGRAD+ANSnb
+*      print*, 'RADIATE: SIGNR,SIGRAD =', SIGNR,SIGRAD
+      RADIATE = SIGRAD
+      RETURN
+      END
+
+*                                         @METAGS .ROM
+*                                         11-20-98 07:55pm
+*--------------- ROM ---------------
+*
+      SUBROUTINE ROM(SFUN,W,A,B,EPS,ANS,K) 
+      IMPLICIT double precision (A-H,O-Z)
+C  ROMBERG METHOD OF INTEGRATION
+      real SFUN
+      external SFUN
+      DIMENSION WW(50,50)
+      H=B-A
+      K=0
+
+*      print*, 'ROM: A,B:', A,B
+*      call WAIT('ROM: before call VAL for A and B')
+      CALL VAL(SFUN,W,A,FA)
+      CALL VAL(SFUN,W,B,FB)
+
+      WW(1,1)=(FA+FB)*H/2. 
+
+    4 K=K+1
+      IF (K.GE.49) GOTO 5
+      H=H/2.
+      SIG=0.
+      M=2**(K-1)
+      DO 1 J=1,M
+         J1=2*J-1
+         X=A+FLOAT(J1)*H
+*         print*, 'X =', X
+*         call WAIT('ROM: before call VALD2TOT for X')
+         CALL VAL(SFUN,W,X,F)
+         SIG=SIG+F 
+    1 continue
+      WW(K+1,1)=WW(K,1)/2.+H*SIG
+      DO 2 L=1,K
+         IU=K+1-L
+         IV=L+1
+        WW(IU,IV)=(4.**(IV-1)*WW(IU+1,IV-1)-WW(IU,IV-1))/(4.**(IV-1)-1.)
+    2 continue
+      E=(WW(IU,IV)-WW(IU,IV-1))/WW(IU,IV)
+      IF(ABS(E)-EPS) 3,3,4
+    3 ANS=WW(1,IV)
+      RETURN
+    5 PRINT 100
+  100 FORMAT(' K OVERFLOW')
+      call MESS('*** ROM: ERROR')
+      stop
+      END
+
+*                                         @METAGS .VAL
+*                                         11-20-98 08:22pm
+*--------------- VAL ---------------
+*
+      SUBROUTINE VAL(SFUN,W,X,F)
+      IMPLICIT double precision (A-H,O-Z)
+COMMON   /KINEMA/ E0,THETA,Ee
+      use KINEMA
+      real SFUN, E1,E2
+
+      ALPH=1./137.03604
+      EMASS=.511
+      PI=ACOS(-1.)
+      THR=THETA*PI/180.
+
+*      print*, 'VAL: X,W=', X,W
+
+      E1 = E0
+      E2 = E1-X
+*      print*, 'VAL: call SFUN for E0,X'
+*      print*, 'E1,E2:', E1,E2
+      SIG1=SFUN(E1,E2,THETA)
+
+      E1 = E0-W+X
+      E2 = E1-X
+*      print*, 'VAL: call SFUN for E0-W+X, X'
+*      print*, 'E1,E2:', E1,E2
+      SIG2=SFUN(E1,E2,THETA)
+
+*      print*, 'VAL: SIG1,SIG2:', SIG1,SIG2
+      
+      E = E0
+
+      QMS1=4.*E*(E-X)*SIN(THR/2.)**2
+      QMS2=4.*(E-W+X)*(E-W)*SIN(THR/2.)**2
+      QMSBAR=SQRT(QMS1*QMS2)
+      F1=(LOG(QMS1/EMASS**2)-1.)/2./(E-X)**2
+      F1=F1*SIG1
+      F1=F1*ALPH*((E-X)**2+(E-W)**2)/(W-X)/PI 
+      F2=SIG2*(LOG(QMS2/EMASS**2)-1.)/2./E**2
+      F2=F2*ALPH*(E**2+(E-W+X)**2)/(W-X)/PI
+      D1=(2.*ALPH/PI)*(LOG(QMSBAR/EMASS**2)-1.)
+      D2=13.*(LOG(QMSBAR/EMASS**2)-1.)/12.-17./36.
+      D2=(2.*ALPH/PI)*(D2-0.5*(PI**2/6.-SPENCE))
+      EBAR=SQRT((E-X)*(E-W))
+      F=(F1+F2)*(1.+D2)*((W-X)/EBAR)**D1
+      RETURN
+      END
+QUIT
+RETURN
+
+*                                         @METAGS vrad
+*--------------- vrad ---------------
+*
+MACRO vrad Ep1=17.3 Ep2=18.5 Es=20 theta=5 del=0.010 step=.01
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] Ep1=17.3 Ep2=18.3 Es=20 theta=5 del=0.010 step=.1
+   stopm
+endif
+
+np=1000
+sigma Ep=array([np])*0
+sigma Snon=array([np])*0
+sigma Srad=array([np])*0
+*sigma Urad=array([np])*0
+
+* set Mo & Tsai kinematic (optional Ep)
+call SetMTkin($RSIGMA([Es]),0.,$RSIGMA([theta]),.93827,.140)
+
+Ep = [Ep1]
+do i=1,[np]
+   fcall = delta($RSIGMA([Es]),$RSIGMA([Ep]),$RSIGMA([theta]))
+   Snon = $CALL([fcall])
+   fcall = RadMT($RSIGMA([Es]),$RSIGMA([Ep]),$RSIGMA([del]))
+   Srad = $CALL([fcall])
+   if [Srad] = 0. goto NEXT
+   v/inp Ep([i]) [Ep]
+   v/inp Snon([i]) [Snon]
+   v/inp Srad([i]) [Srad]
+   Ep = [Ep]+[step]
+   if [Ep] > [Ep2] goto NEXT
+enddo
+
+NEXT:
+*np = $VLEN(Ep)
+*sigma buf=array([np])*0
+*v/cop Ep buf;   v/de Ep;   v/cop buf Ep
+*v/cop Snon buf; v/de Snon; v/cop buf Snon
+*v/cop Srad buf; v/de Srad; v/cop buf Srad
+*v/de buf
+
+wait 'Plot the table (Q=Quit)'
+exec vradplot
+RETURN
+*                                         @METAGS vradplot
+*--------------- vradplot ---------------
+*
+MACRO vradplot
+if $VEXIST(Ep)=0 then
+   mess Vector Ep did not exist
+   stopm
+endif
+if $VEXIST(Snon)=0 then
+   mess Vector Snon did not exist
+   stopm
+endif
+if $VEXIST(Srad)=0 then
+   mess Vector Srad did not exist
+   stopm
+endif
+
+np = $VLEN(Ep)
+mtyp0 = $GRAFINFO('?mtyp')
+set mtyp 24
+graph [np] Ep Snon AWP
+set mtyp 31
+graph [np] Ep Srad SP
+set mtyp [mtyp0]
+*xtit = Es=[Es], [Q]=[theta]^o!                 Ep, GeV
+xtit = Ep, GeV
+atitle [xtit] 'd^2![s]/d[W]dEp, nb/GeV/sr'
+RETURN
+
+*                                         @METAGS Splot
+*--------------- Splot ---------------
+*
+MACRO Splot E2I E2F opt E0 THETA accept=10
+if $UPPER([1])='HELP' then
+   mess Usage:    [0] E2I E2F opt E0 THETA accept=10
+   stopm
+endif
+
+if [E2I]='' then; E2I=$GRAFINFO('WNXMIN'); endif
+if [E2F]='' then; E2F=$GRAFINFO('WNXMAX'); endif
+
+exec d2plotl#E0theta [E0] [THETA]
+g/imp process
+E0    = $WORD([process],1,1)
+theta = $WORD([process],2,1)
+
+call SETKIN($RSIGMA([E0]),0.,$RSIGMA([THETA]))
+
+fcol0 = $GRAFINFO('?fcol')
+dmod0 = $GRAFINFO('?dmod')
+
+set fcol 1
+set dmod 1
+f/pl Sval [E2I] [E2F] [opt]
+if $INDEX($UPPER([opt]),'S') = 0 then
+   atitle 'E, MeV' 'd^2![s]/d[W]/dE, nb/MeV/sr'
+   exec d2plotl#Eprocess
+endif
+
+*alp
+
+ans='N'
+read ans 'Radiate? (Y/N)'
+if $UPPER([ans])='Y' then
+   set fcol 4
+   set dmod 2
+   fu/pl SRAD [E2I] [E2F] S
+endif
+
+ans='Y'
+read ans 'Average on angular acceptance? (Y/N)'
+if $UPPER([ans])='Y' then
+   if [accept] <> '' then
+      dEbeam = 0.005
+      dEsp02 = 0.002
+      call SETEXPER($RSIGMA([accept]),$RSIGMA([dEbeam]),$RSIGMA([dEsp02]))
+   endif
+   set fcol 2
+   set dmod 4
+   fu/pl D2accept [E2I] [E2F] S
+endif
+
+set fcol [fcol0]
+set dmod [dmod0]
+RETURN
+
+*                                         @METAGS table
+*--------------- table ---------------
+*
+MACRO table Ep1=17.3 Ep2=18.3 Es=20 theta=5 step=.1
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] Ep1=17.3 Ep2=18.3 Es=20, theta=5 step=.1
+   stopm
+endif
+
+sigma vE=array(100)*0
+sigma vS=array(100)*0
+Ep = [Ep1]
+do i=1,100
+   fcall = delta($RSIGMA([Es]),$RSIGMA([Ep]),$RSIGMA([theta]))
+   s = $CALL([fcall])
+   v/inp vE([i]) [Ep]
+   v/inp vS([i]) [s]
+   Ep = [Ep]+[step]
+   if [Ep] > [Ep2] goto NEXT
+enddo
+NEXT:
+np = $VLEN(vE)
+sigma buf=array([np])*0
+v/cop vE buf; v/de vE; v/cop buf vE
+v/cop vS buf; v/de vS; v/cop buf vS
+v/de buf
+
+wait 'Plot the table (Q=Quit)'
+graph [np] vE vS AW*
+xtit = Es=[Es], [Q]=[theta]^o!                 Ep, GeV
+atitle [xtit] 'd^2![s]/d[W]dEp, nb/GeV/sr'
+RETURN
+
+*                                         @METAGS ali
+*--------------- ali ---------------
+*
+MACRO ali op=CREATE
+if [op] = 'HELP' then
+   op = CREATE
+   ask = MACRO $WORD([0],2,1,#): CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):     Aliases are created.
+
+ali/[op] -C urad        'exec '//$WORD([0],1,1,#)#urad
+ali/[op] -C uradplot    'exec '//$WORD([0],1,1,#)#uradplot
+ali/[op] -C uradread    'exec '//$WORD([0],1,1,#)#uradread
+ali/[op] -C Splot       'exec '//$WORD([0],1,1,#)#Splot
+ali/[op] -C GeVplot     'exec '//$WORD([0],1,1,#)#GeVplot
+ali/[op] -C vrad        'exec '//$WORD([0],1,1,#)#vrad
+ali/[op] -C vradplot    'exec '//$WORD([0],1,1,#)#vradplot
+
+ali/[op] -C one         'exec '//$WORD([0],1,1,#)#uRADone
+ali/[op] -C fone        'exec '//$WORD([0],1,1,#)#fuRADone
+ali/[op] -C H2hist      'exec '//$WORD([0],1,1,#)#H2hist
+RETURN

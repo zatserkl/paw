@@ -1,0 +1,1 @@
+copy *.dsk d:\ /Y 

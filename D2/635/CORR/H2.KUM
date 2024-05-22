@@ -1,0 +1,68 @@
+*                                         @METAGS H2
+*--------------- H2 ---------------
+*
+MACRO H2
+d2look=''; g/imp d2look
+if [d2look]='' then; x d2look; endif
+
+sigma vbuf1=array(100)*0
+sigma vbuf2=array(100)*0
+sigma vbuf3=array(100)*0
+sigma vbuf4=array(100)*0
+
+sigma anumb=array(100)*0
+sigma s=array(100)*0
+sigma ds=array(100)*0
+sigma z=array(100)*0
+
+i=0
+for id in 2237 2737 3637 4937 141 241 741 2641
+   if $HEXIST([id]) = 0 then
+      exec [d2look]#readat [id]
+   endif
+   sum = $EXEC([d2look]#SUMC [id] verb=0)
+   fcall = ITITDAT([id],'M=')
+   M = $ICALL([fcall])
+   if [M] > 0 then
+      sum = $RSIGMA([sum])
+      s = [sum]*1000000/[M]
+      *ds = $SIGMA(sqrt($RSIGMA([sum]))*1000000/[M])
+      ds = $SIGMA(sqrt([sum]))
+      ds = [ds]*1000000/[M]
+   else
+      s = 0
+      ds = 0
+   endif
+   i = [i]+1
+   v/inp vbuf1([i]) [i]
+   v/inp vbuf2([i]) [s]
+   v/inp vbuf3([i]) [ds]
+   v/inp vbuf4([i]) [id]
+endfor
+
+v/cop vbuf1(1:$VLEN(vbuf1)) anumb
+v/cop vbuf2(1:$VLEN(vbuf1)) s
+v/cop vbuf3(1:$VLEN(vbuf1)) ds
+v/cop vbuf4(1:$VLEN(vbuf1)) z
+
+exec plot
+RETURN
+
+*                                         @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot
+np = $VLEN(anumb)
+*graph [np] anumb s AW*
+v/cop s(1:[np]) buf
+ymin = $SIGMA(.8*VMIN(buf))
+v/de buf
+
+null 0 ([np]+1) [ymin] $SIGMA(1.2*VMAX(s))
+h/err anumb s $SIGMA(0*anumb) ds [np] 24 ! 10
+atitle 'H2 exposition' 'S, arb.units'
+do i=1,[np]
+   key anumb([i]) s([i]) 1 $EVAL(z([i]))
+enddo
+RETURN
+

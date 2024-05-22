@@ -1,0 +1,1271 @@
+*                                         @METAGS D2FOR
+*--------------- D2FOR ---------------
+*
+MACRO D2FOR
+g/cr D2FOR $WORD([0],1,1,#)
+exec FOR
+exec ALI
+RETURN
+
+*                                         @METAGS E0
+*--------------- E0 ---------------
+*
+MACRO E0 E2 teta=143.5 target=H2
+if $UPPER([1])='HELP' .OR. [E2] = '' then
+   mess Usage:    $WORD([0],2,1,#) E2 teta=143.5 target=H2
+   mess Possible targets: H2, D2
+   stopm
+endif
+
+E2 = $RSIGMA([E2])
+case $UPPER([target]) in
+   (H2)  M = 938.27
+   (D2)  M = 1874.0
+   (*)   mess Unknown target. Assume H2; M=938.27
+endcase
+eta = $SIGMA(1 - 2*([E2]/[M])*sin([teta]*PI/360)**2)
+E0 = [E2]/[eta]
+mess E0(E2=[E2],teta=[teta]) = [E0] MeV
+RETURN [E0]
+*                                         @METAGS EH
+*--------------- EH ---------------
+*
+MACRO EH E1 teta=143.5 target=H2
+if $UPPER([1])='HELP' .OR. [E1] = '' then
+   mess Usage:    $WORD([0],2,1,#) E1 teta=143.5 target=H2
+   mess Possible targets: H2, D2
+   stopm
+endif
+
+E1 = $RSIGMA([E1])
+case $UPPER([target]) in
+   (H2)  M = 938.27
+   (D2)  M = 1874.0
+   (*)   mess Unknown target. Assume H2; M=938.27
+endcase
+eta = $SIGMA(1 + 2*([E1]/[M])*sin([teta]*PI/360)**2)
+EH = [E1]/[eta]
+mess EH(E1=[E1],teta=[teta]) = [EH] MeV
+RETURN [EH]
+
+*                                         @METAGS type
+*--------------- type ---------------
+*
+MACRO type file
+if [file]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] file
+   stopm
+endif
+
+if $FEXIST([file])=0 then
+   mess File [file] did not found
+   stopm
+endif
+
+call TYPE($QUOTE([file]))
+RETURN
+
+*                                         @METAGS COMISplot
+*--------------- COMISplot ---------------
+*
+MACRO COMISplot fun=fitdef E1 E2 opt=S ci=1
+if $UPPER([1]) = 'HELP' then
+   mess Usage:    $WORD([0],2,1,#)//' fun=fitdef E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=S ci=1'
+   stopm
+endif
+if [E1]='' then; E1=$GRAFINFO('WNXMIN'); endif
+if [E2]='' then; E2=$GRAFINFO('WNXMAX'); endif
+ci0 = $GRAFINFO('?plci')
+set plci [ci]
+fu/pl [fun] [E1] [E2] [opt]
+set plci [ci0]
+RETURN
+
+*                                         @METAGS FUNplot
+*--------------- FUNplot ---------------
+*
+*MACRO FUNplot fun=thefun E1 E2 opt=S ci=1
+MACRO FUNplot fun=fitdef E1 E2 opt=S ci=1 lt=1
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#)//' fun=fitdef E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=S ci=1'
+   stopm
+endif
+
+if $INDEX([fun],'.')=0 then; fun=[fun].for; endif
+if $FEXIST([fun])=0 then
+   mess File [fun] did not found
+   exitm
+endif
+if [E1]='' then; E1=$GRAFINFO('WNXMIN'); endif
+if [E2]='' then; E2=$GRAFINFO('WNXMAX'); endif
+ci0 = $GRAFINFO('?plci')
+lt0 = $GRAFINFO('?ltyp')
+set plci [ci]
+set ltyp [lt]
+fu/pl [fun] [E1] [E2] [opt]
+set plci [ci0]
+set ltyp [lt0]
+RETURN
+
+*                                         @METAGS FunCop
+*--------------- FunCop ---------------
+*
+MACRO FunCop oldfun=fitdef newfun comment over=0
+if $UPPER([1])='HELP' .OR. [newfun]='' then
+   mess Usage:    $WORD([0],2,1,#) oldfun=fitdef newfun comment over=0
+   stopm
+endif
+
+if $INDEX([newfun],'.')=0 then; newfun=[newfun].for; endif
+if $FEXIST([newfun])=1 .AND. [over]=0 then
+   mess File [newfun] already exist
+   wait
+endif
+
+fcall = IFINDVAR($QUOTE([oldfun]),$QUOTE([newfun]))
+ifind = $ICALL([fcall])
+if [ifind] > 0 then
+   mess In function [oldfun] variable [newfun] is found [ifind] times
+   mess Choose other new function name
+   STOPM
+endif
+
+len = $LEN([comment])
+rest = [len]-60
+if [rest] > 20 then; rest=20; endif
+c1 = $SUBSTRING([comment], 1,30)
+c2 = $SUBSTRING([comment],31,30)
+c3 = $SUBSTRING([comment],61,[rest])
+if $LEN([c1])=0 then; c1=' '; endif
+if $LEN([c2])=0 then; c2=' '; endif
+if $LEN([c3])=0 then; c3=' '; endif
+
+old     = $QUOTE([oldfun])
+new     = $QUOTE([newfun])
+comment = $QUOTE([c1]),$QUOTE([c2]),$QUOTE([c3])
+line=[old],[new],[comment]
+
+call FUNCOPK([line])
+RETURN
+
+*                                         @METAGS CopD2R
+*--------------- CopD2R ---------------
+*
+MACRO CopD2R dfun=HQUADF.DAT rfun comment
+if $UPPER([1])='HELP' .OR. [rfun]='' then
+   mess Usage:    $WORD([0],2,1,#) dfun=HQUADF.DAT rfun comment
+   stopm
+endif
+
+len = $LEN([comment])
+rest = [len]-60
+if [rest] > 20 then; rest=20; endif
+c1 = $SUBSTRING([comment], 1,30)
+c2 = $SUBSTRING([comment],31,30)
+c3 = $SUBSTRING([comment],61,[rest])
+if $LEN([c1])=0 then; c1=' '; endif
+if $LEN([c2])=0 then; c2=' '; endif
+if $LEN([c3])=0 then; c3=' '; endif
+
+real    = $QUOTE([dfun])
+double  = $QUOTE([rfun])
+comment = $QUOTE([c1]),$QUOTE([c2]),$QUOTE([c3])
+line=[real],[double],[comment]
+
+call CopD2RK([line])
+RETURN
+
+*                                         @METAGS RealHQUADF
+*--------------- RealHQUADF ---------------
+*
+MACRO RealHQUADF rfun comment OVER=0
+if $UPPER([1])='HELP' .OR. [rfun]='' then
+   mess Usage:    $WORD([0],2,1,#) rfun comment OVER=0
+   stopm
+endif
+
+rfile = [rfun]
+if $INDEX([rfun],'.')=0 then; rfile = [rfun].for; endif
+if $FEXIST([rfile])=1 .AND. [OVER]=0 then
+   mess File [rfile] already exist
+   wait
+endif
+
+exec CopD2R HQUADF.DAT [rfun] [comment]
+RETURN
+
+*                                         @METAGS MakeFun
+*--------------- MakeFun ---------------
+*
+MACRO MakeFun outfun fline comment VERB=1 OVER=0
+OK = 0
+if $UPPER([1])='HELP' .OR. [fline]='' then
+   mess Usage:    $WORD([0],2,1,#)//' outfun [op]fun1[[opfun2][opfun3]...] comment VERB=1 OVER=0'
+   mess Example:  $WORD([0],2,1,#)//' outfun fun1-fun2 ''Some comment'''
+   EXITM [OK]
+endif
+
+outfile = [outfun]
+if $INDEX([outfile],'.')=0 then; outfile = [outfile].for; endif
+
+outfun = $WORD([outfile],1,1,'.')
+if $UPPER([outfun]) = 'RESULT' then
+   mess Word outfun is reserved
+   mess Choose other output function name
+   STOPM
+endif
+
+if $FEXIST([outfile])=1 .AND. [OVER]=0 then
+   mess File [outfile] already exist
+   wait
+endif
+
+len = $LEN([fline])
+rest = [len]-60
+if [rest] > 20 then; rest=20; endif
+f1 = $SUBSTRING([fline], 1,30)
+f2 = $SUBSTRING([fline],31,30)
+f3 = $SUBSTRING([fline],61,[rest])
+if $LEN([f2])=0 then; f2=' '; endif
+if $LEN([f3])=0 then; f3=' '; endif
+
+len = $LEN([comment])
+rest = [len]-60
+if [rest] > 20 then; rest=20; endif
+c1 = $SUBSTRING([comment], 1,30)
+c2 = $SUBSTRING([comment],31,30)
+c3 = $SUBSTRING([comment],61,[rest])
+if $LEN([c1])=0 then; c1=' '; endif
+if $LEN([c2])=0 then; c2=' '; endif
+if $LEN([c3])=0 then; c3=' '; endif
+
+*mess len of c3 = $LEN([c3]); mess c3 = [c3]; wait
+
+file    = $QUOTE([outfile])
+fline   = $QUOTE([f1]),$QUOTE([f2]),$QUOTE([f3])
+comment = $QUOTE([c1]),$QUOTE([c2]),$QUOTE([c3])
+line=[file],[fline],[comment]
+
+call MakeFUNK([line])
+
+* Reg. in COMIS
+fcall = [outfile](0.)
+dummy = $CALL([fcall])
+
+OK = 1
+RETURN [OK]
+
+*                                         @METAGS TheFUN
+*--------------- TheFUN ---------------
+*
+MACRO TheFUN fline
+if $UPPER([1])='HELP' .OR. [fline]='' then
+   mess Usage:    $WORD([0],2,1,#)//' [op]fun1[[opfun2][opfun3]...]'
+   mess Example:  $WORD([0],2,1,#)//' fun1-fun2'
+   EXITM [OK]
+endif
+
+exec MakeFun thefun [fline] VERB=0 OVER=1
+RETURN
+
+*                                         @METAGS RegFun
+*--------------- RegFun ---------------
+*
+MACRO RegFun file x0=0.
+if $UPPER([1])='HELP' .OR. [file]='' then
+   mess Usage:    $WORD([0],2,1,#) file
+   stopm
+endif
+
+if $INDEX([file],'.')=0 then; file=[file].for; endif
+
+funcall = [file]($RSIGMA([x0]))
+dummy = $CALL([funcall])
+RETURN
+
+*                                         @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR
+*--- COMMON CHAMB
+g/imp D2FOR
+COMMON_CHAMB=''; g/imp COMMON_CHAMB
+DECLARE_CHAMB:
+IF [COMMON_CHAMB] = '' THEN
+   APPL COMIS QUIT
+*                                         @METAGS .COMMON_CHAMB
+*                                         01-24-97 10:14pm
+*--------------- COMMON_declaration ---------------
+*
+      integer NCHAN,NCENTR
+      real CWIDTH
+      COMMON /CHAMB/ NCHAN,NCENTR,CWIDTH
+      END
+   QUIT
+   g/cr COMMON_CHAMB [D2FOR]
+   mess [D2FOR]: COMMON /CHAMB/ is declared
+ELSEIF [COMMON_CHAMB] <> [D2FOR] THEN
+   ans = 'N'
+   mess --- [D2FOR]:
+   mess COMMON /CHAMB/ was already declared by [COMMON_CHAMB]
+   read ans 'Redeclare (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      COMMON_CHAMB = ''
+      goto DECLARE_CHAMB
+   endif
+ENDIF
+*---
+
+
+APPL COMIS QUIT
+*                                         @METAGS .CHAMBER
+*                                         03-21-98 00:38am
+*--------------- CHAMBER ---------------
+*
+      SUBROUTINE CHAMBER(N,Nc,CWIDmm)
+      use CHAMB
+*     NCHAN  - the number of channels
+*     NCENTR - the central channel. Central particle crosses the center of Nc
+*     CWIDTH - channel width, mm
+COMMON /CHAMB/ NCHAN,NCENTR,CWIDTH
+      if (N.EQ.0) then
+         N = NCHAN
+         Nc = NCENTR
+         CWIDmm = CWIDTH
+      elseif (N.LT.0) then
+         print*, NCHAN,NCENTR,CWIDTH
+      else
+         NCHAN  = N
+         NCENTR = Nc
+         CWIDTH = CWIDmm
+      endif
+      END
+
+*                                         @METAGS .SetNc
+*                                         03-21-98 00:38am
+*--------------- SetNc ---------------
+*
+      SUBROUTINE SetNc(Nc)
+      use CHAMB
+*     NCHAN  - the number of channels
+*     NCENTR - the central channel. Central particle crosses the center of Nc
+*     CWIDTH - channel width, mm
+COMMON /CHAMB/ NCHAN,NCENTR,CWIDTH
+      NCENTR = Nc
+      END
+
+*                                         @METAGS .iGetNC
+*                                         03-21-98 00:38am
+*--------------- iGetNC ---------------
+*
+      integer function iGetNC()
+      use CHAMB
+*     NCHAN  - the number of channels
+*     NCENTR - the central channel. Central particle crosses the center of Nc
+*     CWIDTH - channel width, mm
+COMMON /CHAMB/ NCHAN,NCENTR,CWIDTH
+      iGetNc = NCENTR
+      END
+
+*                                         @METAGS .isalpha
+*                                         10-12-98 07:05pm
+*--------------- isalpha ---------------
+*
+      integer function isalpha(symbol)
+      character symbol
+      if ((symbol.GE.'A') .AND. (symbol.LE.'z')) then
+         isalpha = 1
+      else
+         isalpha = 0
+      endif
+      END
+*                                         @METAGS .isdigit
+*                                         10-12-98 07:05pm
+*--------------- isdigit ---------------
+*
+      integer function isdigit(symbol)
+      character symbol
+      if ((symbol.GE.'0') .AND. (symbol.LE.'9')) then
+         isdigit = 1
+      else
+         isdigit = 0
+      endif
+      END
+
+*                                         @METAGS .LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      integer lunstart,lun
+      logical used
+      lun = lunstart
+  100 inquire (UNIT=lun, OPENED=used, ERR=10000)
+      if (used) then
+         lun = lun+1
+         if (lun.GT.99) lun=1
+         goto 100
+      endif
+      LUNFREE = lun
+      RETURN
+10000 LUNFREE = 40
+      call WAIT('ERROR LUNFREE')
+      END
+
+*                                         @METAGS .FREELUN
+*                                         11-11-98 12:33pm
+*--------------- FREELUN ---------------
+*
+      SUBROUTINE FREELUN(lun,file)
+*
+*     Closes DIRECT ACCESS file and/or correctly frees the unit
+*     associated with DIRECT ACCESS file
+*
+      integer lun
+      character*(*) file
+
+*     .. Note: COMIS does not understand parameters in CLOSE others then UNIT
+      close(UNIT=lun)
+*
+*     COMIS does not love DIRECT ACCESS files.
+*     Unit lun is free now, but something like following
+*     INQUIRE(UNIT=lun, ...) will crash the system.
+*     Patch: associate the unit lun with SEQUENTIAL file and free it again.
+*
+      open (UNIT=lun, FILE=file, STATUS='OLD', ERR=10000)
+      close(UNIT=lun)
+10000 continue
+      END
+
+*                                         @METAGS .LUNFILE
+*                                         01-20-98 02:40pm
+*--------------- LUNFILE ---------------
+*
+      integer function LUNFILE(file)
+      character*32 file,lofile
+      lofile = file
+      call CUTOL(lofile)
+      inquire (NUMBER=lun, FILE=lofile)
+      LUNFILE = lun
+      END
+*                                         @METAGS .FILELUN
+*                                         01-20-98 02:40pm
+*--------------- FILELUN ---------------
+*
+      SUBROUTINE FILELUN(lun,file)
+      character*(*) file, lofile*32
+      inquire (UNIT=lun, NAME=lofile)
+      call CUTOL(lofile)
+      lenght = LEN(file)
+      file(1:length) = lofile
+      END
+*                                         @METAGS .FCLEAR
+*                                         01-20-98 01:27pm
+*--------------- FCLEAR ---------------
+*
+      SUBROUTINE FCLEAR(file)
+      character*(*) file
+      lun = LUNFREE(40)
+      open (lun, FILE=file, STATUS='UNKNOWN', ERR=10000)
+      endfile lun
+      close(lun)
+      RETURN
+10000 len = LENOCC(file)
+      print*, 'ERROR FCLEAR: File ', file(1:len), ' did not found'
+      END
+*                                         @METAGS .FPARSE
+*                                         01-20-98 02:53pm
+*--------------- FPARSE ---------------
+*
+      SUBROUTINE FPARSE(fstr,fname,file,ext)
+      character*(*) fstr,fname,file,ext
+      character f*32, point
+      data point /'.'/
+      f = fstr
+      lenf = LENOCC(f)
+      lene = LENOCC(ext)
+      ipoint = INDEX(f,'.')
+      if (ipoint.EQ.0) then
+         fname = f
+         file  = f(1:lenf)//point//ext(1:lene)
+      else
+         fname = f(1:ipoint-1)
+         file  = f
+      endif
+      call CUTOL(file)
+      END
+
+*                                         @METAGS .WAIT.COMIS
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS .MESS.COMIS
+*                                         01-22-98 02:11pm
+*--------------- MESS ---------------
+*
+      SUBROUTINE MESS(line)
+      character line*(*)
+      length = LENOCC(line)
+      if (length.GT.0) print 1, line(1:length)
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS .YES.COMIS
+*                                         01-22-98 02:11pm
+*--------------- YES ---------------
+*
+      logical function YES(mess)
+      character mess*(*)
+      character ans
+      YES = .FALSE.
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, 'Y/N (<CR>=Y)?'
+      read 1, ans
+      if ((ans.EQ.'y') .OR. (ans.EQ.'Y') .OR. (ans.EQ.' ')) YES=.TRUE.
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS .CLOSE.COMIS
+*                                         01-14-98 05:44pm
+*--------------- CLOSE ---------------
+*
+      SUBROUTINE CLOSE(lun)
+      close(lun)
+      END
+
+*                                         @METAGS .TITDAT.COMIS
+*                                         02-10-98 06:53pm
+*--------------- TITDAT ---------------
+*
+      function TITDAT(id,match)
+      character*(*) match
+      character*80 chbuf,chtitl, ch*1, str*80
+      parameter (MAXCH=100)
+      real X(MAXCH),Y(MAXCH),dX(MAXCH),dY(MAXCH), S(MAXCH),dS(MAXCH)
+
+      TITDAT = 0.
+      call HGIVE(id,chbuf,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      chtitl = ' '
+      do i=1, 4*NWT
+         write(chtitl(i:i),1) chbuf(i:i)
+    1    format(A1)
+      enddo
+      len = LENOCC(chtitl)
+
+      val = 0
+      lenmat = LENOCC(match)
+      if (lenmat.EQ.0) goto 99
+      n = INDEX(chtitl,match(1:lenmat))
+
+      if (n.GT.0) then
+         n = n+lenmat
+         str = chtitl(n:len)
+*        .. convert to UPPER case because of COMIS don't recognizes e as E
+         call CLTOU(str)
+*        .. Note: COMIS correctly read something like 40000.x as 40000.
+         read (str,*,ERR=2000) val
+         goto 1000
+ 2000    continue
+*        .. try read as an integer
+*        .. Note: COMIS correctly read something like 40000x as 40000
+         read (str,*,ERR=3000) ival
+         val = ival
+         goto 1000
+ 3000    print*,'TITDAT: Read error field ''',match(1:lenmat),''' from'
+         print*, chtitl(1:len)
+         call WAIT('*** ERROR TITDAT')
+      else
+*        .. COMIS joke: literal ends code line in 72th column
+*                       end then COMIS converts last string in UPPER case:
+         print*,'TITDAT: Field ''',match(1:lenmat),''' did not found in'
+         print*, chtitl(1:len)
+         call WAIT('*** WARNING TITDAT')
+         val = 0.
+      endif
+
+ 1000 TITDAT = val
+   99 RETURN
+      END
+
+*                                         @METAGS .TYPE
+*                                         11-18-98 08:49pm
+*--------------- TYPE ---------------
+*
+      SUBROUTINE TYPE(file)
+      character*(*) file
+      character line*128
+      lun = LUNFREE(1)
+      open (lun, FILE=file, STATUS='OLD', ERR=10000)
+  100 read (lun,1,END=1000) line
+      len = LENOCC(line)
+      if (len.GT.0) then
+         print 1, line(1:len)
+      else
+         print 1, ' '
+      endif
+      goto 100
+ 1000 close(lun)
+    1 format(A)
+      RETURN
+10000 len = LENOCC(file)
+      if (len.GT.0) then
+         line = '*** ERROR TYPE: File '//file(1:len)//' did not found'
+      else
+         line = '*** ERROR TYPE: Empty file name'
+      endif
+      len = LENOCC(line)
+      print 1, line(1:len)
+      END
+
+*                                         @METAGS .KUIP2STR
+*                                         01-23-98 08:00pm
+*--------------- KUIP2STR ---------------
+*
+      SUBROUTINE KUIP2STR(s1,s2,s3,s)
+      character*(*) s1,s2,s3,s
+      character*30  so1,so2,so3
+      so1 = s1
+      so2 = s2
+      so3 = s3
+      s = so1//so2//so3
+      END
+
+*                                         @METAGS .INDFOR
+*                                         01-06-98 12:39pm
+*--------------- INDFOR ---------------
+*
+      integer function INDFOR(line,string,istart,CHOPT,lastch)
+*
+*     Returns position of first occurance string in line
+*     Search starts from istart
+*     lastch returns position of last character of string in line
+*     Case insensitive, spaces ignored
+*     0 in 6th column as a line continue sign treated as a space
+*     CHOPT: see below
+*
+      character*(*) line,string,CHOPT
+      integer istart,lastch
+      parameter (MAXBUF=127)
+      character*(MAXBUF) buf,upstr
+      integer ind(MAXBUF)
+      character opt*32,start,word,comm
+      character space,zero,prev,next, limits*24
+      logical comline
+      data space/' '/, zero/'0'/
+*     .. word delimiters
+      data limits/'+-*/=(),.:''$!@#%^&";<>\|'/
+
+*--
+*  Add as limits: DOUBLEPRECISION,REAL,INTEGER,LOGICAL,COMPLEX
+*                 and CHARACTER simple and in any form i.e. CHARACTER*32
+*--
+
+*
+*     Description of CHOPT:
+*
+*     .. "S" : line should start from string
+      data start/'S'/
+*     .. "W" : string should be enclosed by word delimiters
+*              (beginning and end of line is treated as delimiters too)
+      data word/'W'/
+*     .. "C" : skip FORTRAN comment line
+      data comm/'C'/
+*
+      INDFOR = 0
+      lastch = 0
+*     .. convert options to UPPER case
+      opt = CHOPT
+      call CLTOU(opt)
+
+      comline = .FALSE.
+      if ((line(1:1) .EQ. '*') .OR.
+     &    (line(1:1) .EQ. 'C') .OR.
+     &    (line(1:1) .EQ. 'c')) then
+*        .. its comment line
+         comline = .TRUE.
+      endif
+
+*      CALL MESS('Before option C')
+*     .. option 'C'
+      if ((INDEX(opt,comm).NE.0) .AND. (comline)) then
+*        .. Exit: comment line
+         goto 99
+      endif
+*      CALL MESS('After option C')
+
+*     .. here upstr is temporary used as a buffer
+      upstr = line
+*     .. 0 as a line continue sign is treated as a space
+      if ((.NOT.comline) .AND. (line(6:6).EQ.zero)) upstr(6:6)=space
+*
+      buf = space
+      lenbuf = 0
+      do i=1, LENOCC(line)
+         if (upstr(i:i).NE.space) then
+            lenbuf = lenbuf+1
+            buf(lenbuf:lenbuf) = upstr(i:i)
+            ind(lenbuf) = i
+         endif
+      enddo
+      call CLTOU(buf)
+
+*     .. store in upstr normalized string      
+      upstr = space
+      lenstr = 0
+      do i=1, LENOCC(string)
+         if (string(i:i).NE.space) then
+            lenstr = lenstr+1
+            upstr(lenstr:lenstr) = string(i:i)
+         endif
+      enddo
+      call CLTOU(upstr)
+      
+      n = INDEX(buf,upstr(1:lenstr))
+      if (n.EQ.0) goto 99
+      ifind = ind(n)
+      ilast = ind(n+lenstr-1)
+
+*     .. option 'S'
+      if ((INDEX(opt,start).NE.0) .AND. (n.GT.1)) then
+*        .. Exit: line must starts from string
+         goto 99
+      endif
+
+*     .. option 'W'
+      if (INDEX(opt,word).NE.0) then
+         ishift = 0
+*        .. Test of word limits
+  100    prev = limits(1:1)
+         iprev = ishift+n-1
+         if (iprev.GT.0) prev = buf(iprev:iprev)
+
+         next=limits(1:1)
+         inext = n+lenstr
+         if (inext.LE.lenbuf) next = buf(inext:inext)
+
+         if ((INDEX(limits,prev).EQ.0) .OR.
+     &       (INDEX(limits,next).EQ.0)) then
+*           .. next search in buf
+            ishift = ishift+n
+            if (ishift .GT. lenbuf-lenstr) goto 99
+            n = INDEX(buf(ishift+1:lenbuf),upstr(1:lenstr))
+            if (n.EQ.0) goto 99
+            ifind = ind(ishift+n)
+            ilast = ind(ishift+n+lenstr-1)
+            goto 100
+         endif
+      endif
+
+*     .. Success
+      INDFOR = ifind
+      lastch = ilast
+      RETURN
+   99 continue
+      RETURN
+      END      ! INDFOR
+
+*                                         @METAGS .REPLACE
+*                                         01-16-98 01:59pm
+*--------------- REPLACE ---------------
+*
+      SUBROUTINE REPLACE(line,n1,n2,string)
+*
+*     Replace contain of line from n1 to n2 by string(any length)
+*     Case sensitive string, omit trailing spaces
+*
+      character*(*) line,string
+      integer n1,n2
+      parameter (MAXBUF=127)
+      character*(MAXBUF) newline
+      character space
+      data space/' '/
+
+      maxlen = LEN(line)
+      lenlin = LENOCC(line)
+      newline = space
+*     .. fill the beginning of line
+      newline(1:n1-1) = line(1:n1-1)
+*     .. insert string
+      last = n1 + LENOCC(string) - 1
+      if (last.LE.maxlen) then
+         newline(n1:last) = string
+      else
+         newline(n1:maxlen) = string
+         goto 1000
+      endif
+*     .. fill the rest of line
+      next = last+1
+      if (next.GT.maxlen) goto 1000
+      newline(next:maxlen) = line(n2+1:lenlin)
+ 1000 line = newline(1:maxlen)
+      END      ! REPLACE
+
+*                                         @METAGS .IFINDVAR
+*                                         01-15-98 08:11pm
+*--------------- IFINDVAR ---------------
+*
+      integer function IFINDVAR(file,var)
+      character*(*) file,var
+      character*32 fname,f,name,buf,CHOPT
+      character*127 line
+      IFINDVAR = 0
+      call FPARSE(file,fname,f,'for')
+*     .. ignore extension in var (if exist)
+      call FPARSE(var,name,buf,'for')
+      lun = LUNFREE(40)
+      open (lun, FILE=f, STATUS='OLD', ERR=10000)
+*     .. search identifier as whole word, skip comment
+      CHOPT = 'CW'
+      icount = 0
+  100 read (lun,10, END=1000) line
+   10    format(A)
+         ifind = INDFOR(line,name,1,CHOPT,lastch)
+         if (ifind.GT.0) icount = icount+1
+      goto 100
+ 1000 close(lun)
+      IFINDVAR = icount
+      RETURN
+10000 len = LENOCC(file)
+      print*, 'IFINDVAR ERROR: File ', f(1:len), ' did not found'
+      END
+
+*                                         @METAGS .FUNCOPK
+      subroutine FUNCOPK(oldfun,newfun,c1,c2,c3)
+      character*(*) oldfun, newfun, c1,c2,c3
+      character*127 comment
+      call KUIP2STR(c1,c2,c3,comment)
+      call FUNCOP(oldfun,newfun,comment)
+      END
+*                                         @METAGS .FUNCOP.COMIS
+*                                         01-04-98 02:23pm
+*--------------- FUNCOP ---------------
+*
+      SUBROUTINE FUNCOP(oldfun,newfun,comment)
+      character*(*) oldfun,newfun,comment
+      character*32 oldname,newname,oldfile,newfile, upnew
+      parameter (MAXBUF=127)
+      character*(MAXBUF) line,search,string
+      character function*8, bra, equal
+      parameter (function='FUNCTION', bra='(', equal='=')
+      character comsign*9
+      parameter (comsign='*     .. ')
+      logical samefile,foundf
+      character space
+      character CHOPT*32,start,word,comm
+      logical wrong
+      data samefile/.TRUE./
+      data space/' '/
+*
+*     Description of CHOPT:
+*
+*     .. "S" : line should start from oldname
+      data start/'S'/
+*     .. "W" : string should be enclosed by word delimiters
+      data word/'W'/
+*     .. "C" : skip comment line
+      data comm/'C'/
+*
+      icount = 0
+
+      call FPARSE(oldfun,oldname,oldfile,'for')
+      lenold = LENOCC(oldname)
+
+      call FPARSE(newfun,newname,newfile,'for')
+      lennew = LENOCC(newname)
+
+*     .. test to presence newname in oldfile
+      wrong = .FALSE.
+      ifind = IFINDVAR(oldfile,newname)
+      if (ifind.GT.0) then
+         wrong = .TRUE.
+         len = LENOCC(oldfile)
+         upnew = newname
+         call CLTOU(upnew)
+         print*, ' '
+         print 20, oldfile(1:len), upnew(1:lennew), ifind
+   20    format('*** FUNCOP WARNING:   ',
+     &      'In file ', A, ' name ', A,' is already used', I3,' times')
+         print*, ' '
+         call WAIT('Advice: Choose "Q" and try another function name')
+      endif
+
+      lin = LUNFREE(40)
+      open (lin,  FILE=oldfile, STATUS='OLD', ERR=10000)
+      inquire (FILE=newfile, OPENED=samefile)
+      if (samefile) then
+         print*, 'ERROR FUNCOP: File cannot be copied onto itself'
+         close(lin)
+         goto 99
+      endif
+
+*     .. clear output file
+      call FCLEAR(newfile)
+
+      lout = LUNFREE(lin+1)
+      open (lout, FILE=newfile, STATUS='UNKNOWN', ERR=20000)
+      foundf = .FALSE.
+  100 read (lin,10, END=1000) line
+         len = LENOCC(line)
+         if (.NOT.foundf) then
+*           .. search word "FUNCTION" with oldname and "("
+            search  = function//space//oldname(1:lenold)//bra
+*           .. search from any position, skip comment
+            CHOPT = comm
+            ifind = INDFOR(line,search,1,CHOPT,lastch)
+            if (ifind.GT.0) then
+*              .. replace
+               n1 = ifind
+               n2 = lastch
+               string = function//space//newname(1:lennew)//bra
+               call REPLACE(line,n1,n2,string)
+               foundf = .TRUE.
+               icount = icount+1
+*              .. comment processing
+               if (comment.EQ.space) then
+*                 .. write function header as line in ordinary way
+                  goto 2000
+               else
+*                 .. write new function header and assign to line the comment
+                  len = LENOCC(line)
+                  write(lout,10) line(1:len)
+                  line = comsign//comment
+                  goto 2000
+               endif
+            endif
+         endif
+
+         search  = oldname
+*        .. search identifier as whole word, skip comment
+         CHOPT = 'CW'
+         ifind = INDFOR(line,search,1,CHOPT,lastch)
+         if (ifind.GT.0) then
+*           .. replace
+            n1 = ifind
+            n2 = lastch
+            string = newname
+            call REPLACE(line,n1,n2,string)
+            icount = icount+1
+            goto 2000
+         endif
+
+ 2000    continue
+         len = LENOCC(line)
+         if (len.GT.0) then
+            write(lout,10) line(1:len)
+         else
+            write(lout,10) space
+         endif
+      goto 100
+
+ 1000 close(lout)
+      close(lin)
+      if (icount.NE.2) then
+*        .. may be some error
+         print*, 'WARNING FUNCOP: Replaced', icount, ' times'
+         print*, 'Normally is changed function name and assignment'
+         call WAIT('*** Suspend error ***')
+      endif
+
+      if (wrong) then
+         print*, ' '
+         len = LENOCC(newfile)
+         print*, 'Function ', newfile(1:len), ' may be wrong!'
+         print*, ' '
+      endif
+      RETURN
+   10 format(A)
+      RETURN
+10000 len = LENOCC(oldfile)
+      print*, 'ERROR FUNCOP: file ', oldfile(1:len), ' did not found'
+      RETURN
+20000 len = LENOCC(newfile)
+      print*, 'ERROR FUNCOP: could not open file ', newfile(1:len)
+      RETURN
+   99 continue
+      END      ! FUNCOP
+
+*                                         @METAGS .CopD2RK
+      subroutine CopD2RK(dfun,rfun,c1,c2,c3)
+      character*(*) dfun,rfun,c1,c2,c3
+      character*127 comment
+      call KUIP2STR(c1,c2,c3,comment)
+      call CopD2R(dfun,rfun,comment)
+      END
+*                                         @METAGS .CopD2R.COMIS
+*                                         01-24-98 00:44am
+*--------------- CopD2R ---------------
+*
+      SUBROUTINE CopD2R(dfun,rfun,comment)
+      character*(*) dfun,rfun,comment
+      character*32 dname,dfile,rname,rfile, updname,uprname
+      character*127 line, space*1
+      data space/' '/
+
+      call FPARSE(dfun,dname,dfile,'for')
+      call FPARSE(rfun,rname,rfile,'for')
+      updname = dname
+      uprname = rname
+      call CLTOU(updname)
+      call CLTOU(uprname)
+      if (uprname.EQ.updname)    goto 10000
+      if (uprname.EQ.'XDOUBLE') goto 10001
+
+      lend = LENOCC(dname)
+      lenr = LENOCC(rname)
+      call FCLEAR(rfile)
+      luno = LUNFREE(40)
+      open (luno, FILE=rfile, STATUS='UNKNOWN')
+      write(luno,90) updname(1:lend)
+   90 format ('*', T7, '.. REAL call of DOUBLE FUNCTION ', A)
+*     .. copy function body
+      luni = LUNFREE(luno+1)
+      open (luni, FILE=dfile, STATUS='UNKNOWN', ERR=20000)
+  200 read (luni,1,END=1000) line
+         len = LENOCC(line)
+         if (len.GT.0) then
+            write(luno,1) line(1:len)
+         else
+            write(luno,1) space
+         endif
+      goto 200
+ 1000 close(luni)
+      write(luno,10)
+
+*     .. write output function header
+      write(luno, 20) rfun(1:lenr)
+*     .. write comment
+      lencom = LENOCC(comment)
+      if (lencom.GT.0) write(luno,30) comment(1:lencom)
+*     .. double argument declaration and assigning
+      write(luno,40) dname(1:lend)
+
+*     .. call the DOUBLE function, END statment
+      write (luno,50) rname(1:lenr), dname(1:lend)
+      close(luno)
+      RETURN
+    1 format(A)
+   10 format('*' / '*--' / '*')
+   20 format(6X, 'REAL FUNCTION ', A, '(x)')
+   30 format ('*     .. ', A)
+   40 format(6X, 'double precision ', A, ', xdouble'/
+     &       6X, 'xdouble = x')
+   50 format (6X, A, ' = ', A, '(xdouble)'/
+     &        6X, 'END')
+      RETURN
+10000 close(luno)
+      call FCLEAR(rfile)
+      print 2
+    2 format('ERROR CopD2R: Input and output names should be differ')
+      RETURN
+10001 close(luno)
+      call FCLEAR(rfile)
+      print 4
+    4 format('ERROR CopD2R: Name XDOUBLE is reserved')
+      RETURN
+20000 close(luno)
+      call FCLEAR(rfile)
+      print 3, dfile(1:lend)
+    3 format('ERROR CopD2R: File ', A, ' did not found')
+      END
+
+*                                         @METAGS .isoper
+      logical function isoper(c)
+      character c
+      if ((c.EQ.'+').OR.(c.EQ.'-').OR.(c.EQ.'*').OR.(c.EQ.'/')) then
+         isoper = .TRUE.
+      else
+         isoper = .FALSE.
+         len = 1
+      endif
+      END
+*                                         @METAGS .SPARSE
+*                                         01-23-98 11:52pm
+*--------------- SPARSE ---------------
+*
+      SUBROUTINE SPARSE(cline,olist,flist,nitems)
+      character*(*) cline
+      character olist(10),flist(10)*(32), c
+      character*127 s
+      character space
+      logical isoper
+      data space/' '/
+*
+      do i=1,10
+         olist(i) = space
+         flist(i) = space
+      enddo
+
+      s = space
+      i = 1
+      do while (cline(i:i).EQ.space)
+         i = i+1
+      enddo
+      c = cline(i:i)
+
+      if (isoper(c)) then
+         len = 0
+      else
+         len = 1
+         s(len:len) = '+'
+      endif
+
+      do i=1,LENOCC(cline)
+         if (cline(i:i).NE.space) then
+            len = len+1
+            s(len:len) = cline(i:i)
+         endif
+      enddo
+*      call CUTOL(s)
+
+      nitems = 0
+      do i=1,len
+         c = s(i:i)
+         if (isoper(c)) goto 1000
+         goto 2000
+
+ 1000    continue
+*        .. operation: new item
+         nitems = nitems+1
+         olist(nitems) = c
+         n = 0
+         goto 100
+
+ 2000    continue
+*        .. add character to file name
+         n = n+1
+         flist(nitems)(n:n) = c
+         goto 100
+  100 enddo
+      END
+*                                         @METAGS .MakeFUNK
+*--------------- MakeFUNK ---------------
+*
+      subroutine MakeFUNK(outfun,f1,f2,f3,c1,c2,c3)
+      character*(*) outfun, f1,f2,f3, c1,c2,c3
+      character*127 fline,comment
+      call KUIP2STR(f1,f2,f3,fline)
+      call KUIP2STR(c1,c2,c3,comment)
+      call MakeFUN(outfun,fline,comment)
+      RETURN
+      END
+*                                         @METAGS .MakeFUN.COMIS
+*                                         01-24-98 00:44am
+*--------------- MakeFUN ---------------
+*
+      SUBROUTINE MakeFUN(outfun,cline,comment)
+      character*(*) outfun,cline,comment
+      character*32 ofun,ofile,oname, fun,file,name
+      character olist(10),flist(10)*(32)
+      character*127 line, space*1
+      data space/' '/
+
+      call SPARSE(cline,olist,flist,nitems)
+
+      call FPARSE(outfun,ofun,ofile,'for')
+      oname = ofun
+      call CUTOL(oname)
+      call FCLEAR(ofile)
+      luno = LUNFREE(40)
+      open (luno, FILE=ofile, STATUS='UNKNOWN')
+*     .. copy function bodies
+      do i=1,nitems
+         call FPARSE(flist(i),fun,file,'for')
+         name = fun
+         call CUTOL(name)
+         if (name.EQ.oname) goto 10000
+         luni = LUNFREE(luno+1)
+         open (luni, FILE=file, STATUS='UNKNOWN', ERR=20000)
+  200    read (luni,1,END=1000) line
+            len = LENOCC(line)
+            if (len.GT.0) then
+               write(luno,1) line(1:len)
+            else
+               write(luno,1) space
+            endif
+         goto 200
+ 1000    close(luni)
+         write(luno,10)
+  100 enddo
+
+*     .. write output function header
+      len = LENOCC(ofun)
+      write(luno, 20) ofun(1:len)
+*     .. write comment
+      lencom = LENOCC(comment)
+      if (lencom.GT.0) write(luno,30) comment(1:lencom)
+*     .. clear result
+      write(luno,40)
+
+*     .. call the functions
+      do i=1, nitems
+         call FPARSE(flist(i),fun,file,'for')
+         len = LENOCC(fun)
+         write (luno,50) olist(i), fun(1:len)
+      enddo
+
+*     .. assign to function identifier and END statement
+      len = LENOCC(ofun)
+      write (luno,60) ofun(1:len)
+      close(luno)
+      RETURN
+    1 format(A)
+   10 format('*' / '*--' / '*')
+   20 format(6X, 'REAL FUNCTION ', A, '(x)')
+   30 format ('*     .. ', A)
+   40 format(6X, 'result = 0.')
+   50 format (6X, 'result = result', A, A, '(x)')
+   60 format (6X, A, ' = result' / 6X, 'END')
+      RETURN
+10000 close(luno)
+      call FCLEAR(ofile)
+      print 2
+    2 format('ERROR MakeFUN: Output function name cannot be in list')
+      RETURN
+20000 close(luno)
+      call FCLEAR(ofile)
+      len = LENOCC(ofile)
+      print 3, file(1:len)
+    3 format('ERROR MakeFUN: File ', A, ' did not found')
+      END
+QUIT
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = 'HELP' then
+   op = CREATE
+   ask = MACRO $WORD([0],2,1,#): CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):     Aliases are created.
+
+ali/[op] -C E0          'exec '//$WORD([0],1,1,#)#E0
+ali/[op] -C EH          'exec '//$WORD([0],1,1,#)#EH
+ali/[op] -C type        'exec '//$WORD([0],1,1,#)#type
+ali/[op] -C COMISplot   'exec '//$WORD([0],1,1,#)#COMISplot
+ali/[op] -C FUNplot     'exec '//$WORD([0],1,1,#)#FUNplot
+ali/[op] -C fun         'exec '//$WORD([0],1,1,#)#FUNplot
+ali/[op] -C FunCop      'exec '//$WORD([0],1,1,#)#FunCop
+ali/[op] -C CopD2R      'exec '//$WORD([0],1,1,#)#CopD2R
+ali/[op] -C RealHQUADF  'exec '//$WORD([0],1,1,#)#RealHQUADF
+ali/[op] -C MakeFun     'exec '//$WORD([0],1,1,#)#MakeFun
+ali/[op] -C TheFUN      'exec '//$WORD([0],1,1,#)#TheFUN
+ali/[op] -C RegFun      'exec '//$WORD([0],1,1,#)#RegFun
+RETURN

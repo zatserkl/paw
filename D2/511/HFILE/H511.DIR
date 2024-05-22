@@ -1,0 +1,200 @@
+ Histogram file h511.his
+ List of directories in histogram file h511.his
+ 8.47    
+ 9.32    
+ 10.25   
+ 11.27   
+ 12.28   
+ 13.39   
+ 14.54   
+ 15.85   
+ 16.92   
+ 17.25   
+ 17.60   
+ 19.18   
+ 20.16   
+ 29.26   
+  
+  
+ Complete directory tree
+ -----------------------
+
+
+ ===> Directory : //D2
+          1 (1)   High gl. eff. except 15.85  
+          2 (1)   Low gl. eff. except 11.27   
+          3 (1)   High+low. Low looks like
+
+
+ ===> Directory : //D2/8.47
+       1000 (1)   D2, F=8.47, MBE=5e5, sterr  
+      11000 (1)   D2, F=8.47, MBE=5e5, sterr  
+      21000 (1)   D2, F=8.47, MBE=5e5, sterr  
+       2000 (1)   AL, F=8.47, MBE=3e5, sterr  
+      12000 (1)   AL, F=8.47, MBE=3e5, sterr  
+      22000 (1)   AL, F=8.47, MBE=3e5, sterr  
+       3000 (1)   D2+, F=8.47, MBE=4e5, sterr 
+      13000 (1)   D2+, F=8.47, MBE=4e5, sterr 
+      23000 (1)   D2+, F=8.47, MBE=4e5, sterr 
+       4000 (1)   AL+, F=8.47, MBE=4e5, sterr 
+      14000 (1)   AL+, F=8.47, MBE=4e5, sterr 
+      24000 (1)   AL+, F=8.47, MBE=4e5, sterr 
+    5000847 (1)   D2  F=8.47 MBE=500000   
+    6000847 (1)   AL  F=8.47 MBE=300000   
+    7000847 (1)   D2+ F=8.47 MBE=400000   
+    8000847 (1)   AL+ F=8.47 MBE=400000   
+
+
+ ===> Directory : //D2/9.32
+       1000 (1)   D2, F=9.32, MBE=5e5, sterr  
+      11000 (1)   D2, F=9.32, MBE=5e5, sterr  
+      21000 (1)   D2, F=9.32, MBE=5e5, sterr  
+       2000 (1)   AL, F=9.32, MBE=4e5, sterr  
+      12000 (1)   AL, F=9.32, MBE=4e5, sterr  
+      22000 (1)   AL, F=9.32, MBE=4e5, sterr  
+    5000932 (1)   D2  F=9.32 MBE=500000   
+    6000932 (1)   AL  F=9.32 MBE=400000   
+
+
+ ===> Directory : //D2/10.25
+       1000 (1)   D2, F=10.25, MBE=1e6, 622+822, sterr
+      11000 (1)   D2, F=10.25, MBE=1e6, 622+822, sterr
+      21000 (1)   D2, F=10.25, MBE=1e6, 622+822, sterr
+       2000 (1)   AL, F=10.25, MBE=5e5, sterr 
+      12000 (1)   AL, F=10.25, MBE=5e5, sterr 
+      22000 (1)   AL, F=10.25, MBE=5e5, sterr 
+    5001025 (1)   D2  F=10.25 MBE=1000000 
+    6001025 (1)   AL  F=10.25 MBE=500000  
+
+
+ ===> Directory : //D2/11.27
+       1000 (1)   D2, F=11.27, MBE=7e5, sterr 
+      11000 (1)   D2, F=11.27, MBE=7e5, sterr 
+      21000 (1)   D2, F=11.27, MBE=7e5, sterr 
+       2000 (1)   AL, F=11.27, MBE=5e5, sterr 
+      12000 (1)   AL, F=11.27, MBE=5e5, sterr 
+      22000 (1)   AL, F=11.27, MBE=5e5, sterr 
+    5001127 (1)   D2  F=11.27 MBE=700000  
+    6001127 (1)   AL  F=11.27 MBE=500000  
+
+
+ ===> Directory : //D2/12.28
+       1000 (1)   D2, F=12.28, MBE=5e5, sterr 
+      11000 (1)   D2, F=12.28, MBE=5e5, sterr 
+      21000 (1)   D2, F=12.28, MBE=5e5, sterr 
+       3000 (1)   D2+, F=12.28, MBE=5e5, sterr
+      13000 (1)   D2+, F=12.28, MBE=5e5, sterr
+      23000 (1)   D2+, F=12.28, MBE=5e5, sterr
+       4000 (1)   AL+, F=12.28, MBE=5e5, sterr
+      14000 (1)   AL+, F=12.28, MBE=5e5, sterr
+      24000 (1)   AL+, F=12.28, MBE=5e5, sterr
+    5001228 (1)   D2  F=12.28 MBE=500000  
+    7001228 (1)   D2+ F=12.28 MBE=500000  
+    8001228 (1)   AL+ F=12.28 MBE=500000  
+
+
+ ===> Directory : //D2/13.39
+       1000 (1)   D2, F=13.39, MBE=5e5, sterr 
+      11000 (1)   D2, F=13.39, MBE=5e5, sterr 
+      21000 (1)   D2, F=13.39, MBE=5e5, sterr 
+       2000 (1)   AL, F=13.39, MBE=2e5, sterr 
+      12000 (1)   AL, F=13.39, MBE=2e5, sterr 
+      22000 (1)   AL, F=13.39, MBE=2e5, sterr 
+    5001339 (1)   D2  F=13.39 MBE=500000  
+    6001339 (1)   AL  F=13.39 MBE=200000  
+
+
+ ===> Directory : //D2/14.54
+       1000 (1)   D2, F=14.54, MBE=5e5, sterr 
+      11000 (1)   D2, F=14.54, MBE=5e5, sterr 
+      21000 (1)   D2, F=14.54, MBE=5e5, sterr 
+       2000 (1)   AL, F=14.54, MBE=5e5, sterr 
+      12000 (1)   AL, F=14.54, MBE=5e5, sterr 
+      22000 (1)   AL, F=14.54, MBE=5e5, sterr 
+       3000 (1)   D2+, F=14.54, MBE=6e5, sterr
+      13000 (1)   D2+, F=14.54, MBE=6e5, sterr
+      23000 (1)   D2+, F=14.54, MBE=6e5, sterr
+       4000 (1)   AL+, F=14.54, MBE=5e5, sterr
+      14000 (1)   AL+, F=14.54, MBE=5e5, sterr
+      24000 (1)   AL+, F=14.54, MBE=5e5, sterr
+    5001454 (1)   D2  F=14.54 MBE=500000  
+    6001454 (1)   AL  F=14.54 MBE=500000  
+    7001454 (1)   D2+ F=14.54 MBE=600000  
+    8001454 (1)   AL+ F=14.54 MBE=500000  
+
+
+ ===> Directory : //D2/15.85
+       1000 (1)   D2, F=15.85, MBE=1e6, sterr 
+      11000 (1)   D2, F=15.85, MBE=1e6, sterr 
+      21000 (1)   D2, F=15.85, MBE=1e6, sterr 
+    5001585 (1)   D2  F=15.85 MBE=1000000 
+
+
+ ===> Directory : //D2/16.92
+       1000 (1)   D2, F=16.92, MBE=2e6, sterr 
+      11000 (1)   D2, F=16.92, MBE=2e6, sterr 
+      21000 (1)   D2, F=16.92, MBE=2e6, sterr 
+    5001692 (1)   D2  F=16.92 MBE=2000000 
+
+
+ ===> Directory : //D2/17.25
+       1000 (1)   D2, F=17.25, MBE=3e6, sterr 
+      11000 (1)   D2, F=17.25, MBE=3e6, sterr 
+      21000 (1)   D2, F=17.25, MBE=3e6, sterr 
+       2000 (1)   AL, F=17.25, MBE=2e6, sterr 
+      12000 (1)   AL, F=17.25, MBE=2e6, sterr 
+      22000 (1)   AL, F=17.25, MBE=2e6, sterr 
+       3000 (1)   D2+, F=17.25, MBE=1e6, sterr
+      13000 (1)   D2+, F=17.25, MBE=1e6, sterr
+      23000 (1)   D2+, F=17.25, MBE=1e6, sterr
+       4000 (1)   AL+, F=17.25, MBE=1e6, sterr
+      14000 (1)   AL+, F=17.25, MBE=1e6, sterr
+      24000 (1)   AL+, F=17.25, MBE=1e6, sterr
+    5001725 (1)   D2  F=17.25 MBE=3000000 
+    6001725 (1)   AL  F=17.25 MBE=2000000 
+    7001725 (1)   D2+ F=17.25 MBE=1000000 
+    8001725 (1)   AL+ F=17.25 MBE=1000000 
+
+
+ ===> Directory : //D2/17.60
+       1000 (1)   D2, F=17.60, MBE=4e6, sterr 
+      11000 (1)   D2, F=17.60, MBE=4e6, sterr 
+      21000 (1)   D2, F=17.60, MBE=4e6, sterr 
+    5001760 (1)   D2  F=17.60 MBE=4000000 
+
+
+ ===> Directory : //D2/19.18
+       1000 (1)   D2, F=19.18, MBE=3e6, sterr 
+      11000 (1)   D2, F=19.18, MBE=3e6, sterr 
+      21000 (1)   D2, F=19.18, MBE=3e6, sterr 
+       2000 (1)   AL, F=19.18, MBE=3e6, sterr 
+      12000 (1)   AL, F=19.18, MBE=3e6, sterr 
+      22000 (1)   AL, F=19.18, MBE=3e6, sterr 
+       3000 (1)   D2+, F=19.18, MBE=2e6, sterr
+      13000 (1)   D2+, F=19.18, MBE=2e6, sterr
+      23000 (1)   D2+, F=19.18, MBE=2e6, sterr
+       4000 (1)   AL+, F=19.18, MBE=2e6, sterr
+      14000 (1)   AL+, F=19.18, MBE=2e6, sterr
+      24000 (1)   AL+, F=19.18, MBE=2e6, sterr
+    5001918 (1)   D2  F=19.18 MBE=3000000 
+    6001918 (1)   AL  F=19.18 MBE=3000000 
+    7001918 (1)   D2+ F=19.18 MBE=2000000 
+    8001918 (1)   AL+ F=19.18 MBE=2000000 
+
+
+ ===> Directory : //D2/20.16
+       1000 (1)   D2, F=20.16, MBE=2e6, sterr 
+      11000 (1)   D2, F=20.16, MBE=2e6, sterr 
+      21000 (1)   D2, F=20.16, MBE=2e6, sterr 
+    5002016 (1)   D2  F=20.16 MBE=2000000 
+
+
+ ===> Directory : //D2/29.26
+       1000 (1)   D2, F=29.26, MBE=1e6, sterr 
+      11000 (1)   D2, F=29.26, MBE=1e6, sterr 
+      21000 (1)   D2, F=29.26, MBE=1e6, sterr 
+       2000 (1)   AL, F=29.26, MBE=1e6, sterr 
+      12000 (1)   AL, F=29.26, MBE=1e6, sterr 
+      22000 (1)   AL, F=29.26, MBE=1e6, sterr 
+    5002926 (1)   D2  F=29.26 MBE=1000000 
+    6002926 (1)   AL  F=29.26 MBE=1000000 

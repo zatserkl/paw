@@ -1,0 +1,1125 @@
+*                                         @METAGS optic
+*--------------- optic ---------------
+*
+MACRO optic sub='COLPARAB' f=400 Rpmt=2.0 th=0 ph=0 x=0 y=0 z=500 pmt=1 opt CHOPT=' '
+if $upper([1])='HELP' then
+   mess Usage:    [0] f=15 Rpmt=2.0 th=0 ph=0 x=0 y=0 z=500 pmt=1 opt CHOPT=' '
+   mess Here th and ph - additives to theta and phi in mrad
+   mess CHOPT: P=Print values
+   stopm
+endif
+
+g/cr OPTIC $WORD([0],1,1,#)
+OPTICFOR=''; g/imp OPTICFOR; if [OPTICFOR]='' then; exec OPTICFOR; endif
+
+opt grid
+
+exec for
+
+sigma point = array(3,1000&1000&1000)
+
+sigma ray = array(6)*0
+vars = $RSIGMA([z]),$RSIGMA([x]),$RSIGMA([y]),$RSIGMA([th]),$RSIGMA([ph])
+call mkray([vars],ray)
+
+*zmin = -21
+*zmax = -1*[zmin]
+zmin = -10
+zmax = 510
+xmin = -30
+xmax =  70
+*xmin = -25
+*xmax = -1*[xmin]
+if $INDEX($UPPER([opt]),'S') = 0 then
+   null [zmin] [zmax] [xmin] [xmax]
+endif
+
+call [sub]($RSIGMA([f]),$RSIGMA([Rpmt]),ray,point)
+
+if [pmt] > 0 then
+   zon 3 3 1 s
+   zmin = -10
+   zmax =  10
+   ymin = -10
+   ymax =  10
+   null [zmin] [zmax] [ymin] [ymax] a
+   null [zmin] [zmax] [ymin] [ymax] s
+   arc 0 0 [Rpmt]
+   key $EVAL(point(2)) $EVAL(point(3)) 20
+   zon 1 1 1
+endif
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+
+*                                         @METAGS SPHERA
+*                                         06-02-98 01:17pm
+*--------------- SPHERA ---------------
+*
+      SUBROUTINE SPHERA(R,zmin,zmax,maxray,rayhis,nray,ierr)
+*
+*     Reflection from spheroidal mirror  x**2 + y**2 + (z-R)**2 = R**2
+*     Focus f=R/2
+*     To simplify calculation we use transfer to center of sphera system
+*
+*     Note: rayhis,rayhis1 in frame of spheroid
+*           (i.e. normal in sphera top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of spheroid x**2 + y**2 + (z-R)**2 = R**2
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of sphera
+*     -1: ray have missed the sphera
+*
+*              x|          "Mirror" system
+*               |      .   ---------------
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----*-----------------------
+*              /| |    |      R                     z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer maxray,nray,ierr
+      real R,zmin,zmax,rayhis(6,maxray+1)
+      double precision R2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z,x,y
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot,j
+
+      ierr = 0
+      nray = 1
+
+      do i=1,6
+         rayhis(i,nray+1) = rayhis(i,nray)
+      enddo
+
+      R2 = DBLE(R)**2
+*     .. spheroid boundaries in center of sphera system (shift for z)
+      z1 = zmin - R
+      z2 = zmax - R
+      if (zmax .EQ. 0.) then
+*        .. set z2 to center of sphera in "sphera" system
+         z2=0.d0
+      endif
+*      print*, 'z1,z2: =', z1,z2
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray in center of sphera system (shift for x1)
+      x1 = rayhis(4,nray) - R
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+*      print*, 'rayhis(4,nray) in "mirror" system =', rayhis(4,nray)
+*      print*, 'x1 in "sphera" system =', x1
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2 + y**2 + z**2 = R**2
+*--
+*     Perform the calculation in center of sphera system.
+*     Here x**2 + y**2 + z**2 = R**2
+*--
+*     .. coeffs. of square equation
+      a = c1**2 + c2**2 + c3**2
+      b = 2.*(c1*x1 + c2*x2 + c3*x3)
+      c = x1**2 + x2**2 + x3**2 - R2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'SPHERA: idroot =', idroot
+*         call WAIT('SPHERA: No roots of square equation')
+         goto 1001
+
+         if (idroot.LT.0) call MESS('SPHERA: No roots')
+         if (idroot.EQ.1) call MESS('SPHERA: Any roots')
+         if (idroot.EQ.2) call MESS('SPHERA: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of spheroid. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of spheroid. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nray = nray+1
+
+*     .. adjust point on spheroid
+      x = REAL(x2 + c2*t)
+      y = REAL(x3 + c3*t)
+      z = x1 + c1*t
+      if (z .LE. 0.d0) then
+         z = REAL(-1.d0 * sqrt(R2 - x**2 - y**2))
+      else
+         z = REAL(sqrt(R2 - x**2 - y**2))
+      endif
+*      print*, 'z in "sphera" system =', z
+*     .. radiant of the output ray in mirror system (shift for z)
+      rayhis(4,nray) = z + R
+      rayhis(5,nray) = x
+      rayhis(6,nray) = y
+*      print*, 'rayhis1(4,nray) in "mirror" system =', rayhis1(4,nray)
+*
+*  Gets directrix cosines o of nornal to spheroid in the point ray1(4:6)
+*
+*  Rewrite spheroid equation x**2 + y**2 + z**2 = R**2 in form
+*  F(z,x,y)=0. Becouse spheroid reflect by its inner surface,
+*  F(z,x,y) = R**2 - z**2 + x**2 + y**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 = -z
+      o2 = -x
+      o3 = -y
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+      oray = o1*c1 + o2*c2 + o3*c3
+*      print*, 'o:', o1,o2,o3
+      if (oray .GE. 0.d0) then
+*         print*, 'o:', o1,o2,o3
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      rayhis(1,nray) = c1 - 2.d0*oray*o1/oo
+      rayhis(2,nray) = c2 - 2.d0*oray*o2/oo
+      rayhis(3,nray) = c3 - 2.d0*oray*o3/oo
+
+       if (nray.GT.maxray) then
+*         .. history overflow
+          goto 1001
+       endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray in "sphera" system
+      x1 = rayhis(4,nray) - R
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+*     .. coeffs. of square equation
+      a = c1**2 + c2**2 + c3**2
+      b = 2.*(c1*x1 + c2*x2 + c3*x3)
+*     .. becouse a.NE.0
+      t1 = -b/a
+*     .. to use the same code
+      t2 = t1
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the spheroid
+      if (nray.EQ.1) ierr = -1
+      nray = nray-1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of spheroid
+      ierr = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'SPHERA: nray =', nray, '   rays for nray-1, nray:'
+*      print*, (rayhis(j,nray-1), j=1,6)
+*      print*, (rayhis(j,nray), j=1,6)
+      RETURN
+      END
+
+*                                         @METAGS PARAB
+*                                         06-02-98 01:17pm
+*--------------- PARAB ---------------
+*
+      SUBROUTINE PARAB(f,zmin,zmax,maxray,rayhis,nray,ierr)
+*
+*     Commonly, p = q = 2f
+*     Uses double precision p=ppar, q=qpar
+*     Reflection from paraboloid mirror 2z = x**2/p + y**2/q
+*
+*     Note: ray,ray1 in frame of paraboloid
+*           (i.e. normal in paraboloid top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of paraboloid 2z = x**2/p + y**2/q
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of paraboloid
+*     -1: ray have missed the paraboloid
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer maxray,nray,ierr
+      real f,zmin,zmax,rayhis(6,maxray+1)
+      double precision p,q,z1,z2
+      double precision c1,c2,c3,x1,x2,x3, z
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot,j
+
+      ierr = 0
+      nray = 1
+
+      do i=1,6
+         rayhis(i,nray+1) = rayhis(i,nray)
+      enddo
+
+      p = 2.d0*f
+      q = p
+*     .. paraboloid boundaries along the z
+      z1 = zmin
+      z2 = zmax
+      if (zmax.EQ.0.) z2=f
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nray)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2/p + y**2/q - 2*z = 0
+*
+*     .. coeffs. of square equation
+      a = c2**2/p + c3**2/q
+      b = 2.*(c2*x2/p + c3*x3/q - c1)
+      c = x2**2/p + x3**2/q - 2.*x1
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'PARAB: idroot =', idroot
+*         call WAIT('PARAB: No roots of square equation')
+*         goto 1001
+
+         if (idroot.LT.0) call MESS('PARAB: No roots')
+         if (idroot.EQ.1) call MESS('PARAB: Any roots')
+         if (idroot.EQ.2) call MESS('PARAB: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of paraboloid. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of paraboloid. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nray = nray+1
+
+*     .. adjust point on paraboloid
+      x2 = x2 + c2*t
+      x3 = x3 + c3*t
+      x1 = (x2**2/p + x3**2/q)/2.d0
+*      z = REAL(x1 + c1*t)
+*     .. radiant of the output ray
+      rayhis(4,nray) = x1
+      rayhis(5,nray) = x2
+      rayhis(6,nray) = x3
+*
+*  Gets directrix cosines o of nornal to paraboloid in the point ray1(4:6)
+*
+*  Rewrite paraboloid equation x**2/p + y**2/q - 2*z = 0 in form
+*  F(z,x,y)=0. Becouse paraboloid reflect by its inner surface,
+*  F(z,x,y) = 2*z - x**2/p + y**2/q
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  1.d0
+      o2 = -x2/p
+      o3 = -x3/q
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+*     .. include factor 2 to oray
+      oray = 2.d0*(o1*c1 + o2*c2 + o3*c3)/oo
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      c1 = c1 - oray*o1
+      c2 = c2 - oray*o2
+      c3 = c3 - oray*o3
+*     .. assign to output ray
+      rayhis(1,nray) = c1
+      rayhis(2,nray) = c2
+      rayhis(3,nray) = c3
+
+      if (nray.GT.maxray) then
+*        .. history overflow
+         goto 1001
+      endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. here c1,c2,c3 is cosines and x1,x2,x3 is radiant of reflected ray
+*     .. coeffs. of square equation
+      a = c2**2/p + c3**2/q
+      b = 2.*(c2*x2/p + c3*x3/q - c1)
+ 
+*      c = x2**2/p + x3**2/q - 2.*x1
+*      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'Compare: roots:', t1,t2
+
+      if (a .NE. 0.d0) then
+         t1 = -b/a
+*         print*, 'by Viete t1=', t1
+*         print*, 'Compare: eq.:', a*t1**2 + b*t1 + c
+      else
+*        .. the other root=0 too
+*           there is no intersection point downstream the ray
+         nray = nray+1
+         goto 1001
+      endif
+*     .. to use the same code
+      t2 = t1
+
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the paraboloid
+      if (nray.EQ.1) ierr = -1
+      nray = nray-1
+      goto 1000
+      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of paraboloid
+      ierr = 1
+      goto 1000
+      RETURN
+ 1000 continue
+*      print*, 'PARAB: nray =', nray, '   rays for nray-1, nray:'
+*      print*, (rayhis(j,nray-1), j=1,6)
+*      print*, (rayhis(j,nray), j=1,6)
+      RETURN
+      END
+
+*                                         @METAGS COLPARAB
+*                                         23/06/98 12:38
+*--------------- COLPARAB ---------------
+*
+      SUBROUTINE COLPARAB(f,Rpmt,ray,point)
+*
+*     Notations: P(1,2,3) = (Pz,Px,Py)
+*
+      real ray(6),rayloc(6)
+      parameter (MAXRAY=100)
+      real rayhis(6,MAXRAY+1)
+      real sysmir(5),sysref(5),syspar(5),syspmt(5),sysfor(5), sysbox(5)
+      real point(3)
+*
+*     x|                dzpmt
+*      |                 +-+
+*      |                 | |
+*      |                 | |
+*      |  /              +-+ dxpmt
+*      | /               
+*      |/    
+*      |                   /
+*     0+------------------/----------
+*     /|                 /dzpla     z
+*    / |\                   
+*   /  | \    <---------*---
+* y/   |  \  ray(1:3) ray(4:6)
+*
+
+*     .. coordinates to plot
+      ixplot = 1
+      iyplot = 2
+
+*     .. box
+      Rbox = 30.
+      dbox = 500.
+*     .. box frame
+      iaxis = 3
+      thbox = 0.
+      zbox = 0.
+      xbox = 0.
+      call mkframe(iaxis,thbox,zbox,xbox, sysbox)
+      call KUEXEL('set plci 4')
+      call PLOCYLBO(Rbox,dbox,sysbox)
+      call KUEXEL('set plci 1')
+
+*     .. PM position
+      zpmt = f
+
+*     .. spherical mirror
+      R = 2.*f
+      h1mir = 0.
+      h2mir = 0.
+*     .. mirror frame
+      iaxis = 3
+      thmir = 0.
+      zmir = 0.
+      xmir = 0.
+      call mkframe(iaxis,thmir,zmir,xmir, sysmir)
+      z2mir = 0.
+
+      call KUEXEL('set plci 6')
+      call PLOSPH(R,h1mir,h2mir,0.,0.,ixplot,iyplot,sysmir)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOSPH')
+
+*     .. Reflector
+      Rref = 15.
+      h1ref = -Rref
+      h2ref =  Rref
+*     .. reflector frame
+      iaxis = 3
+      thref = 135.
+      zref = f
+      xref = 0.
+      call mkframe(iaxis,thref,zref,xref, sysref)
+*     .. plot reflector
+      call KUEXEL('set plci 4')
+      call PLOPLA(h1ref,h2ref,ixplot,iyplot,sysref)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOPLA')
+      
+*     .. paraboloid collector
+      Rpar1 = Rpmt+1.
+      Rpar2 = 12.
+      call PARABpar(Rpar1,Rpar2,fcol,hcol)
+      h1par = fcol
+      h2par = hcol
+*     .. par frame
+      iaxis = 3
+      thpar = -90.
+      zpar = f
+      xpar = Rbox + h2par
+      call mkframe(iaxis,thpar,zpar,xpar, syspar)
+      
+      call KUEXEL('set plci 6')
+      p = 2.*fcol
+      q = p
+*      call PLOPAR(p,q,h1par,h2par,Rpar1,Rpar2,ixplot,iyplot,syspar)
+      call PLOPAR(p,q,h1par,h2par,0.,0.,ixplot,iyplot,syspar)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOPAR')
+
+*     .. PM
+      x1pmt = -Rpmt
+      x2pmt =  Rpmt
+*     .. pmt frame
+      iaxis = 3
+      thpmt = -90.
+      zpmt = f
+      xpmt = Rbox + (h2par-h1par)
+      call mkframe(iaxis,thpmt,zpmt,xpmt, syspmt)
+*     .. plot PM
+      call KUEXEL('set plci 2')
+      call PLOPLA(x1pmt,x2pmt,ixplot,iyplot,syspmt)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOPLA')
+
+*     .. Forward
+      x1for = -500.
+      x2for =  100.
+*     .. forward frame
+      iaxis = 3
+      thfor = -90.
+      zfor = f
+      xfor = xpmt + 5.
+      call mkframe(iaxis,thfor,zfor,xfor, sysfor)
+*     .. plot PM
+      call KUEXEL('set plci 6')
+      call PLOPLA(x1for,x2for,ixplot,iyplot,sysfor)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOPLA')
+
+*
+*     Run ray
+*
+      nray = 1
+      call raycop(ray,rayhis(1,nray))
+*      print*, 'Start: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      
+*--   Reflection from mirror
+      call toloc(sysmir,rayhis(1,nray),rayhis(1,nray))
+*      print*, 'In loc: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      irest = MAXRAY-nray
+      call SPHERA(R,h1mir,h2mir,1,rayhis(1,nray),npro,iermir)
+***      call PARAB(f,h1mir,h2mir,1,rayhis(1,nray),npro,iermir)
+      print*, 'iermir =', iermir
+      print*, 'npro =', npro
+*     .. return to lab
+      do i=nray,nray+npro
+         call tolab(sysmir,rayhis(1,i),rayhis(1,i))
+*         print*, i
+*         print*, (rayhis(j,i), j=1,6)
+      enddo
+      nray = nray+npro
+      print*, 'after mirror nray =', nray
+      print*, 'After mir: In lab: rayhis, nray = ', nray
+      print*, (rayhis(j,nray), j=1,6)
+      if (iermir.GT.0) then
+*        .. absorbed at the mirror. Go to plot
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   .. Reflection from reflector
+*     .. ray in reflector local frame
+      call toloc(sysref,rayhis(1,nray),rayloc)
+*      ierref = MIRPLA(rayloc,rayhis(1,nray+1))
+      ierref = MIRCIR(Rref,rayloc,rayhis(1,nray+1))
+      print*, 'ierref =', ierref
+      if (ierref.GE.0) then
+         nray = nray+1
+*        .. return to lab output ray
+         call tolab(sysref,rayhis(1,nray),rayhis(1,nray))
+      endif
+      print*, 'After ref: In lab: rayhis, nray = ', nray
+      print*, (rayhis(j,nray), j=1,6)
+      if (ierref.GT.0) then
+*        .. absorbed at the reflector. Go to plot
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   Reflection from paraboloid collector
+*     .. ray in pare local frame
+      call toloc(syspar,rayhis(1,nray),rayhis(1,nray))
+*      print*, 'In loc: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      irest = MAXRAY-nray
+      call PARAB(fcol,h1par,h2par,irest,rayhis(1,nray),npro,ierpar)
+      print*, 'ierpar =', ierpar
+      print*, 'npro =', npro
+*     .. return to lab
+      do i=nray,nray+npro
+         call tolab(syspar,rayhis(1,i),rayhis(1,i))
+*         print*, i
+*         print*, (rayhis(j,i), j=1,6)
+      enddo
+      nray = nray+npro
+*      print*, 'after par.col. nray =', nray
+*      print*, 'In lab: rayhis, nray = ', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      if (ierpar.GT.0) then
+*        .. absorbed at the par.col. Go to plot
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   Intersection with PM
+*     .. ray in PM local frame
+      call toloc(syspmt,rayhis(1,nray),rayloc)
+      call PMT(Rpmt,rayloc, rayhis(1,nray+1),ierpmt)
+      print*, 'ierpmt =', ierpmt
+      if (ierpmt.GE.0) then
+         nray = nray+1
+*        .. for point
+         call raycop(rayhis(1,nray),rayloc)
+*        .. return to lab output ray
+         call tolab(syspmt,rayhis(1,nray),rayhis(1,nray))
+   
+         if (ierpmt.EQ.0) then
+*           .. absorbed at the PMT. Go to plot
+            do i=1,3
+               point(i) = rayloc(3+i)
+            enddo
+            print*, '  Hit PMT: x,y,nray:', (rayloc(j),j=5,6), nray
+            goto 10000
+         endif
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   .. Look at the ray at the box
+*     .. ray in box local frame
+      call toloc(sysbox,rayhis(1,nray),rayloc)
+      call CYLBOX(Rbox,dbox,rayloc,rayhis(1,nray+1),ierbox)
+      print*, 'ierbox =', ierbox
+      if (ierbox.GE.0) then
+         nray = nray+1
+*        .. return to lab output ray
+         call tolab(sysbox,rayhis(1,nray),rayhis(1,nray))
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   .. Look at the ray at Forward plane
+*     .. ray in Forward local frame
+      call toloc(sysfor,rayhis(1,nray),rayloc)
+      ierfor = MIRPLA(rayloc,rayhis(1,nray+1))
+*      print*, 'ierfor =', ierfor
+      if (ierfor.GE.0) then
+         nray = nray+1
+*        .. return to lab output ray
+         call tolab(sysfor,rayhis(1,nray),rayhis(1,nray))
+         goto 10000
+      endif
+
+10000 continue
+*      print*, 'The end: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+*      call WAIT('call plohis')
+      call plohis(nray,rayhis,1,2)
+
+*      do i=1,nray
+*         ulen = sqrt(rayhis(1,i)**2+rayhis(2,i)**2+rayhis(3,i)**2)
+*         print*, 'i =', i, '   ulen =', ulen
+*      enddo
+      STOP
+      END
+
+*                                         @METAGS COUNT
+*                                         23/06/98 12:38
+*--------------- COUNT ---------------
+*
+      SUBROUTINE COUNT(f,Rpmt,ray,point)
+*
+*     Notations: P(1,2,3) = (Pz,Px,Py)
+*
+      real ray(6),rayloc(6)
+      parameter (MAXRAY=100)
+      real rayhis(6,MAXRAY+1)
+      real sysmir(5),sysref(5),syscon(5),syspmt(5),sysfor(5), sysbox(5)
+      real point(3)
+*
+*     x|                dzpmt
+*      |                 +-+
+*      |                 | |
+*      |                 | |
+*      |  /              +-+ dxpmt
+*      | /               
+*      |/    
+*      |                   /
+*     0+------------------/----------
+*     /|                 /dzpla     z
+*    / |\                   
+*   /  | \    <---------*---
+* y/   |  \  ray(1:3) ray(4:6)
+*
+
+*     .. coordinates to plot
+      ixplot = 1
+      iyplot = 2
+
+*     .. box
+      Rbox = 30.
+      dbox = 500.
+*     .. box frame
+      iaxis = 3
+      thbox = 0.
+      zbox = 0.
+      xbox = 0.
+      call mkframe(iaxis,thbox,zbox,xbox, sysbox)
+      call KUEXEL('set plci 4')
+      call PLOCYLBO(Rbox,dbox,sysbox)
+      call KUEXEL('set plci 1')
+
+*     .. PM position
+      zpmt = f
+
+*     .. spherical mirror
+      R = 2.*f
+      h1mir = 0.
+      h2mir = R
+*     .. mirror frame
+      iaxis = 3
+      thmir = 0.
+      zmir = 0.
+      xmir = 0.
+      call mkframe(iaxis,thmir,zmir,xmir, sysmir)
+      z2mir = 0.
+
+      call KUEXEL('set plci 6')
+      call PLOSPH(R,h1mir,h2mir,0.,0.,ixplot,iyplot,sysmir)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOSPH')
+
+*     .. Reflector
+      Rref = 15.
+      h1ref = -Rref
+      h2ref =  Rref
+*     .. reflector frame
+      iaxis = 3
+      thref = 135.
+      zref = f
+      xref = 0.
+      call mkframe(iaxis,thref,zref,xref, sysref)
+*     .. plot reflector
+      call KUEXEL('set plci 4')
+      call PLOPLA(h1ref,h2ref,ixplot,iyplot,sysref)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOPLA')
+      
+*     .. cone
+      tgcone = 0.4
+      h1cone = 5.
+      h2cone = 25.
+*     .. cone frame
+      iaxis = 3
+      thcon = -90.
+      zcon = f
+      xcon = 30. + h2cone
+      call mkframe(iaxis,thcon,zcon,xcon, syscon)
+      
+      call KUEXEL('set plci 6')
+      call PLOCON(tgcone,h1cone,h2cone,0.,0.,ixplot,iyplot,syscon)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOCON')
+
+*     .. PM
+      x1pmt = -Rpmt
+      x2pmt =  Rpmt
+*     .. pmt frame
+      iaxis = 3
+      thpmt = -90.
+      zpmt = f
+      xpmt = 30. + (h2cone-h1cone)
+      call mkframe(iaxis,thpmt,zpmt,xpmt, syspmt)
+*     .. plot PM
+      call KUEXEL('set plci 2')
+      call PLOPLA(x1pmt,x2pmt,ixplot,iyplot,syspmt)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOPLA')
+
+*     .. Forward
+      x1for = -500.
+      x2for =  100.
+*     .. forward frame
+      iaxis = 3
+      thfor = -90.
+      zfor = f
+      xfor = xpmt + 5.
+      call mkframe(iaxis,thfor,zfor,xfor, sysfor)
+*     .. plot PM
+      call KUEXEL('set plci 6')
+      call PLOPLA(x1for,x2for,ixplot,iyplot,sysfor)
+      call KUEXEL('set plci 1')
+*      call WAIT('After PLOPLA')
+
+*
+*     Run ray
+*
+      nray = 1
+      call raycop(ray,rayhis(1,nray))
+*      print*, 'Start: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+
+*--   Reflection from mirror
+      call toloc(sysmir,rayhis(1,nray),rayhis(1,nray))
+*      print*, 'In loc: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      call COLSPH(R,h1mir,h2mir,1,rayhis(1,nray),npro,iermir)
+*      print*, 'iermir =', iermir
+*      print*, 'npro =', npro
+*     .. return to lab
+      do i=nray,nray+npro
+         call tolab(sysmir,rayhis(1,i),rayhis(1,i))
+*         print*, i
+*         print*, (rayhis(j,i), j=1,6)
+      enddo
+      nray = nray+npro
+*      print*, 'after mirror nray =', nray
+*      print*, 'After mir: In lab: rayhis, nray = ', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      if (iermir.GT.0) then
+*        .. absorbed at the mirror. Go to plot
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   .. Reflection from reflector
+*     .. ray in reflector local frame
+      call toloc(sysref,rayhis(1,nray),rayloc)
+*      ierref = MIRPLA(rayloc,rayhis(1,nray+1))
+      ierref = MIRCIR(Rref,rayloc,rayhis(1,nray+1))
+*      print*, 'ierref =', ierref
+      if (ierref.GE.0) then
+         nray = nray+1
+*        .. return to lab output ray
+         call tolab(sysref,rayhis(1,nray),rayhis(1,nray))
+      endif
+*      print*, 'After ref: In lab: rayhis, nray = ', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      if (ierref.GT.0) then
+*        .. absorbed at the reflector. Go to plot
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   Reflection from cone
+*     .. ray in cone local frame
+      call toloc(syscon,rayhis(1,nray),rayhis(1,nray))
+*      print*, 'In loc: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+***      MAXRA = MAXRAY
+***      call COLCON(tgcone,h1cone,h2cone,MAXRA,rayhis(1,nray),npro,iercon)
+      call CONE(tgcone,h1cone,h2cone,MAXRAY,rayhis(1,nray),npro,iercon)
+*      print*, 'iercon =', iercon
+*      print*, 'npro =', npro
+*     .. return to lab
+      do i=nray,nray+npro
+         call tolab(syscon,rayhis(1,i),rayhis(1,i))
+*         print*, i
+*         print*, (rayhis(j,i), j=1,6)
+      enddo
+      nray = nray+npro
+*      print*, 'after cone nray =', nray
+*      print*, 'In lab: rayhis, nray = ', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      if (iercon.GT.0) then
+*        .. absorbed at the cone. Go to plot
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   Intersection with PM
+*     .. ray in PM local frame
+      call toloc(syspmt,rayhis(1,nray),rayloc)
+      call PMT(Rpmt,rayloc, rayhis(1,nray+1),ierpmt)
+*      print*, 'ierpmt =', ierpmt
+      if (ierpmt.GE.0) then
+         nray = nray+1
+*        .. for point
+         call raycop(rayhis(1,nray),rayloc)
+*        .. return to lab output ray
+         call tolab(syspmt,rayhis(1,nray),rayhis(1,nray))
+   
+         if (ierpmt.EQ.0) then
+*           .. absorbed at the PMT. Go to plot
+            do i=1,3
+               point(i) = rayloc(3+i)
+            enddo
+            print*, '  Hit PMT: x,y,nray:', (rayloc(j),j=5,6), nray
+            goto 10000
+         endif
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   .. Look at the ray at the box
+*     .. ray in box local frame
+      call toloc(sysbox,rayhis(1,nray),rayloc)
+      call CYLBOX(Rbox,dbox,rayloc,rayhis(1,nray+1),ierbox)
+*      print*, 'ierbox =', ierbox
+      if (ierbox.GE.0) then
+         nray = nray+1
+*        .. return to lab output ray
+         call tolab(sysbox,rayhis(1,nray),rayhis(1,nray))
+         goto 10000
+      endif
+
+      if (nray.EQ.MAXRAY+1) then
+         goto 10000
+      endif
+
+*--   .. Look at the ray at Forward plane
+*     .. ray in Forward local frame
+      call toloc(sysfor,rayhis(1,nray),rayloc)
+      ierfor = MIRPLA(rayloc,rayhis(1,nray+1))
+*      print*, 'ierfor =', ierfor
+      if (ierfor.GE.0) then
+         nray = nray+1
+*        .. return to lab output ray
+         call tolab(sysfor,rayhis(1,nray),rayhis(1,nray))
+         goto 10000
+      endif
+
+10000 continue
+*      print*, 'The end: rayhis, nray =', nray
+*      print*, (rayhis(j,nray), j=1,6)
+      call plohis(nray,rayhis,1,2)
+      END
+QUIT
+RETURN

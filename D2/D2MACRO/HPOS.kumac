@@ -1,0 +1,20 @@
+*                                         @METAGS Hpos
+*--------------- Hpos ---------------
+*
+MACRO Hpos id
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] id
+   stopm
+endif
+
+if $HEXIST([id]) = 0 then
+   mess Hist ID=[id] is not exist
+   stopm
+endif
+
+sigma buf=array(96)*0
+get/con [id] buf
+sigma buf = buf*(buf GE 0)
+put/con [id] buf
+v/de buf
+RETURN

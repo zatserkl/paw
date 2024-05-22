@@ -1,0 +1,178 @@
+ Histogram file h670.his
+ List of directories in histogram file h670.his
+ 9.03    
+ 10.73   
+ 11.69   
+ 12.75   
+ 13.89   
+ 15.14   
+ 15.88   
+ 16.51   
+ 18.01   
+ 19.62   
+ 21.38   
+ 22.71   
+ BUF     
+  
+  
+ Complete directory tree
+ -----------------------
+
+
+ ===> Directory : //D2
+          1 (1)   Global coeffs. from d2low.fit   
+          2 (1)   Global coeffs. from d2high.fit  
+          3 (1)   Aver. gl. coefs. low+high   
+
+
+ ===> Directory : //D2/9.03
+       1000 (1)   F=9.03. MBE=2E5. Correct errors.
+      11000 (1)   F=9.03. MBE=2E5. Correct errors.
+      21000 (1)   F=9.03. MBE=2E5. Correct errors.
+       2000 (1)   Al. F=9.03. MBE=1E5. Sterr. 
+      12000 (1)   Al. F=9.03. MBE=1E5. Sterr. 
+      22000 (1)   Al. F=9.03. MBE=1E5. Sterr. 
+       3000 (1)   D2+. F=9.03. MBE=1E5. stderr.   
+      13000 (1)   D2+. F=9.03. MBE=1E5. stderr.   
+      23000 (1)   D2+. F=9.03. MBE=1E5. stderr.   
+       4000 (1)   AL+. F=9.03. MBE=5E4. stderr.   
+      14000 (1)   AL+. F=9.03. MBE=5E4. stderr.   
+      24000 (1)   AL+. F=9.03. MBE=5E4. stderr.   
+    5000903 (1)   D2  F=9.03 MBE=200000          .
+    6000903 (1)   AL  F=9.03 MBE=100000   
+    7000903 (1)   D2+ F=9.03 MBE=100000   
+    8000903 (1)   AL+ F=9.03 MBE=50000
+
+
+ ===> Directory : //D2/10.73
+       1000 (1)   F=10.73. MBE=5E5. Correct errors.   
+      11000 (1)   F=10.73. MBE=5E5. Correct errors.   
+      21000 (1)   F=10.73. MBE=5E5. Correct errors.   
+       2000 (1)   AL. F=10.73. MBE=2E5. sterr.
+      12000 (1)   AL. F=10.73. MBE=2E5. sterr.
+      22000 (1)   AL. F=10.73. MBE=2E5. sterr.
+       4000 (1)   AL+. F=10.73. MBE=5E4. stderr.  
+      14000 (1)   AL+. F=10.73. MBE=5E4. stderr.  
+      24000 (1)   AL+. F=10.73. MBE=5E4. stderr.  
+       3000 (1)   D2+. F=10.73. MBE=1E5. stderr.  
+      13000 (1)   D2+. F=10.73. MBE=1E5. stderr.  
+      23000 (1)   D2+. F=10.73. MBE=1E5. stderr.  
+    5001073 (1)   D2  F=10.73 MBE=500000  
+    6001073 (1)   AL  F=10.73 MBE=200000     .
+    7001073 (1)   D2+ F=10.73 MBE=100000  
+    8001073 (1)   AL+ F=10.73 MBE=50000   
+
+
+ ===> Directory : //D2/11.69
+       1000 (1)   F=11.69. MBE=5E5. Correct errors.   
+      11000 (1)   F=11.69. MBE=5E5. Correct errors.   
+      21000 (1)   F=11.69. MBE=5E5. Correct errors.   
+    5001169 (1)   D2  F=11.69 MBE=500000  
+
+
+ ===> Directory : //D2/12.75
+       1000 (1)   F=12.75. MBE=5E5. Correct errors.   
+      11000 (1)   F=12.75. MBE=5E5. Correct errors.   
+      21000 (1)   F=12.75. MBE=5E5. Correct errors.   
+    5001275 (1)   D2  F=12.75 MBE=500000  
+
+
+ ===> Directory : //D2/13.89
+       1000 (1)   F=13.89. MBE=1E6. Correct errors.   
+      11000 (1)   Counts for 21(14)   
+      21000 (1)   Delays for 21(14)   
+       2000 (1)   AL. F=13.89. MBE=5E5. sterr.
+      12000 (1)   AL. F=13.89. MBE=5E5. sterr.
+      22000 (1)   AL. F=13.89. MBE=5E5. sterr.
+       3000 (1)   D2+. F=13.89. MBE=2E5. stderr.  
+      13000 (1)   D2+. F=13.89. MBE=2E5. stderr.  
+      23000 (1)   D2+. F=13.89. MBE=2E5. stderr.  
+       4000 (1)   AL+. F=13.89. MBE=1E5. stderr.  
+      14000 (1)   AL+. F=13.89. MBE=1E5. stderr.  
+      24000 (1)   AL+. F=13.89. MBE=1E5. stderr.  
+    5001389 (1)   D2  F=13.89 MBE=1000000 
+    6001389 (1)   AL  F=13.89 MBE=500000     .
+    7001389 (1)   D2+ F=13.89 MBE=200000  
+    8001389 (1)   AL+ F=13.89 MBE=100000  
+
+
+ ===> Directory : //D2/15.14
+
+
+ ===> Directory : //D2/15.88
+       1000 (1)   F=15.88. MBE=4e5 (not 1e6). Stderr. 
+      11000 (1)   F=15.88. MBE=1E6. Correct errors.   
+      21000 (1)   F=15.88. MBE=1E6. Correct errors.   
+       5001 (1)   F=15.88  D2  scalto 1e6 from 1e6.   
+    5001588 (1)   D2  F=15.88 MBE=400000  
+
+
+ ===> Directory : //D2/16.51
+       1000 (1)   F=16.51. MBE=1E6. Correct errors.   
+      11000 (1)   F=16.51. MBE=1E6. Correct errors.   
+      21000 (1)   F=16.51. MBE=1E6. Correct errors.   
+       2000 (1)   AL. F=16.51. MBE=5E5. sterr.
+      12000 (1)   AL. F=16.51. MBE=5E5. sterr.
+      22000 (1)   AL. F=16.51. MBE=5E5. sterr.
+    5001651 (1)   D2  F=16.51 MBE=1000000 
+    6001651 (1)   AL  F=16.51 MBE=500000     .
+
+
+ ===> Directory : //D2/18.01
+       1000 (1)   F=18.01. MBE=2E6. Correct errors.   
+      11000 (1)   F=18.01. MBE=2E6. Correct errors.   
+      21000 (1)   F=18.01. MBE=2E6. Correct errors.   
+       2000 (1)   AL. F=18.01. MBE=1E6. sterr.
+      12000 (1)   AL. F=18.01. MBE=1E6. sterr.
+      22000 (1)   AL. F=18.01. MBE=1E6. sterr.
+       4000 (1)   AL+. F=18.01. MBE=4E5. stderr.  
+      14000 (1)   AL+. F=18.01. MBE=4E5. stderr.  
+      24000 (1)   AL+. F=18.01. MBE=4E5. stderr.  
+    5001801 (1)   D2  F=18.01 MBE=2000000 
+    6001801 (1)   AL  F=18.01 MBE=1000000    .
+    8001801 (1)   AL+ F=18.01 MBE=400000  
+
+
+ ===> Directory : //D2/19.62
+       1000 (1)   F=19.62. MBE=3E6. Correct errors.   
+      11000 (1)   3E6. Complete bin for F=19.62   
+      21000 (1)   3E6. Complete bin for F=19.62   
+       2000 (1)   AL. F=19.62. MBE=2E6. 3814+3914. sterr. 
+      12000 (1)   AL. F=19.62. MBE=2E6. 3814+3914. sterr. 
+      22000 (1)   AL. F=19.62. MBE=2E6. 3814+3914. sterr. 
+    5001962 (1)   D2  F=19.62 MBE=3000000 
+    6001962 (1)   AL  F=19.62 MBE=2000000 
+
+
+ ===> Directory : //D2/21.38
+       1000 (1)   F=21.38. MBE=8E6. Sum 915+1315. Correct errors. 
+      11000 (1)   Sum of 915 and 1315. MBE=8E6.   
+      21000 (1)   Sum of 915 and 1315. MBE=8E6.   
+       2000 (1)   AL. F=21.38. MBE=3E6. 1415+1715. Non const. sterr.  
+      12000 (1)   AL. F=21.38. MBE=3E6. 1415+1715. Non const. sterr.  
+      22000 (1)   AL. F=21.38. MBE=3E6. 1415+1715. Non const. sterr.  
+       3000 (1)   D2+. F=21.38. MBE=1E6. stderr.  
+      13000 (1)   D2+. F=21.38. MBE=1E6. stderr.  
+      23000 (1)   D2+. F=21.38. MBE=1E6. stderr.  
+       4000 (1)   AL+. F=21.38. MBE=4E5. stderr.  
+      14000 (1)   AL+. F=21.38. MBE=4E5. stderr.  
+      24000 (1)   AL+. F=21.38. MBE=4E5. stderr.  
+    5002138 (1)   D2  F=21.38 MBE=8000000 
+    6002138 (1)   AL  F=21.38 MBE=3000000 
+    7002138 (1)   D2+ F=21.38 MBE=1000000 
+    8002138 (1)   AL+ F=21.38 MBE=400000  
+
+
+ ===> Directory : //D2/22.71
+       1000 (1)   F=22.71. MBE=3E6. Sum of 1815 and 2015. Corr. errors.   
+      11000 (1)   F=22.71. MBE=3E6. Sum of 1815 and 2015  
+      21000 (1)   F=22.71. MBE=3E6. Sum of 1815 and 2015  
+       2000 (1)   AL. F=22.71. MBE=1E6. sterr.
+      12000 (1)   AL. F=22.71. MBE=1E6. sterr.
+      22000 (1)   AL. F=22.71. MBE=1E6. sterr.
+    5002271 (1)   D2  F=22.71 MBE=3000000 
+    6002271 (1)   AL  F=22.71 MBE=1000000    .
+
+
+ ===> Directory : //D2/BUF
+        100 (1)   F=16.513,M=1000000( 448537),T= 1246,G=   39392,L=   16293,N=    6675,P=    6235 

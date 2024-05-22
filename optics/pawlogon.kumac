@@ -1,0 +1,43 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)/paw/pawlogon
+mess Local PAWLOGON
+LCDIR
+mess Hello, folks!
+
+exec $ENV(HOME)/paw/pawlogon#Win 24 24
+exec $ENV(HOME)/paw/pawlogon#XARGS
+
+hname = half
+read hname 'Enter hname'
+g/cr hname   [hname]
+g/cr panfile [hname]
+
+*g/cr hname   center
+*g/cr panfile center
+*g/cr hname   slope
+*g/cr panfile slope
+
+opt stat
+csel nbc
+
+*set mtyp 20
+*set mscf .1
+
+*h/file 1 [hfile]
+*exec pan#for
+
+*exec opticfor
+*exec optic#for
+
+*exec optic x=0 th=7
+*wait
+*exec optic#for
+
+*mess --- after first call
+*exec nu
+*exec optic x=0 th=8 opt=s
+*exec optic x=-30 th=20 pmt=0
+RETURN

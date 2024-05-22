@@ -1,0 +1,17 @@
+*                                         @METAGS Win
+*--------------- Win ---------------
+*
+MACRO Win xs ys
+if [ys]='' then
+   mess Usage:    [0] xs ys
+   mess Example:  [0] 16 16
+   stopm
+endif
+
+opt zfl1
+set xsiz [xs]
+set ysiz [ys]
+set xmgr 0
+set ymgl 0
+opt nbox
+RETURN

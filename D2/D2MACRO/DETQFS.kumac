@@ -1,0 +1,117 @@
+*                                         @METAGS det
+*--------------- det ---------------
+*
+MACRO det file=ntqfs.hbook idnt=1 idPCdat=100 idTdat=200
+opt fit
+opt stat
+*set stat 1001111
+set stat 1111111
+
+clo 0
+h/de 0
+
+h/file 1 [file]
+mess h/list:
+h/l
+wait
+hrin 0
+nt/print [idnt]
+wait
+
+title $HTITLE([idnt])
+
+1dh [idPCdat] 'PC data' 96 .5 96.5
+nt/proj [idPCdat] [idnt].PCch
+1dh [idTdat] 'Titov data' 11 .5 11.5
+nt/proj [idTdat] [idnt].Tch
+
+h/pl [idPCdat]
+wait
+h/pl [idTdat]
+
+cd //PAWC
+cd
+RETURN
+
+*                                         @METAGS RPCcl
+*--------------- RPCcl ---------------
+*
+MACRO RPCcl idnt=1 idRPCncl=1000 idRPCcl=1001 idRPCexp=1002
+1dh [idPCncl] 'PC Rosenbluth total, w/o clasters' 96 .5 96.5
+h/cop [idRPCncl] [idRPCcl] 'PC Rosenbluth clasters only'
+h/cop [idRPCncl] [idRPCexp] 'PC Rosenbluth experimental, add clasters'
+nt/proj [idRPCncl] [idnt].PCch pdf=1.AND.PChit=1
+nt/proj [idRPCcl] [idnt].PCch pdf=1.AND.PChit=1.AND.PCcl=1
+add [idRPCncl] [idRPCcl] [idRPCexp]
+
+h/pl [idPCexp]
+h/pl [idPCncl] s
+cl = $FORMAT(100*($HINFO([idPCexp],SUM)/$HINFO([idPCncl],SUM)-1), F0.1)
+mess PC clasters for FROS = [cl]%
+RETURN
+*                                         @METAGS UPCcl
+*--------------- UPCcl ---------------
+*
+MACRO UPCcl idnt=1 idUPCncl=2000 idUPCcl=2001 idUPCexp=2002
+1dh [idUPCncl] 'PC Uni total, w/o clasters' 96 .5 96.5
+h/cop [idUPCncl] [idUPCcl] 'PC Uni clasters only'
+h/cop [idUPCncl] [idUPCexp] 'PC Uni experimental, add clasters'
+nt/proj [idUPCncl] [idnt].PCch pdf=2.AND.PChit=1
+nt/proj [idUPCcl] [idnt].PCch pdf=2.AND.PChit=1.AND.PCcl=1
+add [idUPCncl] [idUPCcl] [idUPCexp]
+
+h/pl [idUPCexp]
+h/pl [idUPCncl] s
+cl = $FORMAT(100*($HINFO([idUPCexp],SUM)/$HINFO([idUPCncl],SUM)-1), F0.1)
+mess PC clasters for FUNI = [cl]%
+RETURN
+
+*                                         @METAGS QPCcl
+*--------------- QPCcl ---------------
+*
+MACRO QPCcl idnt=1 idQPCncl=5000 idQPCcl=5001 idQPCexp=5002
+1dh [idQPCncl] 'PC QFS total, w/o clasters' 96 .5 96.5
+h/cop [idQPCncl] [idQPCcl] 'PC QFS clasters only'
+h/cop [idQPCncl] [idQPCexp] 'PC QFS experimental, add clasters'
+nt/proj [idQPCncl] [idnt].PCch pdf=3.AND.PChit=1
+nt/proj [idQPCcl] [idnt].PCch pdf=3.AND.PChit=1.AND.PCcl=1
+add [idQPCncl] [idQPCcl] [idQPCexp]
+
+h/pl [idQPCexp]
+h/pl [idQPCncl] s
+cl = $FORMAT(100*($HINFO([idQPCexp],SUM)/$HINFO([idQPCncl],SUM)-1), F0.1)
+mess PC clasters for FQFS = [cl]%
+RETURN
+
+*                                         @METAGS RTcl
+*--------------- RTcl ---------------
+*
+MACRO RTcl idnt=1
+1dh 3000 'Titov Rosenbluth total: w/o clasters' 11 .5 11.5
+h/cop 3000 3001 'Titov Rosenbluth clasters only'
+h/cop 3000 3002 'Titov Rosenbluth experimental i.e. add clasters'
+nt/proj 3000 [idnt].Tch pdf=1.AND.Thit=1
+nt/proj 3001 [idnt].Tch pdf=1.AND.Thit=1.AND.Tcl=1
+add 3000 3001 3002
+
+h/pl 3002
+h/pl 3000 s
+cl = $FORMAT(100*($HINFO(3002,SUM)/$HINFO(3000,SUM)-1), F0.1)
+mess Titov clasters for FROS = [cl]%
+RETURN
+*                                         @METAGS UTcl
+*--------------- UTcl ---------------
+*
+MACRO UTcl idnt=1
+1dh 4000 'Titov Rosenbluth total: w/o clasters' 11 .5 11.5
+h/cop 4000 4001 'Titov Rosenbluth clasters only'
+h/cop 4000 4002 'Titov Rosenbluth experimental i.e. add clasters'
+nt/proj 4000 [idnt].Tch pdf=2.AND.Thit=1
+nt/proj 4001 [idnt].Tch pdf=2.AND.Thit=1.AND.Tcl=1
+add 4000 4001 4002
+
+h/pl 4002
+h/pl 4000 s
+cl = $FORMAT(100*($HINFO(4002,SUM)/$HINFO(4000,SUM)-1), F0.1)
+mess Titov clasters for FUNI = [cl]%
+RETURN

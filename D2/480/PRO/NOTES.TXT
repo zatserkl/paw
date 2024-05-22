@@ -1,0 +1,7 @@
+Fit for D2+ (d2p.par) and AL+ (alp.par) was performed by FITe for
+F = 8.80, 10.63, 14.11 with naver=8 channels.
+
+Fit for AL was performed by FITe with naver=8 channels.
+ALhigh.par: 14.11, 15.71, 16.78 and 18.68
+ALlow.par:  8.80, 10.63 and 14.11
+

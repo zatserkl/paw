@@ -1,0 +1,348 @@
+*                                      @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+shell echo on
+MACRO/DEFAULTS .,D:\D2\D2MACRO,$ENV(HOME)\MACRO
+exec FOR
+EXEC ALI CREATE
+
+opt zfl1
+prompt $
+
+mess Default PAWLOGON is executed
+RETURN
+
+*                                         @METAGS XARGS
+*--------------- XARGS ---------------
+*
+MACRO XARGS
+n = $WORDS($ARGS)
+if [n] > 0 then
+   do i=1,[n]
+      exec $WORD($ARGS,[i],1)
+   enddo
+endif
+RETURN
+
+*                                         @METAGS Win
+*--------------- Win ---------------
+*
+MACRO Win xs=0 ys=0
+if $UPPER([1])='HELP' then
+   mess Usage:    [0] xs ys
+   mess Example:  [0] 16 16
+   stopm
+endif
+
+*opt zfl1
+if [xs] > 0 then; set xsiz [xs]; endif
+if [ys] > 0 then; set ysiz [ys]; endif
+if [xs] > 0 .OR. [ys] > 0 then
+   set xmgr 0
+   set ymgl 0
+   opt nbox
+endif
+RETURN $GRAFINFO('?xsiz') $GRAFINFO('?ysiz')
+
+*                                         @METAGS BigWin
+*--------------- BigWin ---------------
+*
+MACRO BigWin
+opt zfl1
+set xsiz 24
+set xmgr 0.001
+set ymgl 1.2
+set yhti .8
+opt nbox
+*set ncol 16
+RETURN
+*                                         @METAGS MidWin
+*--------------- MidWin ---------------
+*
+MACRO MidWin
+opt zfl1
+set xsiz 24
+set xmgr 0.001
+set ymgl 2
+set yhti .8
+opt nbox
+RETURN
+*                                         @METAGS StdWin
+*--------------- StdWin ---------------
+*
+MACRO StdWin
+opt zfl1
+set xsiz 0
+set xmgr 0
+set ymgl 0
+opt nbox
+*set ncol 16
+RETURN
+
+*                                         @METAGS SetNul
+*--------------- SetNul ---------------
+*
+MACRO SetNul
+exec plocate 'Locate xmin,ymin'
+if [@] = 'UNDEFENED' then; stopm; endif
+xmin = $WORD([@],1,1)
+ymin = $WORD([@],2,1)
+
+exec plocate 'Locate xmax,ymax'
+if [@] = 'UNDEFENED' then; stopm; endif
+xmax = $WORD([@],1,1)
+ymax = $WORD([@],2,1)
+
+if [xmin] > [xmax] then
+   buf = [xmin]
+   xmin = [xmax]
+   xmax = [buf]
+endif
+if [ymin] > [ymax] then
+   buf = [ymin]
+   ymin = [ymax]
+   ymax = [buf]
+endif
+
+null [xmin] [xmax] [ymin] [ymax]
+RETURN
+*                                         @METAGS plocate
+*--------------- plocate ---------------
+*
+MACRO plocate text
+mess [text]
+if $VEXIST(vlocX) then; v/de vlocX; endif
+if $VEXIST(vlocY) then; v/de vlocY; endif
+vlocate vlocX vlocY
+idim = $VLEN(vlocX)
+if [idim] > 0 then
+   xlocate = vlocX([idim])
+   ylocate = vlocY([idim])
+   v/de vlocX,vlocY
+else
+   EXITM 'UNDEFENED'
+endif
+RETURN [xlocate] [ylocate]
+
+*                                         @METAGS s
+*--------------- s ---------------
+*
+MACRO s PICto=SAVED PICfrom=PICT00
+izpict [PICto] SQ
+p/cop [PICfrom] [PICto]
+g/cr SAVEDpic [PICto]   'Saved picture'
+RETURN
+
+*                                         @METAGS p
+*--------------- p ---------------
+*
+MACRO p pic
+if [pic]='' then
+   SAVEDpic = PICT00
+   g/imp SAVEDpic
+   pic = [SAVEDpic]
+endif
+p/pl [pic]
+izpic [pic] N
+RETURN
+
+*                                         @METAGS edpan
+*--------------- edpan ---------------
+*
+MACRO edpan
+panfile = ''
+g/imp panfile
+if [panfile]='' then
+   panfile = 'pan'
+   read panfile 'Enter name of panels file'
+   g/cr panfile [panfile]
+endif
+edit [panfile]
+RETURN
+*                                         @METAGS xpan
+*--------------- xpan ---------------
+*
+MACRO xpan
+panfile = ''
+g/imp panfile
+if [panfile]='' then
+   panfile = 'pan'
+   read panfile 'Enter name of panels file'
+   g/cr panfile [panfile]
+endif
+exec [panfile]
+RETURN
+
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+last 2
+exec last
+ans = Y
+read ans 'Return to panels (Y/N)?'
+if $UPPER([ans]) = Y then
+   XP
+endif
+RETURN
+
+*                                         @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+*                                         @METAGS WAIT.COMIS
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+*                                         @METAGS MESS.COMIS
+*                                         01-22-98 02:11pm
+*--------------- MESS ---------------
+*
+      SUBROUTINE MESS(line)
+      character line*(*)
+      length = LENOCC(line)
+      if (length.GT.0) print 1, line(1:length)
+      RETURN
+    1 FORMAT(A)
+      END
+*                                         @METAGS CLOSE.COMIS
+*                                         01-14-98 05:44pm
+*--------------- CLOSE ---------------
+*
+      SUBROUTINE CLOSE(lun)
+      close(lun)
+      END
+
+*                                         @METAGS LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      logical used
+      lun = lunstart-1
+      if (lun.LT.0) lun=0
+  100 lun = lun+1
+      inquire (UNIT=lun, OPENED=used)
+      if (used) goto 100
+      LUNFREE = lun
+      END
+*                                         @METAGS LUNFILE
+*                                         01-20-98 02:40pm
+*--------------- LUNFILE ---------------
+*
+      integer function LUNFILE(file)
+      character*32 file,lofile
+      lofile = file
+      call CUTOL(lofile)
+      inquire (NUMBER=lun, FILE=lofile)
+      LUNFILE = lun
+      END
+*                                         @METAGS FILELUN
+*                                         01-20-98 02:40pm
+*--------------- FILELUN ---------------
+*
+      SUBROUTINE FILELUN(lun,file)
+      character*(*) file, lofile*32
+      inquire (UNIT=lun, NAME=lofile)
+      call CUTOL(lofile)
+      lenght = LEN(file)
+      file(1:length) = lofile
+      END
+*                                         @METAGS FCLEAR
+*                                         01-20-98 01:27pm
+*--------------- FCLEAR ---------------
+*
+      SUBROUTINE FCLEAR(file)
+      character*(*) file
+      lun = LUNFREE(40)
+      open (lun, FILE=file, STATUS='UNKNOWN', ERR=10000)
+      endfile lun
+      close(lun)
+      RETURN
+10000 len = LENOCC(file)
+      print*, 'ERROR FCLEAR: File ', file(1:len), ' did not found'
+      END
+*                                         @METAGS FPARSE
+*                                         01-20-98 02:53pm
+*--------------- FPARSE ---------------
+*
+      SUBROUTINE FPARSE(fstr,fname,file,ext)
+      character*(*) fstr,fname,file,ext
+      character f*32, point
+      data point /'.'/
+      f = fstr
+      lenf = LENOCC(f)
+      lene = LENOCC(ext)
+      ipoint = INDEX(f,'.')
+      if (ipoint.EQ.0) then
+         fname = f
+         file  = f(1:lenf)//point//ext(1:lene)
+      else
+         fname = f(1:ipoint-1)
+         file  = f
+      endif
+      call CUTOL(file)
+      END
+QUIT
+RETURN
+
+*                                      @METAGS ALI
+*--------------- ALI ---------------
+*
+MACRO ALI op
+if [op] = '' then
+   op = CREATE
+   read op 'MACRO C:\PAW\PAWLOGON#ALI: CReate or DElete aliases? '
+endif
+
+ali/[op] -C corr480  'lcdir \D2\480\CORR; exec D2CORR'
+ali/[op] -C corr511  'lcdir \D2\511\CORR; exec D2CORR'
+ali/[op] -C corr550  'lcdir \D2\550\CORR; exec D2CORR'
+ali/[op] -C corr670  'lcdir \D2\670\CORR; exec D2CORR'
+
+ali/[op] -C edp      'exec $ENV(HOME)/PAWLOGON.KUMAC#edpan'
+ali/[op] -C xp       'exec $ENV(HOME)/PAWLOGON.KUMAC#xpan'
+ali/[op] -C xl       'exec $ENV(HOME)/PAWLOGON.KUMAC#xl'
+
+ali/[op] -C x        'exec'
+ali/[op] -C sh       'g/cr cwd $SHELL(cd); shell'
+ali/[op] -C w        'lc [cwd]'
+ali/[op] -C s        'exec $ENV(HOME)/PAWLOGON.KUMAC#s'
+ali/[op] -C p        'exec $ENV(HOME)/PAWLOGON.KUMAC#p'
+ali/[op] -C XARGS    'exec $ENV(HOME)/PAWLOGON.KUMAC#XARGS'
+ali/[op] -C BigWin   'exec $ENV(HOME)/PAWLOGON.KUMAC#BigWin'
+ali/[op] -C MidWin   'exec $ENV(HOME)/PAWLOGON.KUMAC#MidWin'
+ali/[op] -C StdWin   'exec $ENV(HOME)/PAWLOGON.KUMAC#StdWin'
+ali/[op] -C Win      'exec $ENV(HOME)/PAWLOGON.KUMAC#Win'
+ali/[op] -C SetNul   'exec $ENV(HOME)/PAWLOGON.KUMAC#SetNul'
+ali/[op] -C CLEAR    'exec C:/PAW/MACRO/CLEAR'
+ali/[op] -C t        'mess Kharkov time $EVAL(1+$WORD($TIME,1,2,.))'
+ali/[op] -C sx       'shell x'
+ali/[op] -C me       'shell me'
+ali/[op] -C ed1      'shell me1'
+ali/[op] -C dir      'shell dir'
+ali/[op] -C alp      'shell echo on'
+ali/[op] -C gs       'shell outps386'
+ali/[op] -C c0       'color 0 .75 .75 .75'
+ali/[op] -C calc     'command ''mess $SIGMA($*)'''
+ali/[op] -C INIcomis 'exec INIcomis'
+ali/[op] -C SHOWr    'exec SHOWr'
+ali/[op] -C sp       'exec sp'
+ali/[op] -C sum      'exec sp#sum'
+ali/[op] -C two      'exec two'
+ali/[op] -C VTYP     'exec $ENV(HOME)/MACRO/VTYP'
+ali/[op] -C WAITfor  'exec $ENV(HOME)/MACRO/WAITfor'
+*ali/[op] -C q        'mess Type complete command, please.'
+RETURN

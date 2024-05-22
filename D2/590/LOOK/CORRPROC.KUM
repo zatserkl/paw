@@ -1,0 +1,8 @@
+fbdel 12.02 2000
+bcopput 12.02 1142 1e5 Al
+
+readat 5442
+readat 5642
+plus 5442 5642 3000 'D2+ F=12.02 MBE=3e5 54+56 (42)'
+bput 12.02 3000
+h/de 0

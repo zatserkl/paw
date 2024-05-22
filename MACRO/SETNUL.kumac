@@ -1,0 +1,34 @@
+*                                         @METAGS SetNul
+*--------------- SetNul ---------------
+*
+MACRO SetNul
+exec plocate 'Locate xmin,ymin'
+if [@] = 'UNDEFENED' then; stopm; endif
+xmin = $WORD([@],1,1)
+ymin = $WORD([@],2,1)
+
+exec plocate 'Locate xmax,ymax'
+if [@] = 'UNDEFENED' then; stopm; endif
+xmax = $WORD([@],1,1)
+ymax = $WORD([@],2,1)
+
+null [xmin] [xmax] [ymin] [ymax]
+RETURN
+*                                         @METAGS plocate
+*--------------- plocate ---------------
+*
+MACRO plocate text
+mess [text]
+if $VEXIST(vlocX) then; v/de vlocX; endif
+if $VEXIST(vlocY) then; v/de vlocY; endif
+vlocate vlocX vlocY
+idim = $VLEN(vlocX)
+if [idim] > 0 then
+   xlocate = vlocX([idim])
+   ylocate = vlocY([idim])
+   v/de vlocX,vlocY
+else
+   EXITM 'UNDEFENED'
+endif
+RETURN [xlocate] [ylocate]
+

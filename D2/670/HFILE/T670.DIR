@@ -1,0 +1,193 @@
+ Enter histogram file name
+ Histogram file t670.his                        
+ List of directories in histogram file t670.his                        
+ 9.03    
+ 9.84    
+ 10.73   
+ 11.69   
+ 12.75   
+ 13.89   
+ 15.14   
+ 15.88   
+ 16.51   
+ 18.01   
+ 19.62   
+ 21.38   
+ 22.71   
+  
+  
+ Complete directory tree
+ -----------------------
+
+
+ ===> Directory : //D2
+
+
+ ===> Directory : //D2/9.03
+       1000 (1)   Titov 9.03  D2 MBE 2e5  sterr   
+      11000 (1)   Titov 44.12  D2  MBE 2e5  sterr 
+      21000 (1)   Titov 44.12  D2  MBE 2e5  sterr 
+       2000 (1)   Titov 9.03  Al  MBE 1e5  sterr  
+      12000 (1)   Titov 9.03  Al  MBE 1e5  sterr  
+      22000 (1)   Titov 9.03  Al  MBE 1e5  sterr  
+       3000 (1)   Titov 9.03  D2+  MBE 1e5  sterr 
+      13000 (1)   Titov 9.03  D2+  MBE 1e5  sterr 
+      23000 (1)   Titov 9.03  D2+  MBE 1e5  sterr 
+       4000 (1)   Titov 9.03  Al+  MBE 5e4  sterr 
+      14000 (1)   Titov 9.03  Al+  MBE 5e4  sterr 
+      24000 (1)   Titov 9.03  Al+  MBE 5e4  sterr 
+       5000 (1)   TITOV 9.03 D2 scale 4.110   
+       6000 (1)   TITOV 9.03 Al scale 8.220   
+       7000 (1)   TITOV 9.03 D2+ scale 8.220  
+       8000 (1)   TITOV 9.03 Al+ scale 16.44  
+
+
+ ===> Directory : //D2/9.84
+       1000 (1)   Titov 9.84  D2  MBE=2e5  sterr  
+      11000 (1)   Titov 9.84  D2  MBE=2e5  sterr  
+      21000 (1)   Titov 9.84  D2  MBE=2e5  sterr  
+       5000 (1)   TITOV 9.84 D2 scale 3.772   
+
+
+ ===> Directory : //D2/10.73
+       1000 (1)   Titov 10.73  D2  MBE=5e5  sterr 
+      11000 (1)   Titov 10.73  D2  MBE=5e5  sterr 
+      21000 (1)   Titov 10.73  D2  MBE=5e5  sterr 
+       2000 (1)   Titov 10.73  Al  MBE=2e5  sterr 
+      12000 (1)   Titov 10.73  Al  MBE=2e5  sterr 
+      22000 (1)   Titov 10.73  Al  MBE=2e5  sterr 
+       3000 (1)   Titov 10.73  D2+  MBE=1e5  sterr
+      13000 (1)   Titov 10.73  D2+  MBE=1e5  sterr
+      23000 (1)   Titov 10.73  D2+  MBE=1e5  sterr
+       4000 (1)   Titov 10.73  Al+  MBE=5e4  sterr
+      14000 (1)   Titov 10.73  Al+  MBE=5e4  sterr
+      24000 (1)   Titov 10.73  Al+  MBE=5e4  sterr
+       5000 (1)   TITOV 10.73 D2 scale 1.384  
+       6000 (1)   TITOV 10.73 Al scale 3.459  
+       7000 (1)   TITOV 10.73 D2+ scale 6.918 
+       8000 (1)   TITOV 10.73 Al+ scale 13.84 
+
+
+ ===> Directory : //D2/11.69
+       1001 (1)   Titov 11.69  D2. Sum 1814+2414. MBEsum=1e6. No sterr
+      11001 (1)   Titov 11.69  D2. Sum 1814+2414. MBEsum=1e6. 
+      21001 (1)   Titov 11.69  D2. Sum 1814+2414. MBEsum=1e6. 
+       1000 (1)   Titov 11.69 D2 MBE=1e6 sterr
+      11000 (1)   Titov 11.69  D2  MBEsum=1e6  sterr  
+      21000 (1)   Titov 11.69  D2  MBEsum=1e6  sterr  
+       5000 (1)   TITOV 11.69 D2 scale 0.6350 
+
+
+ ===> Directory : //D2/12.75
+       1000 (1)   Titov 12.75  D2  MBE=5e5  sterr 
+      11000 (1)   Titov 12.75  D2  MBE=5e5  sterr 
+      21000 (1)   Titov 12.75  D2  MBE=5e5  sterr 
+       5000 (1)   TITOV 12.75 D2 scale 1.164  
+
+
+ ===> Directory : //D2/13.89
+       1000 (1)   Titov 13.89  D2  MBE=1e6  sterr 
+      11000 (1)   Titov 13.89  D2  MBE=1e6  sterr 
+      21000 (1)   Titov 13.89  D2  MBE=1e6  sterr 
+       2000 (1)   Titov 13.89  Al  MBE=5e5  sterr 
+      12000 (1)   Titov 13.89  Al  MBE=5e5  sterr 
+      22000 (1)   Titov 13.89  Al  MBE=5e5  sterr 
+       3000 (1)   Titov 13.89  D2+  MBE=2e5  sterr
+      13000 (1)   Titov 13.89  D2+  MBE=2e5  sterr
+      23000 (1)   Titov 13.89  D2+  MBE=2e5  sterr
+       4000 (1)   Titov 13.89  Al+  MBE=1e5  sterr
+      14000 (1)   Titov 13.89  Al+  MBE=1e5  sterr
+      24000 (1)   Titov 13.89  Al+  MBE=1e5  sterr
+       5000 (1)   TITOV 13.89 D2 scal 0.5344  
+       6000 (1)   TITOV 13.89 Al scal 1.069   
+       7000 (1)   TITOV 13.89 D2+ scal 2.672  
+       8000 (1)   TITOV 13.89 Al+ scal 5.344  
+
+
+ ===> Directory : //D2/15.14
+       1000 (1)   Titov 15.14  D2  MBE=1e6  sterr 
+      11000 (1)   Titov 15.14  D2  MBE=1e6  sterr 
+      21000 (1)   Titov 15.14  D2  MBE=1e6  sterr 
+       5000 (1)   TITOV 15.14 D2 scal 0.4903  
+
+
+ ===> Directory : //D2/15.88
+       1000 (1)   Titov 15.88 D2 MBE=4e5 (not 1e6) sterr  
+      11000 (1)   Titov 15.88  D2  MBE=1e6  sterr 
+      21000 (1)   Titov 15.88  D2  MBE=1e6  sterr 
+       5000 (1)   TITOV 15.88 D2 scal 1.169   
+
+
+ ===> Directory : //D2/16.51
+       1000 (1)   Titov 16.51  D2  MBE=1e6  sterr 
+      11000 (1)   Titov 16.51  D2  MBE=1e6  sterr 
+      21000 (1)   Titov 16.51  D2  MBE=1e6  sterr 
+       2000 (1)   Titov 16.51  Al  MBE=5e5  sterr 
+      12000 (1)   Titov 16.51  Al  MBE=5e5  sterr 
+      22000 (1)   Titov 16.51  Al  MBE=5e5  sterr 
+       5000 (1)   TITOV 16.51 D2 scal 0.4496  
+       6000 (1)   TITOV 16.51 Al scal 0.8992  
+
+
+ ===> Directory : //D2/18.01
+       1000 (1)   Titov 18.01  D2  MBE=2e6  sterr 
+      11000 (1)   Titov 18.01  D2  MBE=2e6  sterr 
+      21000 (1)   Titov 18.01  D2  MBE=2e6  sterr 
+       2000 (1)   Titov 18.01  Al  MBE=1e6  sterr 
+      12000 (1)   Titov 18.01  Al  MBE=1e6  sterr 
+      22000 (1)   Titov 18.01  Al  MBE=1e6  sterr 
+       3000 (1)   Titov 18.01  D2+  MBE=1e6  sterr
+      13000 (1)   Titov 18.01  D2+  MBE=1e6  sterr
+      23000 (1)   Titov 18.01  D2+  MBE=1e6  sterr
+       4000 (1)   Titov 18.01  Al+  MBE=4e5  sterr
+      14000 (1)   Titov 18.01  Al+  MBE=4e5  sterr
+      24000 (1)   Titov 18.01  Al+  MBE=4e5  sterr
+       5000 (1)   TITOV 18.01 D2 scal 0.2061  
+       6000 (1)   TITOV 18.01 Al scal 0.4121  
+       7000 (1)   TITOV 18.01 D2+ scal 0.4121 
+       8000 (1)   TITOV 18.01 Al+ scal 1.030  
+
+
+ ===> Directory : //D2/19.62
+       2000 (1)   Titov 19.62  Al  MBE=2e6 sterr  
+      12000 (1)   Titov 19.62  Al  MBE=2e6 sterr  
+      22000 (1)   Titov 19.62  Al  MBE=2e6 sterr  
+       6000 (1)   TITOV 19.62 Al scal 0.1892  
+
+
+ ===> Directory : //D2/21.38
+       1000 (1)   Titov 21.38  D2  MBE=4e6  sterr 
+      11000 (1)   Titov 21.38  D2  MBE=4e6  sterr 
+      21000 (1)   Titov 21.38  D2  MBE=4e6  sterr 
+       2000 (1)   Titov 21.38  Al  MBE=4e6  sterr 
+      12000 (1)   Titov 21.38  Al  MBE=4e6  sterr 
+      22000 (1)   Titov 21.38  Al  MBE=4e6  sterr 
+       3000 (1)   Titov 21.38  D2+  MBE=1e6  sterr
+      13000 (1)   Titov 21.38  D2+  MBE=1e6  sterr
+      23000 (1)   Titov 21.38  D2+  MBE=1e6  sterr
+       4000 (1)   Titov 21.38  Al+  MBE=4e5  sterr
+      14000 (1)   Titov 21.38  Al+  MBE=4e5  sterr
+      24000 (1)   Titov 21.38  Al+  MBE=4e5  sterr
+       5000 (1)   TITOV 21.38 D2 scal 0.08680 
+       6000 (1)   TITOV 21.38 Al scal 0.08680 
+       7000 (1)   TITOV 21.38 D2+ scal 0.3472 
+       8000 (1)   TITOV 21.38 Al+ scal 0.8680 
+
+
+ ===> Directory : //D2/22.71
+       1000 (1)   Titov 22.71  D2  MBE=3e6  sterr 
+      11000 (1)   Titov 22.71  D2  MBE=3e6  sterr 
+      21000 (1)   Titov 22.71  D2  MBE=3e6  sterr 
+       2000 (1)   Titov 22.71  Al  MBE=1e6  sterr 
+      12000 (1)   Titov 22.71  Al  MBE=1e6  sterr 
+      22000 (1)   Titov 22.71  Al  MBE=1e6  sterr 
+       3000 (1)   Titov 22.71  D2+  MBE=1e6  sterr
+      13000 (1)   Titov 22.71  D2+  MBE=1e6  sterr
+      23000 (1)   Titov 22.71  D2+  MBE=1e6  sterr
+       4000 (1)   Titov 22.71  Al+  MBE=5e5  sterr
+      14000 (1)   Titov 22.71  Al+  MBE=5e5  sterr
+      24000 (1)   Titov 22.71  Al+  MBE=5e5  sterr
+       5000 (1)   TITOV 22.71 D2 scal 0.1090  
+       6000 (1)   TITOV 22.71 Al scal 0.3268  
+       7000 (1)   TITOV 22.71 D2+ scal 0.3268 
+       8000 (1)   TITOV 22.71 Al+ scal 0.6537 

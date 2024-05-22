@@ -1,0 +1,147 @@
+*                                         @METAGS hplot
+*--------------- hplot ---------------
+*
+MACRO hplot nsum=8 minc=7 maxc=93
+zon 1 2
+exec plot 1 2
+atitle 'Origin data'
+*mess --------------------> min=[mic], mac=[mac], nchan=[nchan]
+
+exec sum 1 10 [nsum] [minc] [maxc]
+exec sum 2 20 [nsum] [minc] [maxc]
+exec plot 10 20
+xtit = Sum by $EVAL([nsum]) channels from [minc] to [maxc]
+atitle [xtit]
+zon
+RETURN
+*                                         @METAGS hplot0
+*--------------- hplot0 ---------------
+*
+MACRO hplot0 nsum=8 minc=7 maxc=93
+mic = 96-[maxc]+1
+mac = 96-[minc]+1
+mess --------------------> min=[mic], mac=[mac]
+
+nc = [mac]-[mic]+1
+nchan = INT([nc]/[nsum])
+mac = [mic]-1 + [nsum]*[nchan]
+mess --------------------> min=[mic], mac=[mac], nchan=[nchan]
+wait
+
+zon 1 2
+exec plot 1 2
+atitle 'Origin data'
+mess --------------------> min=[mic], mac=[mac], nchan=[nchan]
+
+exec sum 1 10 [nchan] [mic] [mac]
+exec sum 2 20 [nchan] [mic] [mac]
+exec plot 10 20
+xtit = Sum by $EVAL([nsum]) channels from [minc] to [maxc]
+atitle [xtit]
+zon
+RETURN
+*                                         @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot id1 id2
+emin1 = $HINFO([id1],XMIN)
+emin2 = $HINFO([id2],XMIN)
+emin =  $SIGMA(MIN([emin1],[emin2]))
+*mess emin=[emin]
+eMAX1 = $HINFO([id1],XMAX)
+eMAX2 = $HINFO([id2],XMAX)
+eMAX =  $SIGMA(MAX([eMAX1],[eMAX2]))
+*mess eMAX=[eMAX]
+
+smin1 = $HINFO([id1],MIN)
+smin2 = $HINFO([id2],MIN)
+smin = 0.90*$SIGMA(MIN([smin1],[smin2]))
+*mess smin=[smin]
+smax1 = $HINFO([id1],MAX)
+smax2 = $HINFO([id2],MAX)
+smax = 1.10*$SIGMA(MAX([smAX1],[smAX2]))
+*mess smAX=[smAX]
+
+null [emin] [emax] [smin] [smax]
+
+set dmod 1
+set mtyp 24
+igset pmci 1
+h/pl [id1] pe0s
+set mtyp 25
+igset pmci 2
+h/pl [id2] pe0s
+
+set mtyp 24
+igset pmci 1
+RETURN
+
+*                                         @METAGS sum
+*--------------- sum ---------------
+*
+MACRO sum id idout nsum minc=7 maxc=93
+mic = 96-[maxc]+1
+mac = 96-[minc]+1
+
+nc = [mac]-[mic]+1
+nchan = INT([nc]/[nsum])
+mac = [mic]-1 + [nsum]*[nchan]
+mess --------------------> min=[mic], mac=[mac], nchan=[nchan]
+wait
+
+sigma x=array([nchan])
+sigma ex=array([nchan])
+sigma y=array([nchan])
+sigma ey=array([nchan])
+
+rebin [id] x y ex ey [nchan] [mic] [mac]
+
+sigma x1=x-ex
+sigma x2=array([nchan]+1)
+v/cop x1 x2
+sigma x1=x+ex
+v/inp x2($EVAL([nchan]+1)) $EVAL(x1([nchan]))
+
+if $HEXIST([idout]) then; h/de [idout]; endif
+tit = Sum by [nchan] channels from [minc] to [maxc]
+bins [idout] [tit] [nchan] x2
+put/con [idout] y
+put/err [idout] ey
+RETURN
+*                                         @METAGS sum0
+*--------------- sum0 ---------------
+*
+MACRO sum0 id idout nchan minc=7 maxc=93
+
+sigma x=array([nchan])
+sigma ex=array([nchan])
+sigma y=array([nchan])
+sigma ey=array([nchan])
+
+rebin [id] x y ex ey [nchan] [minc] [maxc]
+
+sigma x1=x-ex
+sigma x2=array([nchan]+1)
+v/cop x1 x2
+sigma x1=x+ex
+v/inp x2($EVAL([nchan]+1)) $EVAL(x1([nchan]))
+if $HEXIST([idout]) then; h/de [idout]; endif
+tit = Sum by [nchan] channels from [minc] to [maxc]
+bins [idout] [tit] [nchan] x2
+put/con [idout] y
+put/err [idout] ey
+RETURN
+
+*                                         @METAGS comp
+*--------------- comp ---------------
+*
+MACRO comp id1 id2
+set mtyp 24
+igset pmci 1
+h/pl [id1] pe0
+set mtyp 20
+igset pmci 2
+h/pl [id2] pe0s
+set mtyp 24
+igset pmci 1
+RETURN

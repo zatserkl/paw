@@ -1,0 +1,183 @@
+*                                         @METAGS FOR.MACRO
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+*                                         @METAGS HTEMPLK
+      SUBROUTINE HTEMPLK(id,F,Nchan,nc,wmm,tit1,tit2,tit3)
+      character*(*) tit1,tit2,tit3
+      character*80 title
+      call KUIP2STR(tit1,tit2,tit3,title)
+      call HTEMPL(id,F,Nchan,nc,wmm,title)
+      END
+*                                         @METAGS HTEMPL.COMIS
+*                                         01-29-98 08:37pm
+*--------------- HTEMPL ---------------
+*
+*call HTEMPL(id,F,NX,nc,wmm,chtitl)
+*
+      SUBROUTINE HTEMPL(id,F,Nchan,nc,wmm,title)
+      character*(*) title
+      character*80  chtitl
+      parameter (F2E=17.61)
+      parameter (MAXCH=100)
+      real E(MAXCH)
+
+      NX = Nchan
+      kc = NX-nc+1
+      Ec = F2E*F
+*     .. liner fit to Dmm
+      Dmm = 18.26 - .5341e-3*Ec
+*     .. Dk slope for RASST = 760 mm. Higher energy - smaller Dk
+***      slope = 0.01584
+      slope = 0.00000
+
+*     .. central channel
+      k = kc
+      xmm = wmm/2.
+      Dk = Dmm
+*     .. lower edge
+      E(k) = Ec*(1. - xmm*0.01/Dk)
+
+*     .. low energy channels
+      do k=kc-1,1,-1
+         xmm = wmm*(k-kc)
+         Dk = Dmm - slope*xmm - .4767e-5*xmm**2
+         Dk = Dmm
+*        .. lower edge
+         E(k) = E(k+1)*(1. - wmm*0.01/Dk)
+      enddo
+
+*     .. high energy channels
+      do k=kc+1,NX
+         xmm = wmm*(k-kc)
+         Dk = Dmm - slope*xmm - .4767e-5*xmm**2
+         Dk = Dmm
+*        .. lower edge
+         E(k) = E(k-1)*(1. + wmm*0.01/Dk)
+      enddo
+
+*     .. upper edge of the last channel
+      k = NX+1
+      xmm = wmm*(k-kc)
+      Dk = Dmm - slope*xmm - .4767e-5*xmm**2
+      Dk = Dmm
+      E(k) = E(k-1)*(1. + wmm*0.01/Dk)
+
+      if (title.GT.' ') then
+         chtitl = title
+      else
+         chtitl = ' '
+         write (chtitl,1) F
+    1    format ('Template for F=', F5.2)
+      endif
+      call HBOOKB(id,chtitl,NX,E,0.)
+      END
+*                                         @METAGS HTEMPL0.COMIS
+*                                         01-29-98 08:37pm
+*--------------- HTEMPL0 ---------------
+*
+*call HTEMPL0(id,F,NX,nc,wmm,chtitl)
+*
+      SUBROUTINE HTEMPL0(id,F,Nchan,nc,wmm,title)
+      character*(*) title
+      character*80  chtitl
+      parameter (F2E=17.61)
+      parameter (MAXCH=100)
+      real E(MAXCH)
+
+      NX = Nchan
+      kc = NX-nc+1
+      Ec = F2E*F
+*     .. liner fit to Dmm
+      Dmm = 18.26 - .5341e-3*Ec
+*     .. Dk slope for RASST = 760 mm. Higher energy - smaller Dk
+      slope = 0.0160
+
+*     .. central channel
+      k = kc
+      xmm = wmm/2.
+      Dk = Dmm
+*     .. lower edge
+      E(k) = Ec*(1. - xmm*0.01/Dk)
+
+*     .. low energy channels
+      do k=kc-1,1,-1
+         xmm = wmm*(k-kc)
+         Dk = Dmm - slope*xmm
+*        .. lower edge
+         E(k) = E(k+1)*(1. - wmm*0.01/Dk)
+      enddo
+
+*     .. high energy channels
+      do k=kc+1,NX
+         xmm = wmm*(k-kc)
+         Dk = Dmm - slope*xmm
+*        .. lower edge
+         E(k) = E(k-1)*(1. + wmm*0.01/Dk)
+      enddo
+
+*     .. upper edge of the last channel
+      k = NX+1
+      xmm = wmm*(k-kc)
+      Dk = Dmm - slope*xmm
+      E(k) = E(k-1)*(1. + wmm*0.01/Dk)
+
+      if (title.GT.' ') then
+         chtitl = title
+      else
+         chtitl = ' '
+         write (chtitl,1) F
+    1    format ('Template for F=', F5.2)
+      endif
+      call HBOOKB(id,chtitl,NX,E,0.)
+      END
+
+*                                         @METAGS EHISTK
+      SUBROUTINE EHISTK(id,idc,F,rMBE,nc,wmm,tit1,tit2,tit3)
+      character*(*) tit1,tit2,tit3
+      character*80 title
+      call KUIP2STR(tit1,tit2,tit3,title)
+      call EHIST(id,idc,F,rMBE,nc,wmm,title)
+      END
+*                                         @METAGS EHIST.COMIS
+*                                         01-29-98 08:37pm
+*--------------- EHIST ---------------
+*
+      SUBROUTINE EHIST(id,idc,F,rMBE,nc,wmm,title)
+*     .. rMBE is MBE in terms of 1.E6
+      character*(*) title
+      character*80 chbuf,chtitl, ch*1
+      parameter (MAXCH=100)
+      real X(MAXCH),Y(MAXCH),dX(MAXCH),dY(MAXCH), S(MAXCH),dS(MAXCH)
+
+      call HGIVE(idc,chbuf,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      chtitl = ' '
+      do i=1, 4*NWT
+         write(chtitl(i:i),1) chbuf(i:i)
+    1    format(A1)
+      enddo
+
+      if (title.GT.' ') chtitl=title
+
+*     .. Create template histogram
+      call HTEMPL(id,F,NX,nc,wmm,chtitl)
+*     .. Get X errors from template histogram
+      call HREBIN(id,X,Y,dX,dY,NX,1,NX)
+*     .. Get contents and errors from count histogram
+      call HUNPAK(idc, Y,' ',0)
+      call HUNPKE(idc,dY,' ',0)
+
+      do k=1,NX
+         w = 2.*dX(k)
+         nchan = NX-k+1
+         S(k)  =  Y(nchan)/(w*rMBE)
+         dS(k) = dY(nchan)/(w*rMBE)
+      enddo
+
+      call HPAK(id,S)
+      call HPAKE(id,dS)
+      END
+QUIT
+RETURN
+

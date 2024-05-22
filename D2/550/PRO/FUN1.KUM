@@ -1,0 +1,2 @@
+fun1 100 [fitfun](x,$RSIGMA([power])) 1000 300 400
+

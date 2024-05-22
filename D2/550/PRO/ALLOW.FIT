@@ -1,0 +1,7 @@
+*COMM   CHANNELS 23..93
+*EMIN    201.2  MEV
+*EMAX    260.4  MEV
+*TYPE   2.      ID OF FUNCTION "EX"
+   0.
+   8.276394    
+  -.1215615E-01

@@ -1,0 +1,5 @@
+cut $1 ip.EQ.0
+cut $2 raytst(5)**2+raytst(6)**2.GT.9.
+cut $3 raypmt(1)**2+raypmt(2)**2.GT.9.
+cut $4 part(5)**2+part(6)**2.LE.16.
+cut $0

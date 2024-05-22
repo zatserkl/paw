@@ -1,0 +1,69 @@
+*                                         @METAGS PCfon
+*--------------- PCfon ---------------
+*
+MACRO PCfon E
+if [E]='' then
+   mess Usage:    PCfon E
+   mess Returns result using statement RETURN
+   stopm
+endif
+
+exec init
+
+fun = PCfon($RSIGMA([E]))
+s = $CALL([fun])
+RETURN [s]
+
+*                                         @METAGS init
+*--------------- init ---------------
+*
+MACRO init
+g/imp PCfon
+if [PCfon]='INIT' then; exitm; endif
+
+g/cr PCfon 'INIT'
+if $VEXIST(ALlow)=0  then; v/cr ALlow(2);  v/re ALlow  ALlow.par;  endif
+if $VEXIST(ALhigh)=0 then; v/cr ALhigh(2); v/re ALhigh ALhigh.par; endif
+
+if $VEXIST(D2p)=0  then; v/cr D2p(2);  v/re D2p D2p.par;  endif
+if $VEXIST(ALp)=0  then; v/cr ALp(2);  v/re ALp ALp.par;  endif
+
+g/imp PCfon
+if $UPPER([PCfon]) <> 'REG' then; exec FOR; endif
+RETURN
+
+*                                         @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=SL
+exec init
+fu/pl PCfon [E1] [E2] [opt]
+RETURN
+
+*                                         @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+      function pluses(E)
+      vector D2p(2), ALp(2)
+      sD2p = exp(D2p(1) + E*D2p(2))
+      sALp = exp(ALp(1) + E*ALp(2))
+      pluses = sD2p-sALp
+      end
+
+      function AL(E)
+      parameter (Eprim=251.)
+      vector ALlow(2), ALhigh(2)
+      if (E.LT.Eprim) then
+         AL = exp(ALlow(1) + E*ALlow(2))
+      else
+         AL = exp(ALhigh(1) + E*ALhigh(2))
+      endif
+      end
+
+      function PCfon(E)
+      PCfon = AL(E) + pluses(E)
+      end
+QUIT
+RETURN

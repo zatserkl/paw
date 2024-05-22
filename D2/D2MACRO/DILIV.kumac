@@ -1,0 +1,16 @@
+v/cr D2di(6)  r   42    52    62    68
+v/cr D2sum(6) r   1350  1008  891   956
+v/cr ALdi(6)  r   52    62
+v/cr ALsum(6) r   407   374
+null 40 70 300 1500
+*graph $VLEN(di) di sum aw*
+h/err D2di D2sum $SIGMA(0*D2di) $SIGMA(sqrt(D2sum)) $VLEN(D2di) 20 ! 0
+h/err ALdi ALsum $SIGMA(0*ALdi) $SIGMA(sqrt(ALsum)) $VLEN(ALdi) 24 ! 0
+atitle 'Discr. livn., scale divisions' 'Sum of chamber norm. to MBE=1e6'
+itx 43 1350 '^2!D 52(37)'
+itx 51 1050 '^2!D 41(37)'
+itx 61 950  '^2!D 51(37)'
+itx 67 1000 '^2!D 53(37)'
+
+itx 49 450  'AL (37(37)+40(37))/2'
+itx 61 420  'AL 50(37)'

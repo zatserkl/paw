@@ -1,0 +1,20 @@
+ COLORS (text mode)
+฿฿฿฿฿฿฿฿฿฿฿฿฿฿฿฿฿฿฿฿ณBack-ณFore-
+ Constant     ณValueณgrnd?ณgrnd?
+ออออออออออออออุอออออุอออออุอออออ
+ BLACK        ณ  0  ณ Yes ณ Yes
+ BLUE         ณ  1  ณ Yes ณ Yes
+ GREEN        ณ  2  ณ Yes ณ Yes
+ CYAN         ณ  3  ณ Yes ณ Yes
+ RED          ณ  4  ณ Yes ณ Yes
+ MAGENTA      ณ  5  ณ Yes ณ Yes
+ BROWN        ณ  6  ณ Yes ณ Yes
+ LIGHTGRAY    ณ  7  ณ Yes ณ Yes
+ DARKGRAY     ณ  8  ณ No  ณ Yes
+ LIGHTBLUE    ณ  9  ณ No  ณ Yes
+ LIGHTGREEN   ณ 10  ณ No  ณ Yes
+ LIGHTCYAN    ณ 11  ณ No  ณ Yes
+ LIGHTRED     ณ 12  ณ No  ณ Yes
+ LIGHTMAGENTA ณ 13  ณ No  ณ Yes
+ YELLOW       ณ 14  ณ No  ณ Yes
+ WHITE        ณ 15  ณ No  ณ Yes

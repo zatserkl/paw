@@ -1,0 +1,224 @@
+*** Begin of history file: Fri Nov 13 20:16:32 1998
+comm
+comm 'data $1'
+comm
+2042
+18
+10
+18
+10
+`
+p
+bscal 1042
+bscal 1042 1000 .1
+1000
+28
+1000
+28
+41
+63
+62
+comp 1000 4142 6242
+zon 1 2; h/pl 21000; h/pl 24142; zon
+me
+x asspar 30 legend=1
+me
+x asspar 30 legend=1 beam=0
+me
+x asspar 30 legend=1 beam=0
+me
+x asspar 30 legend=1 beam=0
+x asspar legend=1 beam=0 k=20
+x asspar 30 legend=1 beam=0
+x asspar legend=1 beam=0 k=20
+x asspar legend=1 beam=0 k=25
+x asspar legend=1 beam=0 k=20
+x asspar legend=1 beam=1 k=20
+x asspar legend=1 beam=0 k=25
+x asspar legend=1 beam=0 k=30
+x asspar legend=1 beam=0 k=50
+20
+me
+x p0i legend=1 k=30
+me
+x p0i legend=1 k=30
+me
+x p0i legend=1 k=30
+me
+x p0i legend=1 k=30
+x p0i#fit
+me
+x p0i#fit
+me
+x p0i legend=1 k=30
+x p0i legend=1 k=20
+x p0i legend=1 k=70
+me
+x p0i legend=1 k=70
+me
+x p0i legend=1 k=70
+x p0i legend=1 k=30
+x p0i legend=1 k=70
+x p0i legend=1 k=20
+x p0i legend=1 k=80
+10
+x p0i legend=1 k=80
+10
+x p0i legend=1 k=80
+10
+x p0i legend=1 k=40
+10
+x p0i legend=1 k=45
+me
+x p0i legend=1 k=45
+me
+x p0i legend=1 k=45
+me
+x p0i legend=1 k=45
+x p0i legend=1 k=20
+comp 1000 4142 6242
+x p0i legend=1 k=20
+x p0i legend=1 k=45
+me
+h/de 1
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+h/pl 1
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+me
+x Nass; comp 31042 32342 32842 34142 36242
+x Nass
+comp 31042 32342 32842 34142 36242
+me
+x Nass
+me
+comp 31042 32342 32842 34142 36242
+me
+x Nass
+h/pl 21042; h/pl 41042 s
+h/pl 41042
+me
+h/pl 1000000
+10
+h/pl 41042
+me
+h/pl 1
+me
+x Nass
+h/pl 1
+me
+x Nass
+me
+comp 31042 32342 32842 34142 36242
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+comp 1042 31042
+comp 2342 32342
+comp 6242 36242
+20
+g/cr factor
+factor=4648*212
+g/l factor
+me
+x Nass
+10
+factor=15364*156; g/l factor
+me
+factor=4648*212
+20
+factor=4648*4648/472; g/l factor
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+comp 6242 36242
+comp 1042 31042
+20
+factor=4648*100000/472; g/l factor
+sub 12042 1000000 32042 1 [factor]
+h/pl 32042
+comp 2042 32042
+me
+x Hpos 32042
+comp 2042 32042
+mult 1 1000000 42042 1 [factor]
+h/pl 42042
+20
+mess $EVAL(4648*212)
+h/pl 1000000
+20
+sub 12042 1000000 1 $EVAL(4648*212)
+sub 12042 1000000 32042 1 $EVAL(4648*212)
+comp 2042 32042
+x Nass
+x Nass
+me
+x Nass
+me
+x Nass
+10
+62
+10
+me
+x Nass
+comp 31042 32342 32842 34142 36242
+20
+x d2plotl
+eff=0
+g/cr eff 0
+sh copy ..\corr\d2.hli
+pl d2
+sh copy ..\corr\al.for
+log; pl d2; funplot al; lin
+20
+sub 12042 1000000 32042 1 $EVAL(4745*212/1.8)
+h/pl 32042
+comp 2042 32042
+x Hpos 32042
+comp 2042 32042
+read 19
+minus 2042 1942 1000
+minus 2042 1942 9000
+h/pl 9000
+h/pl 9000 e0
+sub 2042 1942 9001
+comp 9000 9001
+comp 22042 1942
+sub 12042 1942 9001
+comp 9000 9001
+sub 12042 11942 9001
+comp 9000 9001
+h/pl 9001
+h/pl 9000
+h/pl 9000 e0
+h/pl 9001 e0
+h/pl 9000 e0
+843
+2243
+19
+2243
+2237
+2641
+10
+1037
+2641
+1037
+4212
+comp 1037 1237
+comp 21037 21237
+comp 1037 1237
+comp 11037 11237
+qu
+*** End   of history file: Sat Nov 14 01:27:11 1998

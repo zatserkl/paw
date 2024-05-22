@@ -1,0 +1,35 @@
+*                                         @METAGS ENERGYT
+*--------------- ENERGYT ---------------
+*
+MACRO ENERGYT F
+if [F]='' then
+   mess Usage:    exec ENERGYT F
+   stopm
+endif
+name = 100.*[F]
+
+APPL COMIS QUIT
+*                                         @METAGS ECHAN
+*                                         07-05-96 12:00pm
+*--------------- ECHAN ---------------
+*
+      SUBROUTINE ECHAN(F,fname)
+      real F
+      character fname*12
+      nc = 7
+      dw = 14.
+      D = 18.3
+      Ec = 17.61*F
+      open (1, FILE=fname, STATUS='UNKNOWN')
+      do n=1,96
+         En = Ec - (n-nc)*dw/D * .01*Ec
+         write (1,10) En 
+      enddo
+      close(1)
+      RETURN
+   10 FORMAT (F8.2)
+      END
+QUIT
+
+call ECHAN([F],$QUOTE([name].E))
+RETURN

@@ -1,0 +1,29 @@
+MACRO PAN
+ali/cr x 'exec' c
+a/cr LOOK 'exec look' C
+a/cr READ 'exec look#READ' C
+a/cr CORR 'exec look#CORR' C
+a/cr ZOOM 'exec look#ZOOM' C
+a/cr COUNTS 'exec look#COUNTS' C
+a/cr DELAYS 'exec look#DELAYS' C
+a/cr ALL 'exec look#ALL' C
+a/cr CandD 'exec look#CandD' C
+
+clr
+panel 0
+panel 1 'READ' 'LOOK' 'CORR' 'ZOOM' 'COUNTS' 'DELAYS' 'ALL' 'CandD'
+panel 2 'opt-' 'opt zfl' 'tim-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-'
+panel 3 'ed pan' 'x pan' 'x pan#w' 'p/cr' 'p/pr-' 'shell' 'edit-' 'x-' '$' 'me'
+*style gps ! ! .12
+style gp ! ! .12
+RETURN
+*
+*
+*
+MACRO W
+   mess $KEYVAL
+   *last = $LAST
+   *style C
+   *exec [last]
+   *style GP
+RETURN

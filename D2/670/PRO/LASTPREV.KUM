@@ -1,0 +1,19 @@
+*** Begin of history file: Mon Oct 28 13:31:12 1996
+ed make
+fdir 9.03
+fdir 13.89
+fhplot
+fplot
+fdir 13.89
+fplot 13.89 11000
+calc
+.67*.3*(sin(70*3.14/180))**2
+fplot 13.89 21000
+zon 1 2
+fplot 13.89 11000
+fplot 13.89 11000
+fplot 13.89 21000
+alp
+fdir 13.89
+q
+*** End   of history file: Mon Oct 28 13:51:47 1996

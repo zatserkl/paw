@@ -1,0 +1,38 @@
+*                                         @METAGS TD21
+*--------------- TD21 ---------------
+*
+MACRO TD21
+RETURN
+*                                         @METAGS WRITE
+*--------------- WRITE ---------------
+*
+MACRO WRITE
+v/cr tD21(3,12)
+v/inp tD21(:,1)  E_D2_903  s_D2_903  d_D2_903
+v/inp tD21(:,2)  E_D2_984  s_D2_984  d_D2_984
+v/inp tD21(:,3)  E_D2_1073 s_D2_1073 d_D2_1073
+v/inp tD21(:,4)  E_D2_1169 s_D2_1169 d_D2_1169
+v/inp tD21(:,5)  E_D2_1275 s_D2_1275 d_D2_1275
+v/inp tD21(:,6)  E_D2_1389 s_D2_1389 d_D2_1389
+v/inp tD21(:,7)  E_D2_1514 s_D2_1514 d_D2_1514
+v/inp tD21(:,8)  E_D2_1588 s_D2_1588 d_D2_1588
+v/inp tD21(:,9)  E_D2_1651 s_D2_1651 d_D2_1651
+v/inp tD21(:,10) E_D2_1801 s_D2_1801 d_D2_1801
+v/inp tD21(:,11) E_D2_2138 s_D2_2138 d_D2_2138
+v/inp tD21(:,12) E_D2_2271 s_D2_2271 d_D2_2271
+v/wr tD21 tD21.dat '3F8.1'
+RETURN
+
+*                                         @METAGS READ
+*--------------- READ ---------------
+*
+MACRO READ
+v/re etD21,stD21,dtD21 tD21.dat
+sigma ertD21=.04*etD21
+RETURN
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT
+h/err etD21 stD21 ertD21 dtD21 $VLEN(etD21) 24 .5 s
+RETURN

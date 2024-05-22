@@ -1,0 +1,95 @@
+*** Begin of history file: Thu May 15 13:03:41 1997
+x pro
+alp
+hget 10.63 1000
+h/cop 1000 1001 'D2, F=10.63, MBE=1e6, sterr. Lays higher times 1.33'
+fdir 10.63
+hget 10.63 5000
+h/cop 5000 5001 'PC 10.63 D2 scal 4.88796. Lays higher times 1.33'
+hput 10.63 1001
+hput 10.63 5001
+tabScal
+tabScal 10.63 d2
+view
+readl d2.set
+plotl
+x PCfon#plot
+me
+me
+g/l PCfon
+PCfon=
+me
+v/l
+me
+datadel
+h/l
+h/de 0
+v/cr v(96)
+h/file 1 h480.his
+cd 8.80
+get/con 1000 v
+v/pr v(50)
+clo 1
+h/l
+h/de 0
+me
+h/l
+areject
+areject 8.80
+h/l
+h/pl 5000 *
+h/pl 1 sp
+me
+h/l
+h/de 0
+areject 8.80
+h/pl 5000 *
+h/pl 1 sp
+alp
+h/pl 1 sp
+h/pl 1 p
+v/l
+clr
+areject 8.80
+v/l
+v/pr S_D2_880(1)
+get/con 1 v
+v/pr v(1)
+v/pr v(94)
+v/pr v(95)
+v/pr v(96)
+alp
+v/de v
+datadel
+v/l
+areject 8.80
+areject 9.67
+areject 10.63
+areject 11.68
+areject 12.84
+areject 14.11
+areject 15.28
+areject 15.71
+areject 16.09
+areject 16.29
+areject 16.78
+areject 18.29
+areject 18.68
+h/l
+h/de 0
+fdir 8.80
+clr
+g/l
+view
+v/pr ntlist
+ed d2.set
+readl nuc.set
+datadel
+plotl
+datadel
+readl d2.set
+plotl
+x PCfon#plot
+me
+q
+*** End   of history file: Thu May 15 14:50:13 1997

@@ -1,0 +1,136 @@
+*                                         @METAGS EFFsmo
+*--------------- EFFsmo ---------------
+*
+MACRO EFFsmo list ideffglo
+if $UPPER([1])='HELP' .OR. [ideffglo] = '' then
+   mess Usage:    $WORD([0],2,1,#) list ideffglo
+   stopm
+endif
+
+if $VEXIST([list])=0 then
+   mess No vector [list] in memory
+   stopm
+endif
+
+if $HEXIST([ideffglo]) then
+   Histogram [ideffglo] will be replaced
+   wait
+endif
+
+
+ldir = $HCDIR()
+WORKdir = //PAWC; g/imp WORKdir
+cd [WORKdir]
+
+ntot = $VLEN([list])
+if $VEXIST(effall) then; v/de effall; endif
+v/cr effall(96,[ntot])
+
+g/imp minc,maxc
+g/imp D2HFILE
+
+if $HEXIST(-1) then; h/de -1; endif
+if $HEXIST(-2) then; h/de -2; endif
+
+sigma eff=array(96)*0
+sigma con=array(96)*0
+
+opt liny
+
+n = 0
+do i=1, [ntot]
+   id = [list]([i])
+   fdir  = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+   if $INDEX([fdir],'0') = 1 then; fdir = $SUBSTRING([fdir],2); endif
+   nt = $SUBSTRING([id],1,1)
+   CASE [nt] IN
+      (5)   idc=1000
+      (6)   idc=2000
+      (7)   idc=3000
+      (8)   idc=4000
+   ENDCASE
+   if $EXEC([D2HFILE]#HGET [fdir] [idc] prompt=N) = 0 then
+      mess Count hist [idc] for [id] did not found in [fdir]
+      stopm
+   endif
+
+   h/cop [idc] -1
+   smooth -1 2M .5
+   ans = Y
+   s = id = [id] Include to effs. computing?
+   read ans [s]
+   if $UPPER([ans]) <> 'Y' goto NEXT
+
+   n = [n]+1
+   smooth -1 0MN .5
+   div -1 [idc] -2
+
+   get/con -2 con
+   vadd eff con eff
+   h/de -2
+
+   sigma buf = array(96)
+   v/cop con buf
+   sigma buf = ORDER(buf,array(96,96#1))
+   v/cop buf effall(:,[i])
+   v/de buf
+   
+   NEXT:
+   h/de -1,[idc]
+enddo
+
+if [n]=0 then; STOPM; endif
+scal = 1/[n]
+vscal eff [scal] eff
+
+sigma eff = ORDER(eff,array(96,96#1))
+
+minc1 = 97-[maxc]
+maxc1 = 97-[minc]
+do k=1,[minc1]-1
+   v/inp eff([k]) 1
+enddo
+do k=[maxc1]+1,96
+   v/inp eff([k]) 1
+enddo
+
+*GOTO PLOT
+* norm
+mess Normalizing
+
+v/cop eff([minc1]:[maxc1]) buf
+sum = $SIGMA(VSUM(buf))
+v/de buf
+nchan = [maxc1]-[minc1]+1
+scal = [nchan]/[sum]
+vscal eff([minc1]:[maxc1]) [scal] eff([minc1]:[maxc1])
+
+PLOT:
+
+if $HEXIST([ideffglo]) then; h/de [ideffglo]; endif
+v/dr eff [ideffglo]
+put/err [ideffglo] $SIGMA(array(96)*0)
+*v/de eff
+
+g/imp eff
+eff = 2
+
+g/cr ideffglo [ideffglo]
+
+g/imp D2HIST
+exec [D2HIST]#TIT [ideffglo] 'Global efficiency' quiet=1
+
+cd [ldir]
+wait 'OPT LOGY (Q=No)?'
+OPT LOGY
+RETURN
+
+*                                         @METAGS show
+*--------------- show ---------------
+*
+MACRO show k
+sigma v=array($VDIM(effall,2))*0
+v/cop effall([k],:) v
+v/dr v [k]
+*v/de v
+RETURN

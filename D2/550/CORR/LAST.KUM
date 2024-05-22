@@ -1,0 +1,170 @@
+*** Begin of history file: Wed Feb 10 15:32:34 1999
+fl \
+pl d2
+hdir work
+effgloread \ 2
+pl
+fl 15.23
+av 1
+lin
+pl h2
+ed h2.hli
+pl h2
+E0fromEH
+E0fromEH
+sh
+w
+me
+x d2look
+comm 'data $*'
+3912
+40
+3912
+40
+41
+me
+41
+me
+mess $INDEX($HTITLE(3912),!)
+mess $HTITLE(3912)
+mess $HTITLE(23912)
+mess $INDEX($HTITLE(23912),!)
+mess $SUBSTRING($HTITLE(23912),$INDEX($HTITLE(23912),!))
+me
+41
+me
+41
+me
+41
+me
+41
+me
+41
+me
+41
+me
+41
+me
+41
+me
+mess $HTITLE(23912)
+mess $HTITLE(24112)
+41
+me
+41
+42
+comp 2415 4112 4212
+comm 'true $*'
+41
+4112
+42
+41
+comp 2415 4112 42
+data 41
+data 42
+data 41
+comp 2415 4112 42
+data 41
+data 42
+comp 2415 4112 42
+z
+comp 1037 11
+comp 1037 12
+10
+comm 'data $*'
+10
+12
+10
+12
+comp 1037 12
+10
+clr
+printsp 10
+10
+alp
+10
+2941
+30
+32
+31
+30
+32
+31
+32
+clr; printsp 30
+printsp 31
+printsp 32
+me
+x d2look
+tele 32
+me
+me
+edpaw
+tele 30
+tele 32
+tele 3241
+tele 1037
+tele 1237
+1237
+alp
+tele 32
+tele 3241
+tele 1237
+tele 1037
+1037
+12
+1037
+edpaw
+xpaw
+messtit 1037
+sol
+sh sol
+1037
+sh
+5237
+51
+me
+x d2look#for
+p
+51
+me
+51
+hsum
+sum
+csum
+clr
+a/l
+sumc
+sumc 15137
+ed d2hist
+tele 5137
+sumc 15137 1 96
+sumc 25137 1 96
+tele 5337
+sumc 15337 1 96
+read 52
+read 53
+tele 5337
+sumc 15337 1 96
+sumc 25337 1 96
+tele 5237
+sumc 15237 1 96
+sumc 25237 1 96
+53
+4242
+43
+42
+sub 24242 24342 1 1 1 e
+h/pl 1
+ed d2plotl
+call HAVER(1,16,1,96,2)
+h/pl 2
+h/pl 1
+call HAVER(1,32,1,96,3)
+h/pl 3
+call HAVER(1,8,1,96,4)
+h/pl 4
+42
+3241
+exit
+*** End   of history file: Wed Feb 10 22:38:09 1999

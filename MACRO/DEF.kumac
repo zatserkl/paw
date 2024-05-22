@@ -1,0 +1,36 @@
+a = 1
+ab = 2
+c = 'text'
+if $DEFINED(WORKdir)='' then
+   mess WORKdir not defined
+else
+   mess WORKdir defined
+endif 
+
+if $DEFINED(a)='' then
+   mess a not defined
+else
+   mess a defined
+   mess $DEFINED(a)
+endif 
+
+mess All a*:
+mess $DEFINED(a*)
+
+g/imp WORKdir
+mess After import WORKdir
+if $DEFINED(WORKdir)='' then
+   mess WORKdir not defined
+else
+   mess WORKdir defined: [WORKdir]
+endif 
+
+g/imp WORKdir1
+mess After import WORKdir1
+if $DEFINED(WORKdir1)='' then
+   mess WORKdir1 not defined
+else
+   mess WORKdir1 defined
+endif 
+
+

@@ -1,0 +1,12 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)\pawlogon
+mess Local PAWLOGON
+LCDIR
+mess Hello, folks!
+
+exec $ENV(HOME)\pawlogon#BigWin
+exec $ENV(HOME)\pawlogon#XARGS
+RETURN

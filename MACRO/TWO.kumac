@@ -1,0 +1,17 @@
+*                                         @METAGS two
+*--------------- two ---------------
+*
+MACRO two id1 id2 hcol1=2 hcol2=4
+if [id2]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] id1 id2 hcol1=2 hcol2=4
+   mess Example:  [0] 1(8:300) 2
+   stopm
+endif
+
+hcol0 = $GRAFINFO('?hcol')
+set hcol [hcol1]
+h/pl [id1]
+set hcol [hcol2]
+h/pl [id2] s
+set hcol [hcol0]
+RETURN

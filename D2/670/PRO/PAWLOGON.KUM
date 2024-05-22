@@ -1,0 +1,25 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)\pawlogon
+mess Hello, folks!
+
+EXEC $ENV(HOME)\pawlogon#BigWin
+EXEC $ENV(HOME)\pawlogon#xargs
+
+*read macro 'Enter macro name to exec'
+*if [macro] <> '' then
+*   exec [macro]
+*endif
+
+* Globals
+
+D2HIST='';  g/imp D2HIST;  if [D2HIST]=''  then; exec D2HIST;  endif
+D2HFILE=''; g/imp D2HFILE; if [D2HFILE]='' then; exec D2HFILE; endif
+D2PLOTL=''; g/imp D2PLOTL; if [D2PLOTL]='' then; exec D2PLOTL; endif
+D2FIT='';   g/imp D2FIT;   if [D2FIT]=''   then; exec D2FIT;   endif
+D2EFF='';   g/imp D2EFF;   if [D2EFF]=''   then; exec D2EFF;   endif
+
+
+RETURN

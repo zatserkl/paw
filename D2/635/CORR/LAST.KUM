@@ -1,0 +1,45 @@
+*** Begin of history file: Wed Feb 17 17:31:34 1999
+fdir \
+clr; fdir \
+pl d2
+lin
+eff=0
+pl d2low
+log
+pl d2slope
+pl d2high
+sh sol
+p
+lin
+clr
+fdir \
+fdir 8.88
+fl 8.88
+comp 137 237
+sub 137 237 1 1 1 e
+h/pl 1 e0
+zon 1 2; comp 10137 10237; comp 20137 20237; zon
+zon 1 2; comp 10137 10237
+comp 20137 20237; zon
+me
+zon 1 2; comp 10137 10237; comp 20137 20237; zon
+comp 1037 12 54 55 56
+comp 2637 33 34
+me
+hplotl ymax=100
+me
+hplotl ymax=100
+hplotl max=100
+me
+hplotl max=100
+hplotl max=50
+sub 3437 2637 1 1 1 e
+h/pl 1
+h/fit 1 p1
+h/fit 1 p2
+h/fit 1 p1
+sub 2637 3337 2 1 1 e
+h/pl 2
+h/fit 2 p1
+qu
+*** End   of history file: Wed Feb 17 21:43:45 1999

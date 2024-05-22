@@ -1,0 +1,27 @@
+*** Begin of history file: Wed Nov  4 16:44:42 1998
+command 'data $1'
+4315
+comp 40 41 42
+comp 4014 41 42
+42
+comp 4014 41 43 45
+minus 4114 4014 4100
+comp 4014 4100
+comp 4100 4114 43 45
+1315
+x d2plotl
+x d2plotl 671 143.5
+me
+me
+g/l process
+process='671 143.5'
+ed pawlogon
+plotl d2
+log
+plotl
+eff=0
+plotl
+lin
+3314
+qu
+*** End   of history file: Wed Nov  4 18:41:08 1998

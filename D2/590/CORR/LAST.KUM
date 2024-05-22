@@ -1,0 +1,38 @@
+*** Begin of history file: Tue Feb  2 11:30:13 1999
+fl \
+effgloread \ 1
+pl d2
+pl el
+pl d2
+ed d2.hli
+pl dib
+av 2
+pl
+av 1
+pl
+pl el
+ed1 al
+pl
+funplot al18
+sh
+pl
+ed1 al18
+pl
+funplot al18
+lin
+pl
+funplot al18
+av 2
+pl
+ed el.hli
+pl el
+pl al
+log
+av 8
+pl
+funplot al
+pl d2al
+funplot al
+funplot al18
+qu
+*** End   of history file: Tue Feb  2 15:09:05 1999

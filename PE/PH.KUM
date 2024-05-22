@@ -1,0 +1,230 @@
+*                                         @METAGS PH
+*--------------- PH ---------------
+*
+MACRO PH id pe nevent=10000 phsigma=0 maxc=300 title=' ' inifil=pmpar.ini
+if [pe]='' .OR. $UPPER([1])='HELP' then
+   mess Usage: [0] id pe nevent=10000 phsigma=0 maxc=300 title=' ' inifil=pmpar.ini
+   stopm
+endif
+
+exec for
+
+if $INDEX([inifil],'.')=0 then
+   inifil = [inifil].ini
+endif
+
+if $FEXIST([inifil])=0 then
+   mess PM parameters file [inifil] did not found
+   stopm
+endif
+
+if $HEXIST([id]) then
+   mess Histogram ID=[id] already exists.
+   wait
+   h/de [id]
+endif
+
+if [title]=' ' then
+   title = Npe=[pe], [s]?[g]!=[phsigma]
+endif
+
+tit = $SUBSTRING([title],1,30)
+
+call pereal($RSIGMA([pe]),$RSIGMA([phsigma]),[nevent],[id],[maxc],$QUOTE([tit]),$QUOTE([inifil]))
+wait '<CR>=Plot, Q=Quit'
+h/pl [id]
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+*                                         @METAGS pereal
+*                                         01-26-00 09:06pm
+*--------------- pereal ---------------
+*
+      SUBROUTINE pereal(pe,phsigma,nevent,id,maxc,title,inifil)
+      real pe,phsigma
+      integer nevent,id,maxc
+      character title*30, tit*79
+      parameter (conv=.20)
+      logical useg1
+      real pedlow
+*     .. for reading of PM pars
+      character match, line*78, inifil*32
+      data match/''''/
+*
+      lun = LUNFREE(1)
+      open (UNIT=lun, FILE=inifil, STATUS='OLD', ERR=99999)
+99900 read (lun,10, END=99990) line
+      if (line(1:1).EQ.match) goto 99900
+
+*      backspace lun   ! Don't work correctly in F2C!
+      read (line,*, ERR=99990) anorm
+      read (lun,*, ERR=99990) posp, eposp
+      read (lun,*, ERR=99990) sigp, esigp
+      read (lun,*, ERR=99990) pos1, epos1
+      read (lun,*, ERR=99990) sig1, esig1
+99990 close (UNIT=lun)
+      delta = pos1-posp
+      pedlow = posp - 3.*sigp
+
+*     .. the average number of photons
+      avphot = pe/conv
+
+      if (HEXIST(id)) call HDELET(id)
+      if (LENOCC(title).NE.0) then
+         tit = title
+      else
+         tit = ' '
+*         tit = 'test'
+         write(tit,20) pe, phsigma
+   20    format('Spectrum for Npe=', F6.3, ', [s]?[g]!=', F5.1, '"Y#')
+      endif
+      call HBOOK1(id,tit,maxc,1.,REAL(maxc+1),0.)
+
+      phsig = .01*phsigma*avphot
+      do i=1,nevent
+*        .. generate two gauss randoms g1 and g2 with mean 0 and sigma 1
+         call RANNOR(g1,g2)
+*        .. use g1
+         phot0 = avphot + phsig*g1
+*        .. spread the number of photons
+***         print*, i
+*         phot = phot0
+         phot = npoiss(phot0)
+***         print*, 'out'
+
+*        .. the average number of p.e.
+         avpe = conv*phot
+*        .. the current number of p.e.
+         npe = npoiss(avpe)
+
+*        .. ADC channel
+         if (npe.EQ.0) then
+*           .. pedestal event
+            pos = posp
+            sig = sigp
+*           .. use g2
+            ampl = pos + sig*g2
+         else
+*           .. pe event
+            pos = posp + delta*npe
+            sig = sig1*sqrt(REAL(npe))
+            ampl = pos + sig*g2
+            useg1 = .TRUE.
+            do while(ampl.LT.pedlow)
+               if (useg1) then
+                  call RANNOR(g1,g2)
+                  gcurr = g1
+                  useg1 = .FALSE.
+               else
+                  gcurr = g2
+                  useg1 = .TRUE.
+               endif
+
+               pos = posp + delta*npe
+               sig = sig1*sqrt(REAL(npe))
+               ampl = pos + sig*gcurr
+            enddo
+         endif
+         if (ampl .LT. 1.) ampl=1.
+         call HFILL(id, ampl, 0., 1.)
+      enddo
+      RETURN
+99999 call STOPCR('.. Ini file did not found ..')
+      RETURN
+   10 FORMAT(A)
+      END
+*                                         @METAGS npoiss
+*                                         01-26-00 08:08pm
+*--------------- npoiss ---------------
+*
+      function npoiss(amu)
+      npoiss = 0
+      if (amu .LE. 0.) RETURN
+      if (amu .GT. 10.) goto 1000
+*     .. explicit Poisson distribution
+      expamu = exp(-amu)
+      A = 1.
+      k = 0
+  100 k = k+1
+      u = RNDM(REAL(k))
+      A = u*A
+      if (A.LT.expamu) then
+         npoiss = k-1
+         RETURN
+      else
+         goto 100
+      endif
+
+ 1000 continue
+*     .. approximate Poisson by Gauss
+      call RANNOR(g1,g2)
+*     .. use e.g. g1
+      sigma = sqrt(amu)
+      rgauss = amu + sigma*g1
+      if (rgauss .LT. 0.) rgauss = -.5
+      npoiss = INT(rgauss+.5)
+      END
+*                                         @METAGS testpois
+*                                         01-26-00 08:42pm
+*--------------- testpois ---------------
+*
+      SUBROUTINE testpois(ndim,a,amu,nevent)
+      real a(ndim)
+      do i=1,ndim
+         a(i) = 0.
+      enddo
+      do i=1,nevent
+         n = npoiss(amu)
+         if (n.LT.0) n=0
+         k = n+1
+         if (n .LT. ndim) a(k) = a(k)+1
+      enddo
+      END
+*                                         @METAGS .LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      logical used
+      lun = lunstart-1
+      if (lun.LT.0) lun=0
+  100 lun = lun+1
+      inquire (UNIT=lun, OPENED=used)
+      if (used) goto 100
+      LUNFREE = lun
+      END
+*                                         @METAGS .WAIT.COMIS
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS .STOPCR.COMIS
+*                                         11-15-96 09:45pm
+*--------------- STOPCR ---------------
+*
+      SUBROUTINE STOPCR(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      STOP
+      RETURN
+    1 FORMAT(A)
+      END
+QUIT
+RETURN

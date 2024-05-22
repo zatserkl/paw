@@ -1,0 +1,448 @@
+*** Begin of history file: Tue Jul  1 18:31:58 1997
+sh
+hcop
+me
+tr off
+me
+hcop
+me
+hcop
+me
+hcop
+me
+ali
+makefmem
+ld
+hcop 8.47/1000
+hcop 1000
+me
+hcop 1000
+hcop
+hcop 8.47/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop 8.47/1000 //pawc/work/1000
+me
+hcop
+me
+hcop
+me
+a/de hcop
+ali
+cd 8.47
+send 1000 work
+ld
+fplot 8.47 1000
+me
+fdir 8.47
+fplot 8.47 1000
+h/cop 1000 1001
+alp
+me
+send 1000 work
+me
+ld
+cd 8.47
+ld
+h/cop 1000 1001
+ld
+ld //pawc/work
+send 1001 //pawc/work
+ld //pawc/8.47
+ld //pawc/work
+h/cop 1000 1002
+send 1001 work
+ld
+tr on wait
+send 1001 work
+tr off
+cd work
+tr on wait
+send 1001 work
+tr off
+send 1001 work
+me
+send 1001 work
+v/pr iquest
+mess IQUEST(1)
+mess $IQUEST(1)
+me
+send 1001 wor
+send 1001 work
+cd work
+send 1002 work
+h/l
+cd //pawc/8.47
+send 1002 work
+ld work
+ld //work
+ld //pawc/work
+me
+send 1002 work
+cd
+me
+me
+ld
+ld //pawc/work
+h/de //pawc/work/1002
+cd /work
+cd
+cd /8.47
+cd
+cd /pawc
+cd
+cd /work
+cd
+readl nuc
+plotl
+v/de nuc
+plotl
+me
+send 0 work
+cd /work
+ld
+cd /8.47
+ld
+tr on wait
+send 0 work
+me
+tr off
+send 0 work
+clo 40
+send 0 work
+cd /work
+ld
+h/l
+cd /
+cd //
+ld
+cd \
+ld
+h/l
+sh
+h/l
+h/de 0
+h/l
+cd work
+sh
+ld
+v/de nuc
+plotl
+readl high
+plotl
+fitl
+fite
+plotl
+fitee
+plotl
+fitep 0
+fitep 1
+fitl 260 320
+fite
+fitep 0
+fitep 0
+plotl
+fitep 0
+plotl error=1
+plotl errors=1
+ed d2plotl
+plotl err=1
+me
+plotl err=1
+me
+cd
+cd /work
+plotl
+cd
+h/l
+cd /work
+h/de 0
+cd /19.18
+send 5000 work
+cd /work
+h/pl 5000
+h/pl 5000 e0
+cd
+me
+cd
+plotl
+me
+plotl
+cd
+v/l
+v/de *
+alp
+cd /14.54
+ld /work
+me
+he hrin
+cd /14.54
+send 5000 work
+cd /work
+h/cop 5000 1454
+cd /15.85
+send 5000 work
+cd /work
+h/cop 5000 1585
+vget nuc 14.54
+vget nuc 15.85
+v/l
+v/de eff*,ref*
+v/cr e1454(97)
+v/cr e1585(97)
+v/cop E_NUC_1454 e1454(2:)
+v/cop E_NUC_1585 e1585(2:)
+v/pr e1454(:5)
+v/inp e1454 266.12
+v/inp e1454(1) 266.12
+v/pr e1585(:5)
+v/inp e1585(1) 290.11
+v/cop e1454(1:5) e
+v/pr e
+sigma e1 = order(e,array(5,5#1))
+v/pr e1
+sigma e1454 = order(e1454,array(97,97#1))
+sigma e1585 = order(e1585,array(97,97#1))
+v/wr e1454
+v/de e,e1
+v/l
+sigma s1585 = order(S_NUC_1585,array(96,96#1))
+v/cop S_NUC_1585 s01585
+sigma s1585 = order(S01585,array(96,96#1))
+v/cop S_NUC_1454 s01454
+sigma s1454 = order(S01454,array(96,96#1))
+v/cop D_NUC_1454 d01454
+sigma d1454 = order(D01454,array(96,96#1))
+v/cop D_NUC_1585 d01585
+sigma d1585 = order(d01585,array(96,96#1))
+v/l
+v/de s0*
+v/de d0*
+v/l
+us bins
+h/l
+bins 1 'F=14.54' 96 e1454
+bins 2 'F=15.85' 96 e1585
+g/cr emin
+g/cr emax
+g/cr smax
+g/cr smin
+ed hplot
+x hplot
+me
+me
+x hplot
+me
+x hplot
+me
+x hplot
+me
+put/con 1 s1454
+put/err 1 d1454
+put/err 2 d1585
+put/con 2 s1585
+x hplot
+me
+x hplot
+me
+me
+x hplot
+opt liny
+x hplot
+me
+x hplot
+me
+x hplot#sum
+x hplot#sum 1 30
+us rebin 1 x y ex ey 30
+rebin 1 x y ex ey 30 3 89
+v/dr x
+me
+us 1
+me
+x hplot#sum 1 30
+v/l
+me
+x hplot#sum 1 30
+v/l
+me
+x hplot#sum 1 30
+me
+x hplot#sum 1 30
+me
+x hplot#sum 1 30
+v/wr x2
+me
+x hplot#sum 1 30
+v/wr x2
+me
+us bin
+me
+me
+x hplot 30
+x hplot 10
+h/file 1 hplot.his ! n
+hrout 0
+clo 1
+x hplot 20
+cd /work
+x hplot 20
+x hplot 30
+x hplot 40
+me
+x hplot 40
+x hplot 10
+me
+x hplot 10
+x hplot 10
+me
+x hplot 10
+me
+x hplot 10
+me
+x hplot 10
+x hplot 20
+x hplot 25
+me
+x hplot 25 7 93
+x hplot 25 1 96
+h/pl 1
+h/pl 10
+me
+x hplot 20 1 96
+h/pl 10
+h/pl 10 e0
+h/pl 1 e0
+set pmci 2
+h/pl 10 se0
+x hplot 10 1 96
+me
+x hplot 10 1 96
+x hplot#comp 1 10
+x hplot 50 1 96
+x hplot#comp 1 10
+me
+he rebi
+x hplot#comp 2 20
+x hplot#comp 1 10
+me
+v/cr v(96)
+get/con 20 v
+me
+v/pr v(:5)
+v/pr x(:5)
+me
+v/pr v(:5)
+v/pr y(:5)
+v/de x,y,ex,ey
+x hplot 50 1 96
+get/con 20 v
+v/pr v(:5)
+v/pr y(:5)
+x hplot 10 1 96
+x hplot#comp 1 10
+x hplot 20 1 96
+x hplot#comp 1 10
+x hplot 5 1 96
+x hplot#comp 1 10
+x hplot 10 1 96
+x hplot#comp 1 10
+x hplot 96 1 96
+x hplot#comp 1 10
+x hplot 48 1 96
+x hplot#comp 1 10
+x hplot 24 1 96
+x hplot#comp 1 10
+x hplot 12 1 96
+x hplot#comp 1 10
+x hplot 6 1 96
+x hplot#comp 1 10
+x hplot 48 1 96
+x hplot#comp 1 10
+x hplot 50 1 96
+x hplot#comp 1 10
+x hplot 49 1 96
+x hplot 47 1 96
+x hplot#comp 1 10
+x hplot 46 1 96
+x hplot#comp 1 10
+x hplot 45 1 96
+x hplot#comp 1 10
+x hplot 48 1 96
+x hplot#comp 1 10
+x hplot 24 1 96
+x hplot#comp 1 10
+me
+x hplot 24 1 96
+me
+x hplot 24 1 96
+x hplot#comp 1 10
+x hplot 50 1 96
+sh
+x hplot 50 1 96
+me
+x hplot 50 1 96
+me
+x hplot 47 1 96
+x hplot#comp 1 10
+x hplot 49 1 96
+x hplot#comp 1 10
+x hplot 25 11 85
+x hplot#comp 1 10
+x hplot 25 11 85
+me
+x hplot 2 1 96
+me
+x hplot 2 1 96
+me
+x hplot 2 1 96
+x hplot#comp 1 10
+x hplot 3 1 96
+x hplot#comp 1 10
+x hplot 10 1 96
+me
+x hplot 40 1 96
+x hplot 49 1 96
+x hplot#comp 1 10
+x hplot 8 7 93
+x hplot#comp 1 10
+x hplot 4 7 93
+x hplot#comp 1 10
+me
+x hplot 4 7 93
+x hplot 5 1 96
+x hplot 10 1 96
+x hplot 8 7 93
+me
+x hplot 8 7 93
+me
+x hplot 8 7 93
+x hplot 8 7 93
+me
+x hplot 8 7 93
+me
+x hplot 8 7 93
+me
+x hplot 8 7 93
+x hplot#comp 1 10
+x hplot 8 7 93
+me
+x hplot 8 7 93
+x hplot#comp 1 10
+*** End   of history file: Tue Jul  1 22:56:50 1997

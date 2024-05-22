@@ -1,0 +1,10 @@
+*                                         @METAGS h12x12
+*--------------- h12x12 ---------------
+*
+MACRO h12x12 id title='Hist. 12x12'
+if [id]='' then
+   mess Usage:    [0] id title=[title]
+   stopm
+endif
+2dh [id] [title] ! -12 12 ! -12 12
+RETURN

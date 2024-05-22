@@ -1,0 +1,35 @@
+*                                         @METAGS TALp1
+*--------------- TALp1 ---------------
+*
+MACRO TALp1
+RETURN
+*                                         @METAGS WRITE
+*--------------- WRITE ---------------
+*
+MACRO WRITE
+v/cr TALp1(3,6)
+v/inp TALp1(:,1) E_ALp_903  s_ALp_903  d_ALp_903
+v/inp TALp1(:,2) E_ALp_1073 s_ALp_1073 d_ALp_1073
+v/inp TALp1(:,3) E_ALp_1389 s_ALp_1389 d_ALp_1389
+v/inp TALp1(:,4) E_ALp_1801 s_ALp_1801 d_ALp_1801
+v/inp TALp1(:,5) E_ALp_2138 s_ALp_2138 d_ALp_2138
+v/inp TALp1(:,6) E_ALp_2271 s_ALp_2271 d_ALp_2271
+v/wr TALp1 TALp1.dat '3F8.1'
+RETURN
+
+*                                         @METAGS READ
+*--------------- READ ---------------
+*
+MACRO READ
+v/re eTALp1,sTALp1,dTALp1 TALp1.dat
+sigma ertALp1=.04*eTALp1
+RETURN
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT
+ci0 = $GRAFINFO('?pmci')
+set pmci 4
+h/err eTALp1 sTALp1 ertALp1 dTALp1 $VLEN(eTALp1) 27 .5 s
+set pmci [ci0]
+RETURN

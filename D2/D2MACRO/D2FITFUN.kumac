@@ -1,0 +1,233 @@
+*                                         @METAGS D2FITFUN
+*--------------- D2FITFUN ---------------
+*
+MACRO D2FITFUN
+*--------------------------------@METAGS IFILL.COMIS
+APPL COMIS QUIT
+*                                         @METAGS IDfun
+*                                         12-29-97 10:58pm
+*--------------- IDfun ---------------
+*
+      integer function IDfun(fun)
+*     .. See macro D2FIT#FitType
+      character*32 fun
+      character*32 upfun
+      call STDSTR(fun,upfun)
+      len = LENOCC(upfun)
+      IDfun=0
+      if     (upfun(1:len).EQ.'POLI' ) then
+         IDfun=1
+      elseif (upfun(1:len).EQ.'EX'   ) then
+         IDfun=2
+      elseif (upfun(1:len).EQ.'EP'   ) then
+         IDfun=3
+      elseif (upfun(1:len).EQ.'EE'   ) then
+         IDfun=4
+      elseif (upfun(1:len).EQ.'EEP'  ) then
+         IDfun=5
+      elseif (upfun(1:len).EQ.'GAUSS') then
+         IDfun=6
+      elseif (upfun(1:len).EQ.'GE'   ) then
+         IDfun=7
+      elseif (upfun(1:len).EQ.'GP'   ) then
+         IDfun=8
+      elseif (upfun(1:len).EQ.'PL'   ) then
+         IDfun=9
+      else
+         print*, 'Unknown function ', fun
+      endif
+      END
+QUIT
+
+* create templates because polinom fit vectors defened like ppar(*)
+if $VEXIST(ppar)   = 0 then; v/cr ppar(100)  ; p=1  ; endif
+if $VEXIST(eppar)  = 0 then; v/cr eppar(100) ; ep=1 ; endif
+if $VEXIST(eeppar) = 0 then; v/cr eeppar(100); eep=1; endif
+if $VEXIST(gppar)  = 0 then; v/cr gppar(100) ; gp=1 ; endif
+if $VEXIST(plpar)  = 0 then; v/cr plpar(100) ; pl=1 ; endif
+
+* prevent creating of zero vectors after execution D2FITFUN
+if $VEXIST(epar)   = 0 then; e=1  ; endif
+if $VEXIST(eepar)  = 0 then; ee=1 ; endif
+if $VEXIST(gpar)   = 0 then; g=1  ; endif
+if $VEXIST(gepar)  = 0 then; ge=1 ; endif
+
+APPL COMIS QUIT
+*--------------------------------@METAGS poli.for
+      function poli(x)
+      vector ppar(*)
+      ipower = ppar(1)
+      poli = 0.
+      p=0.
+*     .. the last non-polinom parameter
+      last = 1
+      do n=1, ipower+1
+         p = p + ppar(last+n)*x**(n-1)
+      enddo
+      poli = p
+      end
+*--------------------------------@METAGS ex.for
+      function ex(x)
+      vector epar(3)
+      idummy = epar(1)
+      ex = exp(epar(2) + x*epar(3))
+      end
+*--------------------------------@METAGS ep.for
+      function ep(x)
+      vector eppar(*)
+      ipower = eppar(1)
+      ep = 0.
+      e = exp(eppar(2) + x*eppar(3))
+      p=0.
+*     .. the last non-polinom parameter
+      last = 1 + 2
+      do n=1, ipower+1
+         p = p + eppar(last+n)*x**(n-1)
+      enddo
+      ep = e+p
+      end
+*--------------------------------@METAGS ee.for
+      function ee(x)
+      vector eepar(5)
+      idummy = eepar(1)
+      ee = exp(eepar(2) + x*eepar(3)) + exp(eepar(4) + x*eepar(5))
+      end
+*--------------------------------@METAGS eep.for
+      function eep(x)
+      vector eeppar(*)
+      ipower = eeppar(1)
+      eep = 0.
+      e1 = exp(eeppar(2) + x*eeppar(3))
+      e2 = exp(eeppar(4) + x*eeppar(5))
+      p=0.
+*     .. the last non-polinom parameter
+      last = 1 + 4
+      do n=1, ipower+1
+         p = p + eeppar(last+n)*x**(n-1)
+      enddo
+      eep = e1+e2+p
+      end
+*--------------------------------@METAGS gauss.for
+      function gauss(x)
+      vector gpar(4)
+      idummy = gpar(1)
+      gauss=gpar(2)*exp(-0.5*((x-gpar(3))/gpar(4))**2)
+      end
+*--------------------------------@METAGS ge.for
+      function ge(x)
+      vector gepar(6)
+      idummy = gepar(1)
+      g = gepar(2)*exp(-0.5*((x-gepar(3))/gepar(4))**2)
+      e = exp(gepar(5) + x*gepar(6))
+      ge = g+e
+      end
+*--------------------------------@METAGS gp.for
+      function gp(x)
+      vector gppar(*)
+      ipower = gppar(1)
+      gp = 0.
+      g = gppar(2)*exp(-0.5*((x-gppar(3))/gppar(4))**2)
+      p=0.
+*     .. the last non-polinom parameter
+      last = 3+1
+      do n=1, ipower+1
+         p = p + gppar(last+n)*x**(n-1)
+      enddo
+      gp = g+p
+      end
+*--------------------------------@METAGS pl.for
+      function pl(x)
+      vector plpar(*)
+      ipower = plpar(1)
+      pl = 0.
+      p=0.
+*     .. the last non-polinom parameter
+      last = 1
+      do n=1, ipower+1
+         p = p + plpar(last+n)*x**(n-1)
+      enddo
+      pl = exp(p)
+      end
+QUIT
+* delete vector templates
+if [p]   = 1 then; v/de ppar  ; endif
+if [ep]  = 1 then; v/de eppar ; endif
+if [eep] = 1 then; v/de eeppar; endif
+if [gp]  = 1 then; v/de gppar ; endif
+if [pl]  = 1 then; v/de plpar ; endif
+* delete zero vectors
+if [e]   = 1 then; v/de epar  ; endif
+if [ee]  = 1 then; v/de eepar ; endif
+if [g]   = 1 then; v/de gpar  ; endif
+if [ge]  = 1 then; v/de gepar ; endif
+
+*                                         @METAGS SOUT
+*--------------- SOUT ---------------
+*
+if $VEXIST(energy)=0 then; venergy='KILL'; endif
+if $VEXIST(energy)=0 then; vcrosec='KILL'; endif
+APPL COMIS QUIT
+*
+* --- SOUT: function for SIM package ---
+*
+      function SOUT(E)
+      parameter (MAX=1000)
+      vector energy(MAX),crosec(MAX)
+
+      Emin = energy(1)
+      Edelta = energy(2)-energy(1)
+
+      i = INT(.5 + (E-Emin)/Edelta)
+      if (i.LT.1) then
+         print*, 'Energy E=', E, ' underflows the vector ENERGY'
+         SOUT = crosec(1)
+         RETURN
+      endif
+      if (i.GE.MAX) then
+         print*, 'Energy E=', E, ' overflows the vector ENERGY'
+         SOUT = crosec(MAX)
+         RETURN
+      endif
+
+*     .. Linear approximation
+      E1 = energy(i)
+      s1 = crosec(i)
+      E2 = energy(i+1)
+      s2 = crosec(i+1)
+      SOUT = s1 + (s2-s1)*(E-E1)/(E2-E1)
+      END
+QUIT
+if [venergy] = 'KILL' then; v/de energy; endif
+if [vcrosec] = 'KILL' then; v/de crosec; endif
+
+APPL COMIS QUIT
+*                                         @METAGS FitVal
+*                                         09-19-97 11:55pm
+*--------------- FitVal ---------------
+*
+      function FitVal(x,nfun)
+      if (nfun.EQ.1) then
+         FitVal = POLI(x)
+      elseif (nfun.EQ.2) then
+         FitVal = EX(x)
+      elseif (nfun.EQ.3) then
+         FitVal = EP(x)
+      elseif (nfun.EQ.4) then
+         FitVal = EE(x)
+      elseif (nfun.EQ.5) then
+         FitVal = EEP(x)
+      elseif (nfun.EQ.6) then
+         FitVal = GAUSS(x)
+      elseif (nfun.EQ.7) then
+         FitVal = GE(x)
+      elseif (nfun.EQ.8) then
+         FitVal = GP(x)
+      elseif (nfun.EQ.9) then
+         FitVal = PL(x)
+      else
+*        .. function for SIM package
+         FitVal = SOUT(x)
+      endif
+      END
+QUIT
+RETURN

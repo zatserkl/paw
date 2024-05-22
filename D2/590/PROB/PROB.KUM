@@ -1,0 +1,503 @@
+*                                         @METAGS prob
+*--------------- prob ---------------
+*
+MACRO prob n=10000 E0=1.000 Emin=.300 bt=0.01 id1=1
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] n=10000 E0=1.000 Emin=.300 bt=0.01 id1=1
+   stopm
+endif
+
+exec for
+
+opt logy
+opt stat
+
+if $HEXIST([id1]) then; h/de [id1]; endif
+
+xbins = 100
+title = Randoms with respect to Ie for bt=[bt]
+1dh [id1] [title] [xbins] [Emin] [E0]
+
+debug ON
+call HiEranIe([id1],[n],$RSIGMA([E0]),$RSIGMA([Emin]),$RSIGMA([bt]))
+*wait
+h/pl [id1]
+if ([E0] = 1.000) .AND. ([Emin] = .300) .AND. [n]=10000 then
+   * plot Ie with some norm. coefficient
+   dmod0 = $GRAFINFO('?dmod')
+   set dmod 1
+   bt = $RSIGMA([bt])
+   fu/pl 450.*Ie(1.,x,[bt]) .3 1 s
+   * plot the auxiliary function with the same norm. coefficient
+   Emin = $RSIGMA([Emin])
+   set dmod 2
+*   fu/pl 450.*(1-.3)*Ie(1.,[Emin],.01)/(1-x) .3 1 s
+   fu/pl 450.*(1e-5)*Ie(1.,.99999,[bt])/(1-x) .3 1 s
+   set dmod [dmod0]
+endif
+RETURN
+
+*                                         @METAGS p1x
+*--------------- p1x ---------------
+*
+MACRO p1x n=10000 E0=1.000 Emin=.300 bt=0.01 id1=1 id2=2
+exec for
+
+opt logy
+opt stat
+set stat 1001111
+
+sigma v1x=array([n])*0
+sigma C1=0
+
+if $HEXIST([id1]) then; h/de [id1]; endif
+if $HEXIST([id2]) then; h/de [id2]; endif
+
+xbins = 100
+title = Randoms with respect to function 1/([E0]-x)
+1dh [id1] [title] [xbins] 0 [E0]
+
+title = Fun for hist. [id1]
+1dh [id2] [title] [xbins] 0 [E0]
+
+call p1x([id1],$RSIGMA([E0]),[n],v1x,C1)
+call f1xdx([id2],$RSIGMA([E0]),[n])
+
+*v/pl v1x
+*fu/pl 10*[n]*f1x($RSIGMA([E0]),x) 0 [E0] s
+
+hcol0 = $GRAFINFO('?hcol')
+h/pl [id1]
+set hcol 12
+h/pl [id2] sl
+set hcol [hcol0]
+
+*dmod0 = $GRAFINFO('?dmod')
+*lwid0 = $GRAFINFO('?lwid')
+*plci0 = $GRAFINFO('?plci')
+*set dmod 1
+*set lwid 2
+*set plci 2
+*fu/pl [n]*f1x($RSIGMA([E0]),x) 0 [E0] s
+*set dmod [dmod0]
+*set lwid [lwid0]
+*set plci [plci0]
+mess Sum of v1x is $SIGMA(VSUM(v1x))
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+*                                         @METAGS .Ie
+*                                         12-15-98 02:27pm
+*--------------- Ie ---------------
+*
+      real function Ie(E0,E,bt)
+*     .. (A.3) from Mo & Tsai
+      parameter (eps=1e-5)
+      Emax = (1.-eps)*E0
+      Emin = .05*E0
+      if (E.GE.Emin) then
+*        .. correction due to the multiple photon emission
+         Cmult = (log(E0/E))**bt
+      else
+*        .. the complete screening formula is unreliable
+         Cmult = 1.
+      endif
+      if (E .LE. Emax) then
+         Ie = bt/(E0-E) * ( (E/E0) + (3./4.)*((E0-E)/E0)**2 )*Cmult
+      else
+         Ie = bt/(E0-Emax)*((Emax/E0) + (3./4.)*((E0-Emax)/E0)**2)*Cmult
+      endif
+      END
+*                                         @METAGS .EranIe
+*                                         12-17-98 05:32pm
+*--------------- EranIe ---------------
+*
+      real function EranIe(E0,bt,xdummy)
+*
+*  Generates random energy with respect to Ie in range (Emin,E0-delta)
+*  Uses generalized Von Neumann acceptance-rejection method:
+*  Distribution density for Ie p(E)=C*Ie is represented as
+*  p(E) = p1(E)*f(E), where p1(E) is auxiliary distribution density.
+*  Here p1(E)=C1*(E0-Emin)*Ie(Emin)/(E0-E)
+*  C,C1 are normalizing constants.
+*  Function (E0-Emin)*Ie(Emin)/(E0-E) = Ie(E0,E,t) at E=Emin
+*  f(E) has maximum C/C1 at E=Emin
+*  Random Etry for p1 is generated using inverted functions method.
+*  Condition to accept Etry is f(Etry) > (C/C1)*r2,
+*  where r2 is uniformly distributed in (0,1).
+*  To simplicity we use modified function f1(E)=(C/C1)*f(E).
+*  Condition with f1 is modified to f1(Etry) > r2
+*  The actual selection efficiency is about 98%
+*  Uses RNDM as a random generator
+*
+      IMPLICIT NONE
+*      LOGICAL DEBUG
+*      common /DEBUG/ DEBUG
+*      LOGICAL TEST
+*      common /TEST/ TEST
+      use DEBUG,TEST
+      vector VTEST(1)
+      real E0,bt,xdummy
+      integer npoint
+      real E0cur,btcur,factor,ratio ,ratiomax,Efac
+      real E,Emax,Emin, IeE,IeEtry,IeEmin
+      real Ie, RNDM
+      real eps,delta,r1,r2,f1,Etry
+*      parameter (eps=1.E-3)
+      parameter (eps=1.E-5)
+      real Cmult
+      integer label
+      integer i,itry
+      data npoint/100/, factor/1./, E0cur/0./, btcur/0./
+      save factor,E0cur,btcur
+
+      EranIe = 0.
+
+      delta = eps*E0
+      Emax = E0 - delta
+
+      if ((E0.NE.E0cur) .OR. (bt.NE.btcur)) then
+*        .. compute factor for current (E0,bt) set
+         E0cur = E0
+         btcur = bt
+
+         Emin = .05*E0
+*        .. value at Emin
+         E = Emin
+         assign 2000 to label
+         goto 9000
+ 2000    continue
+         IeEmin = IeE
+*         if (DEBUG) then
+*            p1 = IeEmin*(E0-Emin)/(E0-E)
+*         endif
+         factor = 1.
+         do i=1,npoint
+            E = Emax*real(i)/real(npoint)
+            assign 3000 to label
+            goto 9000
+ 3000       continue
+            ratio = IeE/(IeEmin*(E0-Emin)/(E0-E))
+*            if(DEBUG)print*,E,ratio, '   IeEmin,IeE', IeEmin,IeE
+*            call DWAIT('E,ratio')
+            if (ratio.GT.factor) then
+               ratiomax=ratio
+               factor=ratio
+               Efac = E
+            endif
+*            print*, ratio,factor
+         enddo
+         if(factor.GT.1.) factor = 1.10*factor
+         if(DEBUG)print*, 'ratiomax,factor,Efac', ratiomax,factor,Efac
+*         call DWAIT(' ')
+      endif
+
+      itry = 0
+  100 continue
+      itry = itry+1
+      if (itry.EQ.100) call WAIT('itry=100')
+
+      r1 = RNDM(r1)
+*     .. random energy with respect to delta*Ie(E0,Emax,bt)/(E0-E)
+      Etry = E0*(1. - (delta/E0)**r1)
+      
+      if (TEST) then
+         Etry=.600
+         Etry=.960
+*         print*, VTEST(1)
+         if (VTEST(1).EQ.0.) then
+            print*, 'Enter test value of VTEST(1) (<CR>=0.)'
+            read '(G15.7)', VTEST(1)
+         endif
+         Etry=VTEST(1)
+      endif
+
+      r2 = RNDM(r2)
+
+*     .. call function Ie for Etry
+      E = Etry
+      assign 1000 to label
+      goto 9000
+ 1000 continue
+      IeEtry = IeE
+
+*      if(DEBUG)print*, 'delta, IeEtry,IeEmin', delta, IeEtry,IeEmin
+
+      f1 = (E0-Etry)/(E0-Emin) * IeEtry/IeEmin / factor
+      if (f1 .GT. r2) then
+*        .. Success: Etry is distributed with respect to Ie
+         if(DEBUG)print*, 'Success: Etry,f1,r2,itry', Etry,f1,r2,itry
+         EranIe = Etry
+      else
+*        .. generate new pair Etry,r2
+         if(DEBUG)print*, 'Failed: Etry,f1,r2', Etry,f1,r2
+         goto 100
+      endif
+      RETURN
+
+ 9000 continue
+*      real function Ie(E0,E,bt)
+*     .. (A.3) from Mo & Tsai
+      if (E.GE.Emin) then
+*        .. correction due to the multiple photon emission
+         Cmult = (log(E0/E))**bt
+      else
+*        .. the complete screening formula is unreliable
+         Cmult = 1.
+      endif
+      if (E .LE. Emax) then
+         IeE = bt/(E0-E) * ( (E/E0) + (3./4.)*((E0-E)/E0)**2 )*Cmult
+      else
+         IeE= bt/(E0-Emax)*((Emax/E0) + (3./4.)*((E0-Emax)/E0)**2)*Cmult
+      endif
+      goto label
+      END
+
+*                                         @METAGS .EranIemax
+*                                         12-17-98 05:32pm
+*--------------- EranIemax ---------------
+*
+      real function EranIemax(E0,bt,xdummy)
+*
+*  Generates random energy with respect to Ie in range (Emin,E0-delta)
+*  Uses generalized Von Neumann acceptance-rejection method:
+*  Distribution density for Ie p(E)=C*Ie is represented as
+*  p(E) = p1(E)*f(E), where p1(E) is auxiliary distribution density.
+*  Here p1(E)=C1*(E0-Emin)*Ie(Emin)/(E0-E)
+*  C,C1 are normalizing constants.
+*  Function (E0-Emin)*Ie(Emin)/(E0-E) = Ie(E0,E,t) at E=Emin
+*  f(E) has maximum C/C1 at E=Emin
+*  Random Etry for p1 is generated using inverted functions method.
+*  Condition to accept Etry is f(Etry) > (C/C1)*r2,
+*  where r2 is uniformly distributed in (0,1).
+*  To simplicity we use modified function f1(E)=(C/C1)*f(E).
+*  Condition with f1 is modified to f1(Etry) > r2
+*  The actual selection efficiency is about 98%
+*  Uses RNDM as a random generator
+*
+      IMPLICIT NONE
+*      LOGICAL DEBUG
+*      common /DEBUG/ DEBUG
+*      LOGICAL TEST
+*      common /TEST/ TEST
+      use DEBUG,TEST
+      real E0,bt,xdummy
+      integer npoint
+      real E0cur,btcur,factor,ratio ,ratiomax,Efac
+      real E,Emax,Emin, IeE,IeEtry,IeEmax
+      real Ie, RNDM
+      real eps,delta,r1,r2,f1,Etry
+*      parameter (eps=1.E-3)
+      parameter (eps=1.E-5)
+      real Cmult
+      integer label
+      integer i,itry
+      data npoint/100/, factor/1./, E0cur/0./, btcur/0./
+      save factor,E0cur,btcur
+
+      EranIemax = 0.
+
+      delta = eps*E0
+      Emax = E0 - delta
+
+      if ((E0.NE.E0cur) .OR. (bt.NE.btcur)) then
+*        .. compute factor for current (E0,bt) set
+         E0cur = E0
+         btcur = bt
+*        .. value at Emax
+         IeEmax = Ie(E0,Emax,bt)
+         factor = 1.
+         do i=1,npoint
+            E = Emax*real(i)/real(npoint)
+            ratio = Ie(E0,E,bt)/(IeEmax*delta/(E0-E))
+            if (ratio.GT.factor) then
+               ratiomax=ratio
+               factor=ratio
+               Efac = E
+            endif
+*            print*, ratio,factor
+         enddo
+         factor = 1.20*factor
+         if(DEBUG)print*, 'ratiomax,factor,Efac', ratiomax,factor,Efac
+         call DWAIT(' ')
+      endif
+
+      itry = 0
+  100 continue
+      itry = itry+1
+      if (itry.EQ.100) call WAIT('itry=100')
+
+      r1 = RNDM(r1)
+*     .. random energy with respect to delta*Ie(E0,Emax,bt)/(E0-E)
+      Etry = E0*(1. - (delta/E0)**r1)
+      
+      if (TEST) then
+         Etry=.600
+         Etry=.960
+      endif
+
+      r2 = RNDM(r2)
+
+*     .. call function Ie for Etry
+      E = Etry
+      assign 1000 to label
+      goto 9000
+ 1000 continue
+      IeEtry = IeE
+
+*     .. call function Ie for Emax
+      E = Emax
+      assign 2000 to label
+      goto 9000
+ 2000 continue
+      IeEmax = IeE
+
+      if(DEBUG)print*, 'delta, IeEtry,IeEmax', delta, IeEtry,IeEmax
+
+      f1 = (E0-Etry)/delta * IeEtry/IeEmax / factor
+      if (f1 .GT. 2.*r2) then
+*        .. Success: Etry is distributed with respect to Ie
+         if(DEBUG)print*, 'Success: r1,Etry,f1,r2', r1,Etry,f1,r2
+         EranIemax = Etry
+      else
+*        .. generate new pair Etry,r2
+         if(DEBUG)print*, 'Failed: r1,Etry,f1,r2', r1,Etry,f1,r2
+         goto 100
+      endif
+      RETURN
+
+ 9000 continue
+*      real function Ie(E0,E,bt)
+*     .. (A.3) from Mo & Tsai
+      Emin = .05*E0
+      if (E.GE.Emin) then
+*        .. correction due to the multiple photon emission
+         Cmult = (log(E0/E))**bt
+      else
+*        .. the complete screening formula is unreliable
+         Cmult = 1.
+      endif
+      if (E .LE. Emax) then
+         IeE = bt/(E0-E) * ( (E/E0) + (3./4.)*((E0-E)/E0)**2 )*Cmult
+      else
+         IeE= bt/(E0-Emax)*((Emax/E0) + (3./4.)*((E0-Emax)/E0)**2)*Cmult
+      endif
+      goto label
+      END
+
+*                                         @METAGS .HiEranIe
+*                                         12-17-98 05:32pm
+*--------------- HiEranIe ---------------
+*
+      SUBROUTINE HiEranIe(id,nran,E0,Emin,bt)
+*     .. the histogram id must be empty
+*      LOGICAL DEBUG
+*      common /DEBUG/ DEBUG
+      use DEBUG
+      logical aDEBUG
+      do n=1,nran
+         aDEBUG = DEBUG
+         DEBUG = .FALSE.
+         Eran = EranIe(E0,bt,REAL(n))
+         DEBUG = aDEBUG
+         call HFILL(id,Eran,0.,1.)
+      enddo
+      END
+*                                         @METAGS .suEranIe
+*                                         12-17-98 05:32pm
+*--------------- suEranIe ---------------
+*
+      SUBROUTINE suEranIe(id,nran,E0,Emin,bt)
+*     .. the histogram id must be empty
+      character*80 chtitl
+      real Ie
+      parameter (eps=1e-6)
+      delta = eps*E0
+      call HGIVE(id,chtitl,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      dE = E0-E
+      n = 0
+      ntot = 0
+ 1000 continue
+         ntot = ntot+1
+         r1 = RNDM(r1)
+*        .. random energy with respect to (E0-Emin)*Ie(E0,Emin,t)/(E0-E)
+         Etry = E0 - dE*(delta/dE)**r1
+         r2 = RNDM(r2)
+         f1 = (E0-Etry)/dE * Ie(E0,Etry,bt)/Ie(E0,Emin,bt)
+         if (r2 .LT. f1) then
+*           .. Etry is distributed with respect to Ie
+            Eran = Etry
+            call HFILL(id,Eran,0.,1.)
+            n = n+1
+         else
+*           .. generate new pair Etry,r2
+            goto 1000
+         endif
+      if (n.LT.nran) goto 1000
+      print*, 'For nran =', nran, ' it was spent', ntot, ' randoms'
+      print*, 'Efficiency is', REAL(nran)/REAL(ntot)
+      END
+
+*                                         @METAGS .f1x
+*                                         12-16-98 08:08pm
+*--------------- f1x ---------------
+*
+      function f1x(E0,x)
+*      parameter (eps=1e-5)
+      eps = .001*E0
+      f1x = 0.
+      if (E0-x .LT. eps) RETURN
+*     .. norma
+      C1 = log(E0/eps)
+      C1 = 1./C1
+      f1x = C1/(E0-x)
+      END
+*                                         @METAGS .p1x
+*                                         12-16-98 07:08pm
+*--------------- p1x ---------------
+*
+      SUBROUTINE p1x(id,E0,IDIM,v1x,C1)
+*     .. randoms with density 1/(E0-x) for 0 < x < E0-eps
+      real v1x(IDIM)
+*      parameter (eps=1e-5)
+      eps = .001*E0
+*     .. norma
+      C1 = log(E0/eps)
+      C1 = 1./C1
+      print*, 'C1 =', C1
+      do i=1,IDIM
+         r = RNDM(r)
+         r1x = E0*(1.-exp(-r/C1))
+         v1x(i) = r1x
+         call HFILL(id,r1x,0.,1.)
+      enddo
+      END
+*                                         @METAGS .f1xdx
+*                                         12-17-98 11:21am
+*--------------- f1xdx ---------------
+*
+      SUBROUTINE f1xdx(id,E0,ntot)
+*     .. the histogram id must be empty
+      character*80 chtitl
+      call HGIVE(id,chtitl,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      do i=1,NX
+         if (i.LT.NX) then
+            call HIX(id,i,xmin)
+            call HIX(id,i+1,xmax)
+            dx = xmax-xmin
+            xmean = xmin+dx/2.
+         else
+            xmean = xmax+dx/2.
+         endif
+         f = f1x(E0,xmean)
+         fdx = f*dx
+         val = ntot*fdx
+         call HFILL(id,xmean,0.,val)
+      enddo
+      END
+QUIT
+RETURN

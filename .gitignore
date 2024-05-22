@@ -1,0 +1,16 @@
+*
+
+**/
+
+!.gitignore
+!README.md
+!last.kumac
+!last.kumacold
+!*.py
+!*.ipynb
+!*.kumac
+!*.f
+!*.for
+
+!JupyterImages/
+!JupyterImages/*

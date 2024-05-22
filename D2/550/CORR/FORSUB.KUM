@@ -1,0 +1,474 @@
+*                                         @METAGS forsub
+*--------------- forsub ---------------
+*
+MACRO forsub file
+if [file]='' then; file=$WORD([0],1,1,#); endif
+exec for
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+appl comis
+*                                         @METAGS INDFOR
+*                                         01-06-98 12:39pm
+*--------------- INDFOR ---------------
+*
+      integer function INDFOR(line,string,istart,CHOPT,lastch)
+*
+*     Returns position of first occurance string in line
+*     Search starts from istart
+*     lastch returns position of last character of string in line
+*     Case insensitive, spaces ignored
+*     0 in 6th column as a line continue sign treated as a space
+*     CHOPT: see below
+*
+      character*(*) line,string,CHOPT
+      integer istart,lastch
+      parameter (MAXBUF=127)
+      character*(MAXBUF) buf,upstr
+      integer ind(MAXBUF)
+      character opt*32,start,word,comm
+      character space,zero,prev,next, limits*24
+      logical comline
+      data space/' '/, zero/'0'/
+*     .. word delimiters
+      data limits/'+-*/=(),.:''$!@#%^&";<>\|'/
+*
+*     Description of CHOPT:
+*
+*     .. "S" : line should start from string
+      data start/'S'/
+*     .. "W" : string should be enclosed by word delimiters
+*              (beginning and end of line is treated as delimiters too)
+      data word/'W'/
+*     .. "C" : skip FORTRAN comment line
+      data comm/'C'/
+*
+      INDFOR = 0
+      lastch = 0
+*     .. convert options to UPPER case
+      opt = CHOPT
+      call CLTOU(opt)
+
+      comline = .FALSE.
+      if ((line(1:1) .EQ. '*') .OR.
+     &    (line(1:1) .EQ. 'C') .OR.
+     &    (line(1:1) .EQ. 'c')) then
+*        .. its comment line
+         comline = .TRUE.
+      endif
+
+*      CALL MESS('Before option C')
+*     .. option 'C'
+      if ((INDEX(opt,comm).NE.0) .AND. (comline)) then
+*        .. Exit: comment line
+         goto 99
+      endif
+*      CALL MESS('After option C')
+
+*     .. here upstr is temporary used as a buffer
+      upstr = line
+*     .. 0 as a line continue sign is treated as a space
+      if ((.NOT.comline) .AND. (line(6:6).EQ.zero)) upstr(6:6)=space
+*
+      buf = space
+      lenbuf = 0
+      do i=1, LENOCC(line)
+         if (upstr(i:i).NE.space) then
+            lenbuf = lenbuf+1
+            buf(lenbuf:lenbuf) = upstr(i:i)
+            ind(lenbuf) = i
+         endif
+      enddo
+      call CLTOU(buf)
+
+*     .. store in upstr normalized string      
+      upstr = space
+      lenstr = 0
+      do i=1, LENOCC(string)
+         if (string(i:i).NE.space) then
+            lenstr = lenstr+1
+            upstr(lenstr:lenstr) = string(i:i)
+         endif
+      enddo
+      call CLTOU(upstr)
+      
+      n = INDEX(buf,upstr(1:lenstr))
+      if (n.EQ.0) goto 99
+      ifind = ind(n)
+      ilast = ind(n+lenstr-1)
+
+*     .. option 'S'
+      if ((INDEX(opt,start).NE.0) .AND. (n.GT.1)) then
+*        .. Exit: line must starts from string
+         goto 99
+      endif
+
+*     .. option 'W'
+      if (INDEX(opt,word).NE.0) then
+         ishift = 0
+*        .. Test of word limits
+  100    prev = limits(1:1)
+         iprev = ishift+n-1
+         if (iprev.GT.0) prev = buf(iprev:iprev)
+
+         next=limits(1:1)
+         inext = n+lenstr
+         if (inext.LE.lenbuf) next = buf(inext:inext)
+
+         if ((INDEX(limits,prev).EQ.0) .OR.
+     &       (INDEX(limits,next).EQ.0)) then
+*           .. next search in buf
+            ishift = ishift+n
+            if (ishift .GT. lenbuf-lenstr) goto 99
+            n = INDEX(buf(ishift+1:lenbuf),upstr(1:lenstr))
+            if (n.EQ.0) goto 99
+            ifind = ind(ishift+n)
+            ilast = ind(ishift+n+lenstr-1)
+            goto 100
+         endif
+      endif
+
+*     .. Success
+      INDFOR = ifind
+      lastch = ilast
+      RETURN
+   99 continue
+      RETURN
+      END      ! INDFOR
+
+*                                         @METAGS REPLACE
+*                                         01-16-98 01:59pm
+*--------------- REPLACE ---------------
+*
+      SUBROUTINE REPLACE(line,n1,n2,string)
+*
+*     Replace contain of line from n1 to n2 by string(any length)
+*     Case sensitive string, omit trailing spaces
+*
+      character*(*) line,string
+      integer n1,n2
+      parameter (MAXBUF=127)
+      character*(MAXBUF) newline
+      character space
+      data space/' '/
+
+      maxlen = LEN(line)
+      lenlin = LENOCC(line)
+      newline = space
+*     .. fill the beginning of line
+      newline(1:n1-1) = line(1:n1-1)
+*     .. insert string
+      last = n1 + LENOCC(string) - 1
+      if (last.LE.maxlen) then
+         newline(n1:last) = string
+      else
+         newline(n1:maxlen) = string
+         goto 1000
+      endif
+*     .. fill the rest of line
+      next = last+1
+      if (next.GT.maxlen) goto 1000
+      newline(next:maxlen) = line(n2+1:lenlin)
+ 1000 line = newline(1:maxlen)
+      END      ! REPLACE
+
+*                                         @METAGS FUNCOP
+*                                         01-04-98 02:23pm
+*--------------- FUNCOP ---------------
+*
+      SUBROUTINE FUNCOP(oldfile,newfile,comment)
+      character*(*) oldfile,newfile,comment
+      character*32 oldname,newname,oldf,newf, upnew
+      parameter (MAXBUF=127)
+      character*(MAXBUF) line,search,string
+      character function*8, bra, equal
+      parameter (function='FUNCTION', bra='(', equal='=')
+      character comsign*9
+      parameter (comsign='*     .. ')
+      logical samefile,foundf
+      character space
+      character CHOPT*32,start,word,comm
+      data samefile/.TRUE./
+      data space/' '/
+*
+*     Description of CHOPT:
+*
+*     .. "S" : line should start from oldname
+      data start/'S'/
+*     .. "W" : string should be enclosed by word delimiters
+      data word/'W'/
+*     .. "C" : skip comment line
+      data comm/'C'/
+*
+      icount = 0
+
+      call FPARSE(oldfile,oldname,oldf)
+      lenold = LENOCC(oldname)
+
+      call FPARSE(newfile,newname,newf)
+      lennew = LENOCC(newname)
+
+*     .. test to presence newname in oldfile
+      ifind = IFINDVAR(oldfile,newname)
+      if (ifind.GT.0) then
+         len = LENOCC(oldf)
+         upnew = newname
+         call CLTOU(upnew)
+         print 20, oldf(1:len), upnew(1:lennew), ifind
+   20    format('*** FUNCOP ERROR:   ',
+     &          'In file ', A, ' variable ', A,' is found', I3,' times')
+         call WAIT('Choose "Q" and try other name')
+      endif
+
+      lin = LUNFREE(40)
+      open (lin,  FILE=oldf, STATUS='OLD', ERR=10000)
+      inquire (FILE=newf, OPENED=samefile)
+      if (samefile) then
+         print*, 'ERROR FUNCOP: File cannot be copied onto itself'
+         close(lin)
+         goto 99
+      endif
+
+*     .. clear output file
+      call FCLEAR(newf)
+
+      lout = LUNFREE(lin+1)
+      open (lout, FILE=newf, STATUS='UNKNOWN', ERR=20000)
+      foundf = .FALSE.
+  100 read (lin,10, END=1000) line
+         len = LENOCC(line)
+         if (.NOT.foundf) then
+*           .. search word "FUNCTION" with oldname and "("
+            search  = function//space//oldname(1:lenold)//bra
+*           .. search from any position, skip comment
+            CHOPT = comm
+            ifind = INDFOR(line,search,1,CHOPT,lastch)
+            if (ifind.GT.0) then
+*              .. replace
+               n1 = ifind
+               n2 = lastch
+               string = function//space//newname(1:lennew)//bra
+               call REPLACE(line,n1,n2,string)
+               foundf = .TRUE.
+               icount = icount+1
+*              .. comment processing
+               if (comment.EQ.space) then
+*                 .. write function header as line in ordinary way
+                  goto 2000
+               else
+*                 .. write new function header and assign to line the comment
+                  len = LENOCC(line)
+                  write(lout,10) line(1:len)
+                  line = comsign//comment
+                  goto 2000
+               endif
+            endif
+         endif
+
+         search  = oldname
+*        .. search identifier as whole word, skip comment
+         CHOPT = 'CW'
+         ifind = INDFOR(line,search,1,CHOPT,lastch)
+         if (ifind.GT.0) then
+*           .. replace
+            n1 = ifind
+            n2 = lastch
+            string = newname
+            call REPLACE(line(1:len),n1,n2,string)
+            icount = icount+1
+            goto 2000
+         endif
+
+ 2000    continue
+         len = LENOCC(line)
+         if (len.GT.0) then
+            write(lout,10) line(1:len)
+         else
+            write(lout,10) space
+         endif
+      goto 100
+
+ 1000 close(lout)
+      close(lin)
+      if (icount.NE.2) then
+*        .. may be some error
+         print*, 'WARNING FUNCOP: Replaced', icount, ' times'
+         print*, 'Normally is changed function name and assignment'
+         call WAIT('*** Suspend error ***')
+      endif
+      RETURN
+   10 format(A)
+      RETURN
+10000 len = LENOCC(oldf)
+      print*, 'ERROR FUNCOP: file ', oldf(1:len), ' did not found'
+      RETURN
+20000 len = LENOCC(newf)
+      print*, 'ERROR FUNCOP: could not open file ', newf(1:len)
+      RETURN
+   99 continue
+      END      ! FUNCOP
+
+*                                         @METAGS KUIP2STR
+*                                         01-23-98 08:00pm
+*--------------- KUIP2STR ---------------
+*
+      SUBROUTINE KUIP2STR(s1,s2,s3,s)
+      character*(*) s1,s2,s3,s
+      character*30  so1,so2,so3
+      so1 = s1
+      so2 = s2
+      so3 = s3
+      s = so1//so2//so3
+      END
+
+*                                         01-15-98 08:11pm
+*                                         @METAGS FITsave
+*--------------- FITsave ---------------
+*
+      subroutine FITsave(outfile,comm1,comm2,comm3)
+      character*(*) outfile, comm1,comm2,comm3
+      character*127 comment
+      character*32  fname,file
+      call FPARSE(outfile,fname,file)
+      call KUIP2STR(comm1,comm2,comm3,comment)
+      call FUNCOP('FitDef.for',file,comment)
+      RETURN
+      END
+
+*                                         @METAGS IFINDVAR
+*                                         01-15-98 08:11pm
+*--------------- IFINDVAR ---------------
+*
+      integer function IFINDVAR(file,var)
+      character*(*) file,var
+      character*32 fname,f,name,buf,CHOPT
+      character*127 line
+      IFINDVAR = 0
+      call FPARSE(file,fname,f)
+*     .. ignore extension in var (if exist)
+      call FPARSE(var,name,buf)
+      lun = LUNFREE(40)
+      open (lun, FILE=f, STATUS='OLD', ERR=10000)
+*     .. search identifier as whole word, skip comment
+      CHOPT = 'CW'
+      icount = 0
+  100 read (lun,10, END=1000) line
+   10    format(A)
+         ifind = INDFOR(line,name,1,CHOPT,lastch)
+         if (ifind.GT.0) icount = icount+1
+      goto 100
+ 1000 close(lun)
+      IFINDVAR = icount
+      RETURN
+10000 len = LENOCC(file)
+      print*, 'IFINDVAR ERROR: File ', f(1:len), ' did not found'
+      END
+
+*                                         @METAGS indcall
+*                                         01-15-98 04:54pm
+*--------------- indcall ---------------
+*
+      SUBROUTINE indcall()
+      parameter (MAXBUF=127)
+      character*(MAXBUF) line,search
+      character*32 CHOPT,string
+*                    1         2         3         4         5         6         7
+*           1234567890123456789012345678901234567890123456789012345678901234567890
+*      line=' ab=cde+bc- bc fg            bc,bc.'
+*                    1         2         3         4         5         6         7
+*           1234567890123456789012345678901234567890123456789012345678901234567890
+      line='*    0ab = cd e.                  ab = cd e   '
+      lenline = LENOCC(line)
+      print 10, '123456789 123456789 123456789 123456789 123456789'
+      print 10,line(1:lenline)
+      print*, 'Enter search string'
+      read *, search
+      lenstr = LENOCC(line)
+      print*, 'Enter istart'
+      read *, istart
+*      CHOPT = ' '
+      print*, 'Enter CHOPT'
+      read *, CHOPT
+
+      ifind = INDFOR(line,search,istart,CHOPT,lastch)
+      print*, 'ifind =', ifind, '   lastch =', lastch
+      if (ifind.NE.0) then
+         print*, 'Enter string to replace ', search(1:lenstr)
+         read 10, string
+         
+         lenrep = LENOCC(string)
+         print*,'INDCALL: lenrep=', lenrep,' string=',string(1:lenrep)
+         
+         n1 = ifind
+         n2 = lastch
+         print 10,line(1:lenline)
+         call REPLACE(line,n1,n2,string)
+         lenline=LENOCC(line)
+      endif
+      print 10, '123456789 123456789 123456789 123456789 123456789'
+      print 10,line(1:lenline)
+   10 format(A)
+      END
+
+*                                         @METAGS LUNFILE
+*                                         01-20-98 02:40pm
+*--------------- LUNFILE ---------------
+*
+      integer function LUNFILE(file)
+      character*32 file,lofile
+      lofile = file
+      call CUTOL(lofile)
+      inquire (NUMBER=lun, FILE=lofile)
+      LUNFILE = lun
+      END
+*                                         @METAGS LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      logical used
+      lun = lunstart-1
+      if (lun.LT.0) lun=0
+  100 lun = lun+1
+      inquire (UNIT=lun, OPENED=used)
+      if (used) goto 100
+      LUNFREE = lun
+      END
+*                                         @METAGS FCLEAR
+*                                         01-20-98 01:27pm
+*--------------- FCLEAR ---------------
+*
+      SUBROUTINE FCLEAR(file)
+      character*(*) file
+      lun = LUNFREE(40)
+      open (lun, FILE=file, STATUS='UNKNOWN', ERR=10000)
+      endfile lun
+      close(lun)
+      RETURN
+10000 len = LENOCC(file)
+      print*, 'ERROR FCLEAR: File ', file(1:len), ' did not found'
+      END
+*                                         @METAGS FPARSE
+*                                         01-20-98 02:53pm
+*--------------- FPARSE ---------------
+*
+      SUBROUTINE FPARSE(fstr,fname,file)
+      character*(*) fstr,fname,file
+      character f*32, ext*4
+      data ext/'.for'/
+      f = fstr
+      len = LENOCC(f)
+      ipoint = INDEX(f,'.')
+      if (ipoint.EQ.0) then
+         fname = f
+         file  = f(1:len)//ext
+      else
+         fname = f(1:ipoint-1)
+         file  = f
+      endif
+      END
+exit
+RETURN

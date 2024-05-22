@@ -1,0 +1,2829 @@
+*                                      @METAGS D2LOOK
+*--------------- D2LOOK ---------------
+*
+MACRO D2LOOK E0 theta
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#) E0 theta
+   stopm
+endif
+
+g/cr D2LOOK $WORD([0],1,1,#)
+mess Welcome to macro $WORD([0],2,1,#)
+EXEC INI
+
+D2PLOTL=''; g/imp D2PLOTL
+if [D2PLOTL]='' then
+   exec  D2PLOTL
+   g/imp D2PLOTL
+   if [theta] = '' then
+      process = ''; g/imp process
+      if [process] <> '' then
+         ans = 'N'
+         read ans 'Change the process marks (Y/N)?'
+         if $UPPER([ans])='Y' then
+            exec [D2PLOTL]#DefProcess
+         endif
+      else
+         exec [D2PLOTL]#DefProcess
+      endif
+   else
+      exec [D2PLOTL]#E0theta [E0] [theta]
+   endif
+endif
+
+D2MODE=''; g/imp D2MODE
+if [D2MODE]='' then; exec D2MODE; endif
+
+mode=''; g/imp D2MODE,mode
+if [mode] = '' then
+   exec [D2MODE]#MODE PC
+endif
+RETURN
+
+*                                         @METAGS IDPARSE
+*--------------- IDPARSE ---------------
+*
+MACRO IDPARSE id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+if $LEN([id]) < 3 then
+   nfcurr=''; g/imp nfcurr
+   if [nfcurr]='' then
+      nf = 'Q'
+      read nf 'Enter SP file number (Q=Quit)'
+      if $UPPER([nf])='Q' then
+         EXITM -1 -1 -1
+      endif
+   else
+      nf = [nfcurr]
+   endif
+   nz = [id]
+   id = [nz]*100 + [nf]
+   id1 = 10000 + [id]
+   id2 = 20000 + [id]
+else
+   id0 = $FORMAT([id],I4.4)
+   nz = $SUBSTRING([id0],1,2)
+*   nf = $SUBSTRING([id0],3)
+   nf = $SUBSTRING([id0],-2)
+   id1 = 10000 + [id]
+   id2 = 20000 + [id]
+endif
+
+g/cr nfcurr [nf] 'Current SP file number'
+RETURN [id] [id1] [id2]
+
+*                                         @METAGS READ
+*--------------- READ ---------------
+*
+MACRO READ id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+exec READAT [id]
+RETURN
+
+*                             @METAGS READAT
+*---------- READAT ----------
+*
+MACRO READAT id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+exec IDPARSE [id]
+id = $WORD([@],1,1)
+if [id] < 0 then; EXITM; endif
+
+nz = $EVAL(INT([id]/100))
+nf = [id] - [nz]*100
+call READAT([nz],[nf])
+RETURN
+
+*                             @METAGS READDM
+*---------- READDM ----------
+*
+MACRO READDM id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+exec IDPARSE [id]
+id = $WORD([@],1,1)
+if [id] < 0 then; EXITM; endif
+
+nz = $EVAL(INT([id]/100))
+nf = [id] - [nz]*100
+call READDM([nz],[nf])
+RETURN
+
+*                                         @METAGS PRINTSP
+*--------------- PRINTSP ---------------
+*
+MACRO PRINTSP id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+exec IDPARSE [id]
+id = $WORD([@],1,1)
+if [id] < 0 then; EXITM; endif
+
+nz = $EVAL(INT([id]/100))
+nf = [id] - [nz]*100
+call PRINTSP([nz],[nf])
+RETURN
+
+*                                         @METAGS TELE
+*--------------- TELE ---------------
+*
+MACRO TELE id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+exec IDPARSE [id]
+id = $WORD([@],1,1)
+if [id] < 0 then; EXITM; endif
+
+nz = $EVAL(INT([id]/100))
+nf = [id] - [nz]*100
+call TELE([nz],[nf])
+RETURN
+
+*                                         @METAGS MakeTRUE
+*--------------- MakeTRUE ---------------
+*
+MACRO MakeTRUE id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+exec IDPARSE [id]
+id = $WORD([@],1,1)
+if [id] < 0 then; EXITM; endif
+
+call MakeTRUE([id])
+RETURN
+
+*                             @METAGS CandD
+*---------- CandD ----------
+*
+MACRO CandD id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+exec IDPARSE [id]
+id  = $WORD([@],1,1)
+id1 = $WORD([@],2,1)
+id2 = $WORD([@],3,1)
+
+if [id] < 0 then; EXITM; endif
+
+if $HEXIST([id])=0 .OR. $HEXIST([id1])=0 .OR. $HEXIST([id2])=0 then
+   exec READAT [id]
+endif
+
+mt0 = $GRAFINFO('?mtyp')
+ci0 = $GRAFINFO('?pmci')
+hc0 = $GRAFINFO('?hcol')
+dm0 = $GRAFINFO('?dmod')
+set mtyp 24
+h/pl [id1] E0
+set mtyp 25
+set pmci 2
+set hcol 2
+set dmod 1
+h/pl [id2] SE0
+
+sum = $HINFO([id],'SUM')
+fcall = ITITDAT([id],'N=')
+NS = $ICALL([fcall])
+if [NS] > 0 then
+   clast = [sum]/[NS] - 1
+   clast = $FORMAT(100*[clast],F0.1)
+else
+   *clact = UNDEFENED
+   clact = 0
+endif
+
+ratio = $FORMAT(100*$HINFO([id2],'SUM')/$HINFO([id1],'SUM'),F4.1)
+percent = 1*[ratio]
+*mess ----- Delays: [percent]%, clasters=[clast]%. Target, theta, comment:
+*mess $HTITLE([id2])
+tt   = $SUBSTRING($HTITLE([id2]),1,6)
+comm = $SUBSTRING($HTITLE([id2]),10)
+mess --- Delays: [percent]%, clasters=[clast]%. Target,theta: [tt]. Comment:
+mess [comm]
+set mtyp [mt0]
+set pmci [ci0]
+set hcol [hc0]
+set dmod [dm0]
+RETURN
+
+*                                         @METAGS DATA
+*--------------- DATA ---------------
+*
+MACRO DATA id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+c = $SUBSTRING($UPPER([id]),1,1)
+fcall = isdigit($QUOTE([c]))
+if $ICALL([fcall]) = 0 then
+   mess [0]: Uncorrect ID=[id]
+   mess 'Possible source: loaded COMMAND ''DATA $1'''
+   stopm
+endif
+
+if $HEXIST([id]) then
+   id1 = 10000+[id]
+   id2 = 20000+[id]
+   if $HEXIST([id1])=0 then
+      mess Counts hist [id1] did not exist
+      stopm
+   endif
+   if $HEXIST([id2])=0 then
+      mess Counts hist [id1] did not exist
+      stopm
+   endif
+   goto PLOT
+endif
+
+exec IDPARSE [id]
+id  = $WORD([@],1,1)
+id1 = $WORD([@],2,1)
+id2 = $WORD([@],3,1)
+
+if [id] < 0 then; EXITM; endif
+
+if $HEXIST([id])=0 .OR. $HEXIST([id1])=0 .OR. $HEXIST([id2])=0 then
+   exec READAT [id]
+endif
+
+PLOT:
+
+zon 1 2
+mt0 = $GRAFINFO('?mtyp')
+set mtyp 24
+h/pl [id1] E0
+set mtyp 25
+h/pl [id2] E0
+SELNT 1
+   Ibeam = $EXEC(TITbeam [id])
+   if [Ibeam] > 0 then
+   txt = I?beam!=[Ibeam]
+   text 2 8.8 [txt] .4
+   endif
+SELNT 20
+
+sum = $HINFO([id],'SUM')
+fcall = ITITDAT([id],'N=')
+NS = $ICALL([fcall])
+if [NS] > 0 then
+   clast = [sum]/[NS] - 1
+   clast = $FORMAT(100*[clast],F0.1)
+else
+   *clast = UNDEFENED
+   clast = 0
+endif
+
+ratio = $FORMAT(100*$HINFO([id2],'SUM')/$HINFO([id1],'SUM'),F4.1)
+percent = 1*[ratio]
+tt   = $SUBSTRING($HTITLE([id2]),1,6)
+comm = $SUBSTRING($HTITLE([id2]),10)
+mess --- Delays: [percent]%, clasters=[clast]%. Target,theta: [tt]. Comment:
+mess [comm]
+set mtyp [mt0]
+zon
+RETURN
+
+*                             @METAGS TRUE
+*---------- TRUE ----------
+*
+MACRO TRUE id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   mess Example:  $WORD([0],2,1,#) 1622
+   stopm
+endif
+
+exec IDPARSE [id]
+id  = $WORD([@],1,1)
+id1 = $WORD([@],2,1)
+id2 = $WORD([@],3,1)
+
+if [id] < 0 then; EXITM; endif
+
+if $HEXIST([id])=0 then
+   exec READAT [id]
+endif
+
+mt0 = $GRAFINFO('?mtyp')
+set mtyp 24
+h/pl [id] E0
+
+id1 = 10000+[id]
+id2 = 20000+[id]
+
+sum = $HINFO([id],'SUM')
+fcall = ITITDAT([id],'N=')
+NS = $ICALL([fcall])
+if [NS] > 0 then
+   clast = [sum]/[NS] - 1
+   clast = $FORMAT(100*[clast],F0.1)
+else
+   *clast = UNDEFENED
+   clast = 0
+endif
+
+ratio = $FORMAT(100*$HINFO([id2],'SUM')/$HINFO([id1],'SUM'),F4.1)
+percent = 1*[ratio]
+*mess ----- Delays: [percent]%, clasters=[clast]%. Target, theta, comment:
+*mess $HTITLE([id2])
+tt   = $SUBSTRING($HTITLE([id2]),1,6)
+comm = $SUBSTRING($HTITLE([id2]),10)
+mess --- Delays: [percent]%, clasters=[clast]%. Target,theta: [tt]. Comment:
+mess [comm]
+set mtyp [mt0]
+RETURN
+
+*                                         @METAGS VIEW
+*--------------- VIEW ---------------
+*
+MACRO VIEW id
+if ([id].EQ.'') then
+   mess Usage:    $WORD([0],2,1,#) id
+   stopm
+endif
+id = $FORMAT([id],I4.4)
+if $HEXIST([id]) = 0 then
+   exec READAT [id]
+endif
+if $HEXIST([id]) then
+   exec PLOT [id]
+else
+   mess Bin [id] did not found
+endif
+RETURN
+
+*                              @METAGS COMP
+*---------- COMP ----------
+*
+MACRO COMP
+if [#] > 0 then
+   * process initial argumet list
+   sigma histl = array(100,0#0)
+   N = 0
+   for id in [*]
+      if $HEXIST([id]) = 0 then
+         exec IDPARSE [id]
+         id = $WORD([@],1,1)
+         if [id] < 0 then; EXITM; endif
+         if $HEXIST([id]) = 0 then; EXEC READAT [id]; endif
+      endif
+      N = [N]+1
+      v/inp histl([N]) [id]
+   endfor
+   exec HPLOTL [N]
+   goto AGAIN
+endif
+
+if $VEXIST(histl) then
+   ans = Y
+   read ans 'Create new histogram list (Y/N)? '
+   if $UPPER([ans]) = 'Y' then
+      sigma histl = array(100,0#0)
+   else
+      EXITM
+   endif
+else
+   sigma histl = array(100,0#0)
+endif
+
+N = 0
+AGAIN:
+id = 0
+read id 'Enter histogram ID (0 - EXIT)'
+if [id] <> 0 then
+   if $HEXIST([id]) = 0 then
+      exec IDPARSE [id]
+      id = $WORD([@],1,1)
+      if [id] < 0 then; EXITM; endif
+   endif
+
+   idcur = $FORMAT([id],I4.4)
+   if $HEXIST([id]) = 0 then; EXEC READAT [id]; endif
+   N = [N] + 1
+   v/inp histl([N]) [id]
+   EXEC HPLOTL [N]
+   goto AGAIN
+else
+   EXITM
+endif
+RETURN
+
+*                             @METAGS NLIST
+*---------- NLIST ----------
+*
+MACRO NLIST
+N = 0
+do i=1, 100
+   if histl([i]) = 0 goto EXIT
+   N = [N]+1
+enddo
+EXIT:
+RETURN [N]
+
+*                             @METAGS HPLOTL
+*---------- HPLOTL ----------
+*
+MACRO HPLOTL N max dm=1
+if $VEXIST(histl) = 0 then
+   mess No histogram list loaded
+   stopm
+endif
+
+g/imp d2hist
+
+if [N] = '' then; N = $EXEC(NLIST); endif
+
+xmin = 1e10
+xmax = 0
+ymax = 0
+do i=1, [N]
+   id = histl([i])
+   val = $HINFO([id],'XMIN')
+   if [val] < [xmin] then
+      xmin = [val]
+   endif
+   val = $HINFO([id],'XMAX')
+   if [val] > [xmax] then
+      xmax = [val]
+   endif
+   val = $HINFO([id],'MAX')
+   if [val] > [ymax] then
+      ymax = 1.10*[val]
+   endif
+enddo
+
+if [max]<>'' then
+   ymax = [max]
+endif
+
+*g/imp Nchan
+*nc = [Nchan] + 1
+*null 0 [nc] 0 [max]
+null [xmin] [xmax] 0 [ymax]
+
+atitle 'channels' 'counts'
+
+dmod0 = $GRAFINFO('?dmod')
+*set dmod [dm]
+set dmod 1
+
+mt0 = $GRAFINFO('?mtyp')
+mt = 24
+set mtyp [mt]
+
+ci0 = $GRAFINFO('?pmci')
+hc0 = $GRAFINFO('?hcol')
+ci = 1
+set pmci [ci]
+set hcol [ci]
+x = 0.5
+dx = 2
+NT0 = $GRAFINFO('NT')
+y1 = 19/([NT0]/10)
+y2 = [y1] - .4
+y3 = [y2] - .4
+* down comment
+y1down = .3/([NT0]/10)
+
+SELNT 1
+   itx [x] [y3] "a#
+selnt [NT0]
+do i=1, [N]
+   id = $FORMAT(histl([i]),I4.4)
+   h/pl [id] SP0
+   set dmod [dm]
+   SELNT 1
+*      sum = $HINFO([id],'SUM')
+      sum = $EXEC([d2hist]#SUMC [id] verb=0)
+      error  = $SIGMA(SQRT([sum]))
+      sum    = $FORMAT([sum],F8.0)
+      error  = $FORMAT([error],F8.0)
+      key [x] [y1] [mt]
+      itx ([x]+.3) [y1] [id]
+      itx ([x]+.3) [y2] [sum]
+      itx ([x]+.3) [y3] [error]
+
+      * down comment
+      Ibeam = $EXEC(TITbeam [id])
+      if [Ibeam] < 0 goto CONT
+      itx 0 [y1down] I?b!
+      key [x] [y1down] [mt]
+      itx ([x]+.3) [y1down] [Ibeam]
+      CONT:
+   SELNT [NT0]
+
+   * set next marker/text position
+   x  = [x] + [dx]
+   * set next color index
+   ci = [ci]+1
+   if ([ci] .GT. 6) then
+      ci = 1
+   endif
+   set pmci [ci]
+   set hcol [ci]
+   if ([ci].EQ.5) then
+      set pmci 11
+      set hcol 11
+   endif
+   * set next polymarker type index
+   mt = [mt]+1
+   if ([mt] .GT. 30) then
+      mt = 24
+   endif
+   set mtyp [mt]
+enddo
+set mtyp [mt0]
+set pmci [ci0]
+set hcol [hc0]
+set dmod [dmod0]
+RETURN
+
+*                                         @METAGS TITbeam
+*--------------- TITbeam ---------------
+*
+MACRO TITbeam id
+tit = $HTITLE([id])
+n1MBE = $INDEX([tit], 'M=')
+if [n1MBE] = 0 goto EMPTY
+n2MBE = $INDEX($SUBSTRING([tit],[n1MBE]),'(')
+if [n2MBE] = 0 goto EMPTY
+n2MBE = [n1MBE] + [n2MBE]
+n1MBE = [n1MBE] + 2
+dnMBE = [n2MBE] - [n1MBE] - 1
+MBE = $SUBSTRING([tit],[n1MBE],[dnMBE])
+if [MBE] <= 0 goto EMPTY
+
+n1TIM = $INDEX([tit], 'T=')
+if [n1TIM] = 0 goto EMPTY
+n2TIM = $INDEX($SUBSTRING([tit],[n1TIM]),',')
+if [n2TIM] = 0 goto EMPTY
+n2TIM = [n1TIM] + [n2TIM]
+n1TIM = [n1TIM] + 2
+dnTIM = [n2TIM] - [n1TIM] - 1
+TIM = $SUBSTRING([tit],[n1TIM],[dnTIM])
+if [TIM] <= 0 goto EMPTY
+Ibeam = $FORMAT([MBE]/[TIM], F0.0)
+goto RET
+
+EMPTY:
+EXITM -1
+
+RET:
+RETURN [Ibeam]
+
+*                             @METAGS PLOT
+*---------- PLOT ----------
+*
+MACRO PLOT id min=1 max=11 
+if [id] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id [min=1] [max=11]'
+   stopm
+endif
+g/imp minc,maxc
+h/pl [id]([minc]:[maxc]) PE0
+RETURN
+
+*                             @METAGS PLOTS
+*---------- PLOTS ----------
+*
+MACRO PLOTS id mt
+if [id] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id [mt]'
+   stopm
+endif
+mtcur = $GRAFINFO('?mtyp')
+
+if [mt] <> '' then
+   set mtyp [mt]
+endif
+g/imp minc,maxc
+h/pl [id]([minc]:[maxc]) PE0S
+set mtyp [mtcur]
+RETURN
+
+*                             @METAGS PLUS
+*---------- PLUS ----------
+*
+MACRO PLUS id1 id2 id3=0 tit scale2=1
+if [id3] = 0 then
+   mess Usage:    $WORD([0],2,1,#)//' id1 id2 id3 [tit] [scale2=1]'
+   stopm
+endif
+
+g/imp D2HIST
+
+id1 = $FORMAT([id1],I4.4)
+id2 = $FORMAT([id2],I4.4)
+id3 = $FORMAT([id3],I4.4)
+
+id1C = 1[id1]; id1D = 2[id1]
+id2C = 1[id2]; id2D = 2[id2]
+id3C = 1[id3]; id3D = 2[id3]
+if $HEXIST([id1C])=0 then; mess Hist. ID=[id1C] did not exist; stopm; endif
+if $HEXIST([id1D])=0 then; mess Hist. ID=[id1D] did not exist; stopm; endif
+if $HEXIST([id2C])=0 then; mess Hist. ID=[id2C] did not exist; stopm; endif
+if $HEXIST([id2D])=0 then; mess Hist. ID=[id2D] did not exist; stopm; endif
+
+if [id3]<>[id1] .AND. [id3]<>[id2] then
+   if ($HEXIST([id3])=1).OR.($HEXIST([id3C])=1).OR.($HEXIST([id3D])=1) then
+      mess Bin (or its some parts) ID=[id3] already exist
+      wait
+   endif
+endif
+
+if [tit]='' then
+   tit = Sum of [id1] and [id2]
+   if [scale2]<>1 then
+      add = . Scale[id2] = [scale2]
+      tit = [tit]//[add] 
+   endif
+   read tit 'Enter title'
+endif
+
+add 1[id1] 1[id2] 1[id3] ! [scale2]
+exec [D2HIST]#TIT 1[id3] [tit] quiet=0
+
+add 2[id1] 2[id2] 2[id3] ! [scale2]
+exec [D2HIST]#TIT 2[id3] [tit] quiet=0
+
+exec UPTRUE [id3]
+exec [D2HIST]#TIT [id3] [tit]
+
+exec [D2HIST]#HINFO [id3]
+RETURN
+
+*                             @METAGS MINUS
+*---------- MINUS ----------
+*
+MACRO MINUS id1 id2 id3 tit scale2=1
+if [id1] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id1 id2 id3 tit [scale2=1]'
+   stopm
+endif
+
+g/imp D2HIST
+
+id1 = $FORMAT([id1],I4.4)
+id2 = $FORMAT([id2],I4.4)
+id3 = $FORMAT([id3],I4.4)
+
+id1C = 1[id1]; id1D = 2[id1]
+id2C = 1[id2]; id2D = 2[id2]
+id3C = 1[id3]; id3D = 2[id3]
+if $HEXIST([id1C])=0 then; mess Hist. ID=[id1C] did not exist; stopm; endif
+if $HEXIST([id1D])=0 then; mess Hist. ID=[id1D] did not exist; stopm; endif
+if $HEXIST([id2C])=0 then; mess Hist. ID=[id2C] did not exist; stopm; endif
+if $HEXIST([id2D])=0 then; mess Hist. ID=[id2D] did not exist; stopm; endif
+if [id3]<>[id1] .AND. [id3]<>[id2] then
+   if ($HEXIST([id3])=1).OR.($HEXIST([id3C])=1).OR.($HEXIST([id3D])=1) then
+      mess Bin (or its some parts) ID=[id3] already exist
+      wait
+   endif
+endif
+
+if [tit]='' then
+   tit = Difference of [id1] and [id2]
+   if [scale2]<>1 then
+      add = . Scale[id2] = [scale2]
+      tit = [tit]//[add] 
+   endif
+   read tit 'Enter title'
+endif
+
+sub 1[id1] 1[id2] 1[id3] ! [scale2]
+exec [D2HIST]#TIT 1[id3] [tit]
+
+sub 2[id1] 2[id2] 2[id3] ! [scale2]
+exec [D2HIST]#TIT 2[id3] [tit]
+
+exec UPTRUE [id3]
+exec [D2HIST]#TIT [id3] [tit]
+
+exec [D2HIST]#HINFO [id3]
+RETURN
+
+*                             @METAGS BSCAL
+*---------- BSCAL ----------
+*
+MACRO BSCAL id1 id2 factor tit
+if [factor]=''.OR.$UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#)//' id1 id2 factor [tit]'
+   stopm
+endif
+
+g/imp D2HIST
+
+id1 = $FORMAT([id1],I4.4)
+id2 = $FORMAT([id2],I4.4)
+
+if [tit]='' then
+   tit = Multiply [id1] by [factor]
+   read tit 'Enter title'
+endif
+
+id1C = 1[id1]; id1D = 2[id1]
+id2C = 1[id2]; id2D = 2[id2]
+if $HEXIST([id1C])=0 then; mess Hist. ID=[id1C] did not exist; stopm; endif
+if $HEXIST([id1D])=0 then; mess Hist. ID=[id1D] did not exist; stopm; endif
+if [id2]<>[id1] then
+   if ($HEXIST([id2])=1).OR.($HEXIST([id2C])=1).OR.($HEXIST([id2D])=1) then
+      mess Bin (or its some parts) ID=[id2] already exist
+      wait
+   endif
+   h/cop [id1]  [id2]  [tit]
+   h/cop [id1C] [id2C] [tit]
+   h/cop [id1D] [id2D] [tit]
+else
+   * change title
+   h/cop [id1]  -1; h/cop -1 [id2]  [tit]; h/de -1
+   h/cop [id1C] -1; h/cop -1 [id2C] [tit]; h/de -1
+   h/cop [id1D] -1; h/cop -1 [id2D] [tit]; h/de -1
+endif
+
+g/imp d2hist
+sum1 = $EXEC([d2hist]#SUMC [id1] verb=0)
+
+np = $HINFO([id1],'XBINS')
+
+sigma con=array([np])*0
+sigma err=array([np])*0
+get/con [id1] con
+get/err [id1] err
+sigma con=con*[factor]
+sigma err=err*[factor]
+put/con [id2] con
+put/err [id2] err
+
+sigma con=array([np])*0
+sigma err=array([np])*0
+get/con [id1C] con
+get/err [id1C] err
+sigma con=con*[factor]
+sigma err=err*[factor]
+put/con [id2C] con
+put/err [id2C] err
+
+sigma con=array([np])*0
+sigma err=array([np])*0
+get/con [id1D] con
+get/err [id1D] err
+sigma con=con*[factor]
+sigma err=err*[factor]
+put/con [id2D] con
+put/err [id2D] err
+v/de con,err
+
+sum2 = $EXEC([d2hist]#SUMC [id2] verb=0)
+mess Ratio sum2/sum1 $EVAL([sum2]/[sum1])
+exec [D2HIST]#HINFO [id2]
+RETURN
+
+*                                      @METAGS UPTRUE
+*--------------- UPTRUE ---------------
+*
+MACRO UPTRUE id
+if [id] = '' then
+   mess Usage:    $WORD([0],2,1,#) id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+idcount = 1[id]
+iddelay = 2[id]
+if $HEXIST([idcount])=0 then
+   mess Counts histogram for [id] do not exist
+   stopm
+endif
+if $HEXIST([iddelay])=0 then
+   mess Delays histogram for [id] do not exist
+   stopm
+endif
+if $HEXIST([id]) then; h/de [id]; endif
+
+sub 1[id] 2[id] [id] ! ! E
+
+Nchan = $HINFO([id],'XBINS')
+sigma buf    = array([Nchan])*0
+sigma buferr = array([Nchan])*0
+
+* set negative bins to 0 and type zero channels
+GET/CON [id] buf
+zero=''
+do i=1,[Nchan]
+   if buf([i]) < 0 then
+      v/inp buf([i]) 0
+      if [zero]<>'' then
+         zero=[zero],[i]
+      else
+         zero=[i]
+      endif
+   endif
+enddo
+if [zero] <> '' then
+   mess Zero negative channels: [zero]
+endif
+PUT/CON [id] buf
+
+* set zero bin errors to 1
+GET/ERR [id] buferr
+sigma buferr = buferr + (buferr EQ 0)
+PUT/ERR [id] buferr
+v/de buf,buferr
+RETURN
+
+*                                      @METAGS MKERR
+*--------------- MKERR ---------------
+*
+MACRO MKERR id info=1
+if [id] = '' then
+   mess Usage:    $WORD([0],2,1,#) id info=1
+   stopm
+endif
+
+g/imp D2HIST
+
+id = $FORMAT([id],I4.4)
+
+exec UPTRUE [id]
+if [info]<>'' then; exec [D2HIST]#HINFO [id]; endif
+RETURN
+
+*                                      @METAGS BDEL
+*--------------- BDEL ---------------
+*
+MACRO BDEL id
+g/imp idcur
+if [id] = '' then
+   mess Usage:    $WORD([0],2,1,#) id
+   stopm
+endif
+
+if $HEXIST([id])=0 then
+   mess Histogram [id] does not exist.
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+h/del  [id]
+h/del 1[id]
+h/del 2[id]
+
+idcur=0
+g/imp idcur
+if [idcur]=[id] then; idcur=0; endif
+RETURN
+
+*                                      @METAGS BCOP
+*--------------- BCOP ---------------
+*
+MACRO BCOP id1 id2 tit
+if [id2] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id1 id2 [title]'
+   stopm
+endif
+
+g/imp D2HIST
+
+if $HEXIST([id1]) = 0 then
+   mess Bin [id1] did not exist
+   stopm
+endif
+if $HEXIST([id2]) <> 0 then
+   mess Bin [id2] already exist
+   wait
+endif
+
+id1 = $FORMAT([id1],I4.4)
+id2 = $FORMAT([id2],I4.4)
+
+h/cop [id1] [id2] [tit]
+h/cop 1[id1] 1[id2] [tit]
+h/cop 2[id1] 2[id2] [tit]
+exec [D2HIST]#TIT [id2]
+RETURN
+
+*                                      @METAGS BCOPmker
+*--------------- BCOPmker ---------------
+*
+MACRO BCOPmker id1 id2 tit
+if [id2] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id1 id2 [title]'
+   mess Example:  $WORD([0],2,1,#)//' 3622 1000 ''D2, F=29.26, MBE=1e6, sterr'''
+   stopm
+endif
+exec BCOP [id1] [id2] [tit]
+exec MKERR [id2]
+RETURN
+
+*                                      @METAGS BPUT
+*--------------- BPUT ---------------
+*
+MACRO BPUT dir id
+if [dir]='' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#) dir id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+if $HEXIST([id]) = 0 then
+   mess Histogram [id] from bin  [id] did not exist
+   stopm
+endif
+idcount = 1[id]
+if $HEXIST([idcount]) = 0 then
+   mess Histogram [idcount] from bin [id] did not exist
+   stopm
+endif
+iddelay = 2[id]
+if $HEXIST([iddelay]) = 0 then
+   mess Histogram [iddelay] from bin [id] did not exist
+   stopm
+endif
+
+ldir = $HCDIR()
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   
+   hrout  [id]
+   hrout 1[id]
+   hrout 2[id]
+close [lun]
+cd [ldir]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS BGET
+*--------------- BGET ---------------
+*
+MACRO BGET dir id
+if [dir]='' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#) dir id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+if $HEXIST([id]) then
+   mess Bin [id] in memory will be deleted!
+   ans = 'N'
+   read ans 'Delete (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      h/de [id]
+      h/de 1[id]
+      h/de 2[id]
+   else
+      mess Cansel.
+      stopm
+   endif
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! ' '
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+
+   hrin  [id]
+   hrin 1[id]
+   hrin 2[id]
+close [lun]
+
+if $HEXIST([id])=0 then
+   mess There is no bin [id] in the file.
+endif
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                         @METAGS BCOPPUT
+*--------------- BCOPPUT ---------------
+*
+MACRO BCOPPUT F id MBE target tit bdel=1
+if [target]='' then
+   mess Usage:    [0] F id MBE target tit bdel=1
+   mess Example:  [0] 23.94 3923 1e5 D2
+   stopm
+endif
+
+if $LEN([id]) < 3 then
+   mess Enter, please, id in form NzNf
+   stopm
+endif
+
+CASE $UPPER([target]) IN
+   (D2)  idt=1000
+   (AL)  idt=2000
+   (D2+) idt=3000
+   (D2P) idt=3000
+   (AL+) idt=4000
+   (ALP) idt=4000
+   (H2)  idt=9000
+   (*)   mess Unknown target.
+         mess Possible targets: D2, AL, D2+, D2P, AL+, ALP, H2
+         stopm
+ENDCASE
+
+if [tit]='' then
+   tit = [target] F=[F] MBE=[MBE] Bin [id]
+endif
+
+dir = $FORMAT([F],F0.2)
+
+exec read [id]
+exec bcop [id] [idt] [tit]
+exec bput [dir] [idt]
+
+if [bdel] = 1 then
+   exec bdel [id]
+   exec bdel [idt]
+endif
+RETURN
+
+*                                      @METAGS FBDEL
+*--------------- FBDEL ---------------
+*
+MACRO FBDEL dir id
+if (([dir]='').OR.([id]='')) then
+   mess Usage:    $WORD([0],2,1,#) dir id
+   stopm
+endif
+
+id = $FORMAT([id],I4.4)
+
+g/imp D2HFILE
+exec [D2HFILE]#FHDEL [dir] [id]
+exec [D2HFILE]#FHDEL [dir] 1[id]
+exec [D2HFILE]#FHDEL [dir] 2[id]
+RETURN
+
+*                                      @METAGS BZERO
+*--------------- BZERO ---------------
+*
+MACRO BZERO id
+* Zero histograms
+id = $FORMAT([id],I4.4)
+g/imp D2HIST
+exec [D2HIST]#HCRE  [id]
+exec [D2HIST]#HCRE 1[id]
+exec [D2HIST]#HCRE 2[id]
+RETURN
+
+*                             @METAGS PAN
+*---------- PAN ----------
+*
+MACRO PAN
+mess Panels from macro $WORD([0],2,1,#)
+
+EXEC ALI DELETE
+EXEC ALI CREATE
+panel 0
+panel 1  'COMP' 'BIN-' 'MINUS-' 'PLUS-' 'CandD' 'HPLOTL' 'PLOT-'_
+         'HINFO-' 'BGET' 'BPUT'
+panel 2  'opt-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-' 'g/l-' 'mess [$]'
+panel 3  'pan' 'p/cr' 'p/pr-' 'Clear' 'Notes' 'edit-' 'shell' 'x-' '$' 'me'
+style gp ! ! .12
+RETURN
+
+*                                         @METAGS Ibeam
+*--------------- Ibeam ---------------
+*
+MACRO Ibeam nf n1=1 n2=100
+if [nf]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] nf n1=1 n2=100
+   stopm
+endif
+
+*file = \d2\dat\sp[nf]__.dat
+file = /d2/dat/sp[nf]__.dat
+if $FEXIST([file]) = 0 then
+   Data file [file] did not found
+   stopm
+endif
+
+sigma zap =array(100)
+sigma beam=array(100)
+do nz=[n1],[n2]
+   id = [nz]*100 + [nf]
+   if $HEXIST([id])=0 then
+      exec READ [id]
+   endif
+   Ibeam = $EXEC(TITbeam [id])
+   if [Ibeam] < 0 then
+      Ibeam = 0
+   endif
+   v/inp zap([nz]) [nz]
+   v/inp beam([nz]) [Ibeam]
+enddo
+nzap = [n2] - [n1] + 1
+
+mtyp0 = $GRAFINFO('?mtyp')
+set mtyp 24
+graph [nzap] zap([n1]:[n2]) beam([n1]:[n2]) awp
+xtit = No.exposition for file No.[nf]
+atitle [xtit] 'Ibeam'
+set mtyp [mtyp0]
+RETURN
+
+*                                         @METAGS PCrate
+*--------------- PCrate ---------------
+*
+MACRO PCrate nf n1=1 n2=100
+if [nf]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] nf n1=1 n2=100
+   stopm
+endif
+
+*file = \d2\dat\sp[nf]__.dat
+file = /d2/dat/sp[nf]__.dat
+if $FEXIST([file]) = 0 then
+   Data file [file] did not found
+   stopm
+endif
+
+sigma PCzap =array(100)
+sigma PCrate=array(100)
+do nz=[n1],[n2]
+   id = [nz]*100 + [nf]
+   if $HEXIST([id])=0 then
+      exec READ [id]
+   endif
+   PCrate = 0
+   fu = ITITDAT([id],'T=')
+   time = $ICALL([fu])
+   if [time] > 0 then
+      fu = ITITDAT([id],'P=')
+      prop = $ICALL([fu])
+      PCrate = [prop]/[time]
+   endif
+   if [PCrate] < 0 then
+      PCrate = 0
+   endif
+   v/inp PCzap([nz]) [nz]
+   v/inp PCrate([nz]) [PCrate]
+enddo
+nzap = [n2] - [n1] + 1
+
+mtyp0 = $GRAFINFO('?mtyp')
+set mtyp 24
+graph [nzap] PCzap([n1]:[n2]) PCrate([n1]:[n2]) awp
+xtit = No.exposition for file No.[nf]
+atitle [xtit] 'PCrate'
+set mtyp [mtyp0]
+RETURN
+
+*                                         @METAGS NcNS
+*--------------- NcNS ---------------
+*
+MACRO NcNS nf n1=1 n2=100 legend=1
+if [nf]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] nf n1=1 n2=100 legend=1
+   stopm
+endif
+
+*file = \d2\dat\sp[nf]__.dat
+file = /d2/dat/sp[nf]__.dat
+if $FEXIST([file]) = 0 then
+   Data file [file] did not found
+   stopm
+endif
+
+sigma zapNcNS =array(100)*0
+sigma NcNS=array(100)*0
+sigma tarNc=array(100)*0
+do nz=[n1],[n2]
+   id = [nz]*100 + [nf]
+   if $HEXIST([id])=0 then
+      exec READ [id]
+   endif
+   fcall = ITITDAT([id],'N=')
+   NS = $ICALL([fcall])
+   if [NS] < 0 then
+      NS = 1000000
+   endif
+
+   idc=1$FORMAT([id],I4.4)
+   idd=2$FORMAT([id],I4.4)
+
+   Ncount = $HINFO([idc],'SUM')
+   NcNS = [Ncount]/[NS]
+   if [NcNS] < 0. then; NcNS=0; endif
+   v/inp zapNcNS([nz]) [nz]
+   v/inp NcNS([nz]) [NcNS]
+
+   target = $WORD($HTITLE([idd]),1,1)
+   if $UPPER([target]) = D2 then
+      v/inp tarNc([nz]) 1
+   endif
+   if $UPPER([target]) = AL then
+      v/inp tarNc([nz]) 2
+   endif
+   if $UPPER([target]) = H2 then
+      v/inp tarNc([nz]) 3
+   endif
+enddo
+nzapNcNS = [n2] - [n1] + 1
+
+mtyp0 = $GRAFINFO('?mtyp')
+pmci0 = $GRAFINFO('?pmci')
+
+set mtyp 1
+graph [nzapNcNS] zapNcNS([n1]:[n2]) NcNS([n1]:[n2]) awp
+xtit = No.exposition for file No.[nf]
+atitle [xtit] '[S]N?COUNT!/NS'
+set mtyp [mtyp0]
+
+do nz=[n1],[n2]
+   if tarNc([nz]) = 1 then
+      set pmci 2
+      target = D2
+      mtyp = 24
+   elseif tarNc([nz]) = 2 then
+      target = Al
+      set pmci 1
+      mtyp = 26
+   elseif tarNc([nz]) = 3 then
+      target = H2
+      set pmci 4
+      mtyp = 28
+   else
+      tarNcget = X
+      set pmci 3
+      mtyp = 31
+   endif
+   xkey = zapNcNS([nz])
+   ykey = NcNS([nz])
+   if [legend]=0 then; target=''; endif
+   key [xkey] [ykey] [mtyp] [target]
+   set mtyp [mtyp0]
+   set pmci [pmci0]
+enddo
+RETURN
+
+*                                         @METAGS NdNS
+*--------------- NdNS ---------------
+*
+MACRO NdNS nf n1=1 n2=100 legend=1
+if [nf]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] nf n1=1 n2=100 legend=1
+   stopm
+endif
+
+*file = \d2\dat\sp[nf]__.dat
+file = /d2/dat/sp[nf]__.dat
+if $FEXIST([file]) = 0 then
+   Data file [file] did not found
+   stopm
+endif
+
+sigma zapNdNS =array(100)*0
+sigma NdNS=array(100)*0
+sigma tarNd=array(100)*0
+do nz=[n1],[n2]
+   id = [nz]*100 + [nf]
+   if $HEXIST([id])=0 then
+      exec READ [id]
+   endif
+   fcall = ITITDAT([id],'N=')
+   NS = $ICALL([fcall])
+   if [NS] < 0 then
+      NS = 1000000
+   endif
+   
+   idd=2$FORMAT([id],I4.4)
+
+   Ndelay = $HINFO([idd],'SUM')
+   NdNS = [Ndelay]/[NS]
+   v/inp zapNdNS([nz]) [nz]
+   if [NdNS] < 0. then; NdNS=0; endif
+   v/inp NdNS([nz]) [NdNS]
+
+   target = $WORD($HTITLE([idd]),1,1)
+   if $UPPER([target]) = D2 then
+      v/inp tarNd([nz]) 1
+   endif
+   if $UPPER([target]) = AL then
+      v/inp tarNd([nz]) 2
+   endif
+   if $UPPER([target]) = H2 then
+      v/inp tarNd([nz]) 3
+   endif
+enddo
+nzapNdNS = [n2] - [n1] + 1
+
+mtyp0 = $GRAFINFO('?mtyp')
+pmci0 = $GRAFINFO('?pmci')
+
+set mtyp 1
+graph [nzapNdNS] zapNdNS([n1]:[n2]) NdNS([n1]:[n2]) awp
+xtit = No.exposition for file No.[nf]
+atitle [xtit] '[S]N?DELAY!/NS'
+set mtyp [mtyp0]
+
+do nz=[n1],[n2]
+   if tarNd([nz]) = 1 then
+      target = D2
+      set pmci 2
+      mtyp = 24
+   elseif tarNd([nz]) = 2 then
+      target = Al
+      set pmci 1
+      mtyp = 26
+   elseif tarNd([nz]) = 3 then
+      target = H2
+      mtyp = 28
+      set pmci 4
+   else
+      target = X
+      set pmci 3
+      mtyp = 31
+   endif
+   xkey = zapNdNS([nz])
+   ykey = NdNS([nz])
+   if [legend]=0 then; target=''; endif
+   key [xkey] [ykey] [mtyp] [target]
+   set mtyp [mtyp0]
+   set pmci [pmci0]
+enddo
+RETURN
+
+*                                         @METAGS NtNS
+*--------------- NtNS ---------------
+*
+MACRO NtNS nf n1=1 n2=100 legend=1
+if [nf]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] nf n1=1 n2=100 legend=1
+   stopm
+endif
+
+*file = \d2\dat\sp[nf]__.dat
+file = /d2/dat/sp[nf]__.dat
+if $FEXIST([file]) = 0 then
+   Data file [file] did not found
+   stopm
+endif
+
+sigma zapNtNS =array(100)*0
+sigma NtNS=array(100)*0
+sigma tarNc=array(100)*0
+do nz=[n1],[n2]
+   id = [nz]*100 + [nf]
+   if $HEXIST([id])=0 then
+      exec READ [id]
+   endif
+   fcall = ITITDAT([id],'N=')
+   NS = $ICALL([fcall])
+   if [NS] < 0 then
+      NS = 1000000
+   endif
+
+   idc=1$FORMAT([id],I4.4)
+   idd=2$FORMAT([id],I4.4)
+
+   nc = $HINFO([idc],'XBINS')
+   sigma bufc=array([nc])*0
+   sigma bufd=array([nc])*0
+   get/con [idc] bufc
+   get/con [idd] bufd
+   Ntrue = $SIGMA(VSUM(bufc-bufd))
+   v/de bufc,bufd
+
+   NtNS = [Ntrue]/[NS]
+   if [NtNS] < 0. then; NtNS=0; endif
+   v/inp zapNtNS([nz]) [nz]
+   v/inp NtNS([nz]) [NtNS]
+
+   target = $WORD($HTITLE([idd]),1,1)
+   if $UPPER([target]) = D2 then
+      v/inp tarNc([nz]) 1
+   endif
+   if $UPPER([target]) = AL then
+      v/inp tarNc([nz]) 2
+   endif
+   if $UPPER([target]) = H2 then
+      v/inp tarNc([nz]) 3
+   endif
+enddo
+nzapNtNS = [n2] - [n1] + 1
+
+mtyp0 = $GRAFINFO('?mtyp')
+pmci0 = $GRAFINFO('?pmci')
+
+set mtyp 1
+graph [nzapNtNS] zapNtNS([n1]:[n2]) NtNS([n1]:[n2]) awp
+xtit = No.exposition for file No.[nf]
+atitle [xtit] '[S]N?TRUE!/NS'
+set mtyp [mtyp0]
+
+do nz=[n1],[n2]
+   if tarNc([nz]) = 1 then
+      set pmci 2
+      target = D2
+      mtyp = 24
+   elseif tarNc([nz]) = 2 then
+      target = Al
+      set pmci 1
+      mtyp = 26
+   elseif tarNc([nz]) = 3 then
+      target = H2
+      set pmci 4
+      mtyp = 28
+   else
+      tarNcget = X
+      set pmci 3
+      mtyp = 31
+   endif
+   xkey = zapNtNS([nz])
+   ykey = NtNS([nz])
+   if [legend]=0 then; target=''; endif
+   key [xkey] [ykey] [mtyp] [target]
+   set mtyp [mtyp0]
+   set pmci [pmci0]
+enddo
+RETURN
+
+*                                         @METAGS NtNcNd
+*--------------- NtNcNd ---------------
+*
+MACRO NtNcNd nf n1 n2 legend=1
+zon 1 3
+exec d2look#NtNS [nf] [n1] [n2] [legend]
+exec d2look#NcNS [nf] [n1] [n2] [legend]
+exec d2look#NdNS [nf] [n1] [n2] [legend]
+zon
+RETURN
+
+*                                         @METAGS statlist
+*--------------- statlist ---------------
+*
+MACRO statlist
+if [#]=0 .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] list hlist=statl MBE=0 file=statlist.lst
+   mess Example:  [0] 2243 3043 1444 hlist=hl MBE=30000 file=statlist.lst
+   stopm
+endif
+
+if $DEFINED(hlist)='' then
+   hlist=statl
+endif
+if $DEFINED(file)='' then
+   *file=con
+   file=' '
+endif
+if $DEFINED(MBE)='' then
+   MBE = 0
+endif
+*mess file=[file], hlist=[hlist], MBE=[MBE]
+
+sigma [hlist]=array(100)*0
+i = 0
+while [1] <> ' ' do
+   id = [1]
+   c = $SUBSTRING([id],1,1)
+   fu = isdigit($QUOTE([c]))
+   digit = $ICALL([fu])
+   if [digit]=0 goto NEXT
+   i = [i]+1
+   v/inp [hlist]([i]) [id]
+   shift
+endwhile
+
+NEXT:
+exec for
+
+call STATLIST([hlist],$RSIGMA([MBE]),$QUOTE([file]))
+RETURN
+
+*                                         @METAGS statlist0
+*--------------- statlist0 ---------------
+*
+MACRO statlist0 hlist=hl aMBE=0 file=statlist.lst
+if [#]<=3 .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] hlist=hl aMBE=0 file=statlist.lst
+   stopm
+endif
+
+shift
+shift
+shift
+sigma [hlist]=array(100)*0
+i = 0
+while [1] <> ' ' do
+   i = [i]+1
+   id = [1]
+   v/inp [hlist]([i]) [id]
+   shift
+endwhile
+
+exec for
+if [file]='' then; file=' '; endif
+call STATLIST([hlist],$RSIGMA([aMBE]),$QUOTE([file]))
+RETURN
+
+*                                         @METAGS FOR.MACRO
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+*                                         @METAGS .READSP.COMIS
+*                                         01-26-98 05:54pm
+*--------------- READSP ---------------
+*
+      SUBROUTINE READSP(nz,nf)
+*
+*     Structure of record from INTEGER*2 fields in file SPxx__.dat
+*       1..32  32 ps32
+*      65..80  16 vp
+*      81..176 96 ncount
+*     177..246 70 icomm
+*     257..352 96 ndelay
+*
+      parameter (Nchan = 96)
+      real conten(Nchan), errors(Nchan)
+      integer idata4(200), idata(400)
+      integer ps32(32), vp(16), ncount(96), ndelay(96), icomm(70)
+      equivalence (idata4,ps32)
+      equivalence (idata(65),vp),
+     +   (idata(81),ncount), (idata(177),icomm), (idata(257),ndelay)
+      character ch,ch2*2, target*3, comm*140
+      character file*32, fname*12
+      character*80 chtitl
+      character*32 chbuf
+      character TARTET*9, F*9, M*19, T*8, G*11, L*11, N*11, P*10
+      data fname /'sp**__.dat'/
+
+      write (fname(3:4),3) nf
+      file = '\D2\DAT\'//fname
+    3 FORMAT (I2.2)
+
+      lun = LUNFREE(1)
+      open (lun, FILE=file, STATUS='OLD',
+     &      ACCESS='DIRECT', RECL=800, ERR=10000)
+      read (lun,REC=nz, ERR=20000) idata4
+      call FREELUN(lun,file)
+
+      do i=1,200
+         i2 = i*2
+         i1 = i2-1
+         call SPLIT(idata4(i),idata(i1),idata(i2))
+      enddo
+
+      comm = ' '
+      do i=1,70
+         i2 = i*2
+         i1 = i2-1
+         write(ch2,1) icomm(i)
+    1    format(A2)
+
+         ch = ch2(1:1)
+         if (ICHAR(ch).GE.20) then
+            comm(i1:i1) = ch
+         else
+            goto 2000
+         endif
+         ch = ch2(2:2)
+         if (ICHAR(ch).GE.20) then
+            comm(i2:i2) = ch
+         else
+            goto 2000
+         endif
+      enddo
+ 2000 continue
+
+      target = ' '
+      do i=1,2
+         i2 = i*2
+         i1 = i2-1
+         write(ch2,1) vp(i)
+
+         ch = ch2(1:1)
+         if (ICHAR(ch).GE.20) then
+            target(i1:i1) = ch
+         else
+            goto 2001
+         endif
+
+         if (i2.GT.3) goto 2001
+         ch = ch2(2:2)
+         if (ICHAR(ch).GE.20) then
+            target(i2:i2) = ch
+         else
+            goto 2001
+         endif
+      enddo
+ 2001 continue
+
+      FMHz   = vp(5)/1000.
+      iTHETA = vp(10)
+*      print*, 'iTHETA =', iTHETA
+      if (iTHETA.GE.1000) iTHETA = iTHETA/10
+
+      MBEvp = vp(7)*2**15 + vp(8)
+      MBE   = INVERT(ps32(10))
+      iPS1  = INVERT(ps32(11))
+      iTIME = INVERT(ps32(12))
+      iGAS  = INVERT(ps32(13))
+      LIV   = INVERT(ps32(14))
+      NS    = INVERT(ps32(15))
+
+*     .. chamber
+*      print*, 'chamber:'
+*      print*, 'No.PS-32    N'
+*      do i=1,9
+*         nps32 = INVERT(ps32(i))
+*         print*, i,nps32
+*      enddo
+
+*     .. patch - 11(21)
+      if ((nz.EQ.11) .AND. (nf.EQ.21)) iTIME=12490
+*     .. patch - 15(21)
+      if ((nz.EQ.15) .AND. (nf.EQ.21)) MBEvp=500000
+*     .. patch - 16(21)
+      if ((nz.EQ.16) .AND. (nf.EQ.21)) MBEvp=1000000
+*     .. patch - 13(21)
+      if ((nz.EQ.13) .AND. (nf.EQ.21)) iTIME=6606
+*     .. patch - 31(21)
+      if ((nz.EQ.31) .AND. (nf.EQ.21)) iTIME=8163
+*     .. patch - 17(24)
+      if ((nz.EQ.17) .AND. (nf.EQ.24)) MBEvp=30000
+*     .. patch - 28(24)
+      if ((nz.EQ.28) .AND. (nf.EQ.24)) iTIME=6746
+*     .. patch - 30(24)
+      if ((nz.EQ.30) .AND. (nf.EQ.24)) iTIME=6766
+*     .. patch - 30(24)
+      if ((nz.EQ.30) .AND. (nf.EQ.24)) MBEvp=500000
+*     .. patch -  8(37)
+      if ((nz.EQ. 8) .AND. (nf.EQ.37)) iTIME=7369
+*     .. patch - 10(37)
+      if ((nz.EQ.10) .AND. (nf.EQ.37)) iTIME=6959
+*     .. patch - 15(37)
+      if ((nz.EQ.15) .AND. (nf.EQ.37)) MBEvp=500000
+*     .. patch - 25(37)
+      if ((nz.EQ.25) .AND. (nf.EQ.37)) iTIME=7025
+*     .. patch - 27(37)
+      if ((nz.EQ.27) .AND. (nf.EQ.37)) MBEvp=200000
+*     .. patch - 30(37)
+      if ((nz.EQ.30) .AND. (nf.EQ.37)) iTIME=6561
+*     .. patch - 39(37)
+      if ((nz.EQ.39) .AND. (nf.EQ.37)) iTIME=7306
+*     .. patch - 42(37)
+      if ((nz.EQ.42) .AND. (nf.EQ.37)) iTIME=7379
+*     .. patch - 54(37)
+      if ((nz.EQ.54) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 55(37)
+      if ((nz.EQ.55) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 56(37)
+      if ((nz.EQ.56) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 17(42)
+      if ((nz.EQ.17) .AND. (nf.EQ.42)) MBEvp=200000
+*     .. patch - 27(42)
+      if ((nz.EQ.27) .AND. (nf.EQ.42)) iTIME=7937
+*     .. patch - 32(42)
+      if ((nz.EQ.32) .AND. (nf.EQ.42)) iTIME=9040
+*     .. patch - 38(42)
+      if ((nz.EQ.38) .AND. (nf.EQ.42)) iTIME=8786
+*     .. patch - 61(42)
+      if ((nz.EQ.61) .AND. (nf.EQ.42)) MBEvp=18000
+
+      TARTET = ' '
+      F = 'F=      ,'
+      M = 'M=       (       ),'
+      T = 'T=     ,'
+      G = 'G=        ,'
+      L = 'L=        ,'
+      N = 'N=        ,'
+      P = 'P=        '
+
+*      print*, target
+*      call WAIT('target')
+      TARTET = target
+*      write(TARTET(4:9),90) 233,iTHETA
+*   90 format(A1,'=',I3,':')
+      write(TARTET(4:9),90) iTHETA
+   90 format(I3,'^0!')
+
+      chbuf = ' '
+      write (chbuf,   91)    FMHz
+      if (chbuf(1:1).EQ.'*') FMHz=-1.
+      WRITE (F( 3: 8),91)    FMHz
+   91 format(F6.3)
+      chbuf = ' '
+      write (chbuf,   92)    MBEvp
+      if (chbuf(1:1).EQ.'*') MBEvp=-1
+      WRITE (M( 3: 9),92)    MBEvp
+      chbuf = ' '
+      write (chbuf,   92)    MBE
+      if (chbuf(1:1).EQ.'*') MBE=-1
+      WRITE (M(11:17),92)    MBE
+   92 format(I7)
+      chbuf = ' '
+      write (chbuf,   93)    iTIME
+      if (chbuf(1:1).EQ.'*') iTIME=-1
+      WRITE (T( 3: 7),93)    iTIME
+   93 format(I5)
+      chbuf = ' '
+      write (chbuf,   94)    iGAS
+      if (chbuf(1:1).EQ.'*') iGAS=-1
+      WRITE (G( 3:10),94)    iGAS
+      chbuf = ' '
+      write (chbuf,   94)    LIV
+      if (chbuf(1:1).EQ.'*') LIV=-1
+      WRITE (L( 3:10),94)    LIV
+      chbuf = ' '
+      write (chbuf,   94)    NS
+      if (chbuf(1:1).EQ.'*') NS=-1
+      WRITE (N( 3:10),94)    NS
+      chbuf = ' '
+      write (chbuf,   94)    iPS1
+      if (chbuf(1:1).EQ.'*') iPS1=-1
+      WRITE (P( 3:10),94)    iPS1
+   94 format(I8)
+
+*
+*--   Patch for files sp23__.dat, sp24__.dat and sp25__.dat
+*
+*     .. patch for 19(25)
+      if ((nf.EQ.25) .AND. (nz.EQ.19)) then
+*        .. electronics of "accident" increases non-zero channals by 1
+         do i=1,96
+            if (ndelay(i).GT.0) ndelay(i)=ndelay(i)-1
+         enddo
+      endif
+
+      if ((nf.EQ.23) .OR. (nf.EQ.24) .OR. (nf.EQ.25)) then
+         ndelay(26) = (ndelay(25)+ndelay(27)+1)/2
+      endif
+*
+*--   Patch for file sp31__.dat
+*
+      if (nf.EQ.31) then
+         if ((nz.GT.1) .AND. (nz.LT.54)) then
+            ncount(17) = (ncount(16)+ncount(18)+1)/2
+         endif
+      endif
+*
+*--   Patch for file sp37__.dat, sp41__.dat, sp42__.dat
+*
+      if ((nf.EQ.37) .OR. (nf.EQ.41) .OR. (nf.EQ.42)) then
+         ncount(76) = (ncount(75)+ncount(77)+1)/2
+         ndelay(76) = (ndelay(75)+ndelay(77)+1)/2
+         ndelay(17) = (ndelay(16)+ndelay(18)+1)/2
+      endif
+*
+*--   Patch for files sp43__.dat, sp44__.dat
+*
+      if ((nf.EQ.43) .OR. (nf.EQ.44)) then
+         ndelay(17) = (ndelay(16)+ndelay(18)+1)/2
+      endif
+*
+*--   Patch for file sp66__.dat .. sp69__.dat
+*
+      if ((nf.GE.66) .AND. (nf.LE.69)) then
+         ncount(27) = (ncount(26)+ncount(28)+1)/2
+      endif
+*
+*--   Patch for file sp66__.dat
+*
+      if (nf.EQ.66) then
+         mean = (ndelay(72)+ndelay(76)+1)/2
+         ndelay(73) = mean
+         ndelay(74) = mean
+         ndelay(75) = mean
+      endif
+*
+*--   Patch for file sp67__.dat for records 1..11
+*
+      if ((nf.EQ.67) .AND. (nz.LE.11)) then
+         mean = (ndelay(72)+ndelay(76)+1)/2
+         ndelay(73) = mean
+         ndelay(74) = mean
+         ndelay(75) = mean
+      endif
+*--
+
+      xmi = .5
+      xma = Nchan+.5
+*     .. counts
+      id1 = 10000 + nz*100 + nf
+      chtitl = F//M//T//G//L//N//P
+      call HBOOK1(id1,chtitl,Nchan,xmi,xma,0.)
+      do i=1,Nchan
+         conten(i) = ncount(i)
+         if (conten(i).GT.0.) then
+            errors(i) = sqrt(conten(i))
+         else
+            conten(i) = 0.
+            errors(i) = 1.
+         endif
+      enddo
+      call HPAK(id1,conten)
+      call HPAKE(id1,errors)
+*     .. delays
+      id2 = 20000 + nz*100 + nf
+      chtitl = TARTET//comm
+      call HBOOK1(id2,chtitl,Nchan,xmi,xma,0.)
+      do i=1,Nchan
+         conten(i) = ndelay(i)
+         if (conten(i).GT.0.) then
+            errors(i) = sqrt(conten(i))
+         else
+            conten(i) = 0.
+            errors(i) = 1.
+         endif
+      enddo
+      call HPAK(id2,conten)
+      call HPAKE(id2,errors)
+*     .. true
+      id = nz*100 + nf
+      call MakeTRUE(id)
+      RETURN
+20000 call FREELUN(lun,file)
+      print*, 'READ ERROR file ', file
+      call WAIT('*** ERROR READSP ***')
+      RETURN
+10000 call FREELUN(lun,file)
+      print*, 'OPEN ERROR file ', file
+      call WAIT('*** ERROR READSP ***')
+      RETURN
+      END
+
+*                                         @METAGS .READDM.COMIS
+*                                         01-26-98 05:54pm
+*--------------- READDM ---------------
+*
+      SUBROUTINE READDM(nz,nf)
+      character file*32, fname*12
+      data fname /'dm**__.dat'/
+
+      write (fname(3:4),3) nf
+      file = '\D2\DAT\'//fname
+    3 FORMAT (I2.2)
+
+      lun = LUNFREE(1)
+      open (lun, FILE=file, STATUS='OLD',
+     &      ACCESS='DIRECT', RECL=12, ERR=10000)
+      read (lun,REC=nz, ERR=20000) Dmm,F,QMBE
+      call FREELUN(lun,file)
+
+      print*, 'Dmm,F,QMBE:', Dmm,F,QMBE
+      RETURN
+20000 call FREELUN(lun,file)
+      print*, 'READ ERROR file ', file
+      call WAIT('*** ERROR READDM ***')
+      RETURN
+10000 call FREELUN(lun,file)
+      print*, 'OPEN ERROR file ', file
+      call WAIT('*** ERROR READDM ***')
+      RETURN
+      END
+
+*                                         @METAGS .READT.COMIS
+*                                         01-26-98 05:54pm
+*--------------- READT ---------------
+*
+      SUBROUTINE READT(nz,nf)
+      parameter (Nchan = 11)
+      integer ncount(Nchan), ndelay(Nchan)
+      real conten(Nchan), errors(Nchan)
+      character*80 chtitl
+      character file*32, fname*12, match*5, line*127, comm*80
+      data fname /'t**.dat'/, match/'*0000'/
+
+      id = nz*100 + nf
+      write (match(2:5),2) id
+    2 FORMAT (I4.4)
+      write (fname(2:3),3) nf
+      file = '\D2\DAT\'//fname
+    3 FORMAT (I2.2)
+      open (1, FILE=file, STATUS='OLD', ERR=10000)
+  100 read (1,1,END=30000,ERR=20000) line
+    1 FORMAT (A)
+      if (line(1:5).EQ.match) then
+         len = LENOCC(line)
+         if (len.GT.5) then
+            chtitl = line(6:len)
+         else
+            chtitl = ' '
+         endif
+         read (1,*) (ndelay(k),ncount(k), k=1,Nchan)
+      else
+         goto 100
+      endif
+      close(1)
+
+      xmi = .5
+      xma = Nchan+.5
+      len = LENOCC(chtitl)
+*     .. counts
+      id1 = 10000 + id
+      if (len.EQ.0) chtitl = 'Titov counts'
+      call HBOOK1(id1,chtitl,Nchan,xmi,xma,0.)
+      do i=1,Nchan
+         conten(i) = ncount(i)
+         if (conten(i).GT.0.) then
+            errors(i) = sqrt(conten(i))
+         else
+            conten(i) = 0.
+            errors(i) = 1.
+         endif
+      enddo
+      call HPAK(id1,conten)
+      call HPAKE(id1,errors)
+*     .. delays
+      id2 = 20000 + nz*100 + nf
+      if (len.EQ.0) chtitl = 'Titov delays'
+      call HBOOK1(id2,chtitl,Nchan,xmi,xma,0.)
+      do i=1,Nchan
+         conten(i) = ndelay(i)
+         if (conten(i).GT.0.) then
+            errors(i) = sqrt(conten(i))
+         else
+            conten(i) = 0.
+            errors(i) = 1.
+         endif
+      enddo
+      call HPAK(id2,conten)
+      call HPAKE(id2,errors)
+*     .. true
+      id = nz*100 + nf
+      call MakeTRUE(id)
+
+      RETURN
+30000 print*, 'READT: Exposition', nz, ' did not found in ', file
+      close(1)
+      RETURN
+20000 print*, 'READT: READ ERROR file ', file
+      close(1)
+      RETURN
+10000 print*, 'READT: OPEN ERROR file ', file
+      RETURN
+      END
+
+*                                         @METAGS .PRINTSP.COMIS
+*                                         01-26-98 05:54pm
+*--------------- PRINTSP ---------------
+*
+      SUBROUTINE PRINTSP(nz,nf)
+      integer idata4(200), idata(400)
+      integer ps32(32), vp(16), ncount(96), ndelay(96), icomm(70)
+      equivalence (idata4,ps32)
+      equivalence (idata(65),vp),
+     +   (idata(81),ncount), (idata(177),icomm), (idata(257),ndelay)
+      character ch,ch2*2, comm*140
+      integer nOR(9)
+      character*32 fname, file
+      character target*3
+      logical YES
+      data fname /'sp**__.dat'/
+      write (fname(3:4),3) nf
+    3 FORMAT (I2.2)
+      
+      file = '\D2\DAT\'//fname
+      lun = LUNFREE(1)
+      open (lun, file=file, status='OLD',
+     &      access='DIRECT', RECL=800, ERR=10000)
+      read (lun,REC=nz, ERR=20000) idata4
+      call FREELUN(lun,file)
+
+      do i=1,200
+         i2 = i*2
+         i1 = i2-1
+         call SPLIT(idata4(i),idata(i1),idata(i2))
+      enddo
+
+      FMHz  = vp(5)/1000.
+
+      print 50, nz,nf, FMHz
+   50 format(I2, '(',I2,')   F = ', F6.3, ' MHz')
+
+*
+*--   Patch for files sp23__.dat, sp24__.dat and sp25__.dat
+*
+*     .. patch for 19(25)
+      if ((nf.EQ.25) .AND. (nz.EQ.19)) then
+*        .. electronics of "accident" increases non-zero channals by 1
+         do i=1,96
+            if (ndelay(i).GT.0) ndelay(i)=ndelay(i)-1
+         enddo
+      endif
+
+      if ((nf.EQ.23) .OR. (nf.EQ.24) .OR. (nf.EQ.25)) then
+         ndelay(26) = (ndelay(25)+ndelay(27)+1)/2
+      endif
+*
+*--   Patch for file sp31__.dat
+*
+      if (nf.EQ.31) then
+         if ((nz.GT.1) .AND. (nz.LT.54)) then
+            ncount(17) = (ncount(16)+ncount(18)+1)/2
+         endif
+      endif
+*
+*--   Patch for file sp37__.dat, sp41__.dat, sp42__.dat
+*
+      if ((nf.EQ.37) .OR. (nf.EQ.41) .OR. (nf.EQ.42)) then
+         ncount(76) = (ncount(75)+ncount(77)+1)/2
+         ndelay(76) = (ndelay(75)+ndelay(77)+1)/2
+         ndelay(17) = (ndelay(16)+ndelay(18)+1)/2
+      endif
+*
+*--   Patch for files sp43__.dat, sp44__.dat
+*
+      if ((nf.EQ.43) .OR. (nf.EQ.44)) then
+         ndelay(17) = (ndelay(16)+ndelay(18)+1)/2
+      endif
+*
+*--   Patch for file sp66__.dat .. sp69__.dat
+*
+      if ((nf.GE.66) .AND. (nf.LE.69)) then
+         ncount(27) = (ncount(26)+ncount(28)+1)/2
+      endif
+*
+*--   Patch for file sp66__.dat
+*
+      if (nf.EQ.66) then
+         mean = (ndelay(72)+ndelay(76)+1)/2
+         ndelay(73) = mean
+         ndelay(74) = mean
+         ndelay(75) = mean
+      endif
+*
+*--   Patch for file sp67__.dat for records 1..11
+*
+      if ((nf.EQ.67) .AND. (nz.LE.11)) then
+         mean = (ndelay(72)+ndelay(76)+1)/2
+         ndelay(73) = mean
+         ndelay(74) = mean
+         ndelay(75) = mean
+      endif
+*--
+
+      if YES('Print counts and delays?') then
+         print*, 'Counts:'
+         print 10,ncount
+         print*, 'Delays:'
+         print 10,ndelay
+   10    format(12I6)
+      endif
+
+      comm = ' '
+      do i=1,70
+         i2 = i*2
+         i1 = i2-1
+         write(ch2,1) icomm(i)
+    1    format(A2)
+
+         ch = ch2(1:1)
+         if (ICHAR(ch).GE.20) then
+            comm(i1:i1) = ch
+         else
+            goto 2000
+         endif
+         ch = ch2(2:2)
+         if (ICHAR(ch).GE.20) then
+            comm(i2:i2) = ch
+         else
+            goto 2000
+         endif
+      enddo
+ 2000 continue
+
+      target = ' '
+      do i=1,2
+         i2 = i*2
+         i1 = i2-1
+         write(ch2,1) vp(i)
+
+         ch = ch2(1:1)
+         if (ICHAR(ch).GE.20) then
+            target(i1:i1) = ch
+         else
+            goto 2001
+         endif
+
+         if (i2.GT.3) goto 2001
+         ch = ch2(2:2)
+         if (ICHAR(ch).GE.20) then
+            target(i2:i2) = ch
+         else
+            goto 2001
+         endif
+      enddo
+ 2001 continue
+
+      print 2, target, comm
+    2 format(A,' COMM:', A)
+
+      MBEvp = vp(7)*2**15 + vp(8)
+      MBE   = INVERT(ps32(10))
+      iPS1  = INVERT(ps32(11))
+      iTIME = INVERT(ps32(12))
+      iGAS  = INVERT(ps32(13))
+      LIV   = INVERT(ps32(14))
+      NS    = INVERT(ps32(15))
+
+      iTHETA = vp(10)
+      iE0    = vp(12)
+
+*     .. patch - 11(21)
+      if ((nz.EQ.11) .AND. (nf.EQ.21)) iTIME=12490
+*     .. patch - 15(21)
+      if ((nz.EQ.15) .AND. (nf.EQ.21)) MBEvp=500000
+*     .. patch - 16(21)
+      if ((nz.EQ.16) .AND. (nf.EQ.21)) MBEvp=1000000
+*     .. patch - 13(21)
+      if ((nz.EQ.13) .AND. (nf.EQ.21)) iTIME=6606
+*     .. patch - 31(21)
+      if ((nz.EQ.31) .AND. (nf.EQ.21)) iTIME=8163
+*     .. patch - 17(24)
+      if ((nz.EQ.17) .AND. (nf.EQ.24)) MBEvp=30000
+*     .. patch - 28(24)
+      if ((nz.EQ.28) .AND. (nf.EQ.24)) iTIME=6746
+*     .. patch - 30(24)
+      if ((nz.EQ.30) .AND. (nf.EQ.24)) iTIME=6766
+*     .. patch - 30(24)
+      if ((nz.EQ.30) .AND. (nf.EQ.24)) MBEvp=500000
+*     .. patch -  8(37)
+      if ((nz.EQ. 8) .AND. (nf.EQ.37)) iTIME=7369
+*     .. patch - 10(37)
+      if ((nz.EQ.10) .AND. (nf.EQ.37)) iTIME=6959
+*     .. patch - 15(37)
+      if ((nz.EQ.15) .AND. (nf.EQ.37)) MBEvp=500000
+*     .. patch - 25(37)
+      if ((nz.EQ.25) .AND. (nf.EQ.37)) iTIME=7025
+*     .. patch - 27(37)
+      if ((nz.EQ.27) .AND. (nf.EQ.37)) MBEvp=200000
+*     .. patch - 30(37)
+      if ((nz.EQ.30) .AND. (nf.EQ.37)) iTIME=6561
+*     .. patch - 39(37)
+      if ((nz.EQ.39) .AND. (nf.EQ.37)) iTIME=7306
+*     .. patch - 42(37)
+      if ((nz.EQ.42) .AND. (nf.EQ.37)) iTIME=7379
+*     .. patch - 54(37)
+      if ((nz.EQ.54) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 55(37)
+      if ((nz.EQ.55) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 56(37)
+      if ((nz.EQ.56) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 17(42)
+      if ((nz.EQ.17) .AND. (nf.EQ.42)) MBEvp=200000
+*     .. patch - 27(42)
+      if ((nz.EQ.27) .AND. (nf.EQ.42)) iTIME=7937
+*     .. patch - 32(42)
+      if ((nz.EQ.32) .AND. (nf.EQ.42)) iTIME=9040
+*     .. patch - 38(42)
+      if ((nz.EQ.38) .AND. (nf.EQ.42)) iTIME=8786
+*     .. patch - 61(42)
+      if ((nz.EQ.61) .AND. (nf.EQ.42)) MBEvp=18000
+
+      print 20, MBEvp, MBE, iTIME
+   20 format('MBEvp =', I8, T21, 'MBE   =', I8, T41, 'TIME  =', I8)
+      print 30, iGAS, LIV, NS
+   30 format('GAS   =', I8, T21, 'LIV   =', I8, T41, 'NS    =', I8)
+      print 40, iPS1, iE0, iTHETA
+   40 format('PS1   =', I8, T21, 'E0    =', I8, T41, 'THETA  =', I8)
+
+*     .. chamber
+      print*, 'chamber ''OR'':'
+*      print*, 'No.PS-32    N'
+      do i=1,9
+         nOR(i) = INVERT(ps32(i))
+*         print*, i,nps32
+      enddo
+      print 41, nOR
+   41 format (3I10)
+      RETURN
+20000 call FREELUN(lun,file)
+      print*, 'ERROR PRINTSP: READ ERROR'
+      RETURN
+10000 call FREELUN(lun,file)
+      print*, 'ERROR PRINTSP: OPEN ERROR'
+      RETURN
+      END
+
+*                                         @METAGS .TELE.COMIS
+*                                         01-26-98 05:54pm
+*--------------- TELE ---------------
+*
+      SUBROUTINE TELE(nz,nf)
+      integer idata4(200), idata(400)
+      integer ps32(32), vp(16), ncount(96), ndelay(96), icomm(70)
+      equivalence (idata4,ps32)
+      equivalence (idata(65),vp),
+     +   (idata(81),ncount), (idata(177),icomm), (idata(257),ndelay)
+      character ch,ch2*2, comm*140
+      integer nOR(9)
+      character*32 fname, file
+      character target*3
+      logical YES
+      data fname /'sp**__.dat'/
+      write (fname(3:4),3) nf
+    3 FORMAT (I2.2)
+      
+      file = '\D2\DAT\'//fname
+      lun = LUNFREE(1)
+      open (lun, file=file, status='OLD',
+     &      access='DIRECT', RECL=800, ERR=10000)
+      read (lun,REC=nz, ERR=20000) idata4
+      call FREELUN(lun,file)
+
+      do i=1,200
+         i2 = i*2
+         i1 = i2-1
+         call SPLIT(idata4(i),idata(i1),idata(i2))
+      enddo
+
+      FMHz  = vp(5)/1000.
+
+      print 50, nz,nf, FMHz
+   50 format(I2, '(',I2,')   F = ', F6.3, ' MHz')
+
+      comm = ' '
+      do i=1,70
+         i2 = i*2
+         i1 = i2-1
+         write(ch2,1) icomm(i)
+    1    format(A2)
+
+         ch = ch2(1:1)
+         if (ICHAR(ch).GE.20) then
+            comm(i1:i1) = ch
+         else
+            goto 2000
+         endif
+         ch = ch2(2:2)
+         if (ICHAR(ch).GE.20) then
+            comm(i2:i2) = ch
+         else
+            goto 2000
+         endif
+      enddo
+ 2000 continue
+
+      target = ' '
+      do i=1,2
+         i2 = i*2
+         i1 = i2-1
+         write(ch2,1) vp(i)
+
+         ch = ch2(1:1)
+         if (ICHAR(ch).GE.20) then
+            target(i1:i1) = ch
+         else
+            goto 2001
+         endif
+
+         if (i2.GT.3) goto 2001
+         ch = ch2(2:2)
+         if (ICHAR(ch).GE.20) then
+            target(i2:i2) = ch
+         else
+            goto 2001
+         endif
+      enddo
+ 2001 continue
+
+      print 2, target, comm
+    2 format(A,' COMM:', A)
+
+      MBEvp = vp(7)*2**15 + vp(8)
+      MBE   = INVERT(ps32(10))
+      iPS1  = INVERT(ps32(11))
+      iTIME = INVERT(ps32(12))
+      iGAS  = INVERT(ps32(13))
+      LIV   = INVERT(ps32(14))
+      NS    = INVERT(ps32(15))
+
+      iTHETA = vp(10)
+      iE0    = vp(12)
+
+*     .. patch - 11(21)
+      if ((nz.EQ.11) .AND. (nf.EQ.21)) iTIME=12490
+*     .. patch - 15(21)
+      if ((nz.EQ.15) .AND. (nf.EQ.21)) MBEvp=500000
+*     .. patch - 16(21)
+      if ((nz.EQ.16) .AND. (nf.EQ.21)) MBEvp=1000000
+*     .. patch - 13(21)
+      if ((nz.EQ.13) .AND. (nf.EQ.21)) iTIME=6606
+*     .. patch - 31(21)
+      if ((nz.EQ.31) .AND. (nf.EQ.21)) iTIME=8163
+*     .. patch - 17(24)
+      if ((nz.EQ.17) .AND. (nf.EQ.24)) MBEvp=30000
+*     .. patch - 28(24)
+      if ((nz.EQ.28) .AND. (nf.EQ.24)) iTIME=6746
+*     .. patch - 30(24)
+      if ((nz.EQ.30) .AND. (nf.EQ.24)) iTIME=6766
+*     .. patch - 30(24)
+      if ((nz.EQ.30) .AND. (nf.EQ.24)) MBEvp=500000
+*     .. patch -  8(37)
+      if ((nz.EQ. 8) .AND. (nf.EQ.37)) iTIME=7369
+*     .. patch - 10(37)
+      if ((nz.EQ.10) .AND. (nf.EQ.37)) iTIME=6959
+*     .. patch - 15(37)
+      if ((nz.EQ.15) .AND. (nf.EQ.37)) MBEvp=500000
+*     .. patch - 25(37)
+      if ((nz.EQ.25) .AND. (nf.EQ.37)) iTIME=7025
+*     .. patch - 27(37)
+      if ((nz.EQ.27) .AND. (nf.EQ.37)) MBEvp=200000
+*     .. patch - 30(37)
+      if ((nz.EQ.30) .AND. (nf.EQ.37)) iTIME=6561
+*     .. patch - 39(37)
+      if ((nz.EQ.39) .AND. (nf.EQ.37)) iTIME=7306
+*     .. patch - 42(37)
+      if ((nz.EQ.42) .AND. (nf.EQ.37)) iTIME=7379
+*     .. patch - 54(37)
+      if ((nz.EQ.54) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 55(37)
+      if ((nz.EQ.55) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 56(37)
+      if ((nz.EQ.56) .AND. (nf.EQ.37)) MBEvp=100000
+*     .. patch - 17(42)
+      if ((nz.EQ.17) .AND. (nf.EQ.42)) MBEvp=200000
+*     .. patch - 27(42)
+      if ((nz.EQ.27) .AND. (nf.EQ.42)) iTIME=7937
+*     .. patch - 32(42)
+      if ((nz.EQ.32) .AND. (nf.EQ.42)) iTIME=9040
+*     .. patch - 38(42)
+      if ((nz.EQ.38) .AND. (nf.EQ.42)) iTIME=8786
+*     .. patch - 61(42)
+      if ((nz.EQ.61) .AND. (nf.EQ.42)) MBEvp=18000
+
+      print 20, MBEvp, MBE, iTIME
+   20 format('MBEvp =', I8, T21, 'MBE   =', I8, T41, 'TIME  =', I8)
+      print 30, iGAS, LIV, NS
+   30 format('GAS   =', I8, T21, 'LIV   =', I8, T41, 'NS    =', I8)
+      print 40, iPS1, iE0, iTHETA
+   40 format('PS1   =', I8, T21, 'E0    =', I8, T41, 'THETA  =', I8)
+
+*     .. chamber
+      print*, 'chamber ''OR'':'
+*      print*, 'No.PS-32    N'
+      do i=1,9
+         nOR(i) = INVERT(ps32(i))
+*         print*, i,nps32
+      enddo
+      print 41, nOR
+   41 format (3I10)
+      RETURN
+20000 call FREELUN(lun,file)
+      print*, 'ERROR TELE: READ ERROR'
+      RETURN
+10000 call FREELUN(lun,file)
+      print*, 'ERROR TELE: OPEN ERROR'
+      RETURN
+      END
+
+*                                         @METAGS .SPLIT.COMIS
+*--------------- SPLIT ---------------
+*
+      SUBROUTINE SPLIT(iw,i1,i2)
+*     .. Split INTEGER*4 to two INTEGER (low and high words)
+      do i=1,16
+*        .. low word*2
+         ibit = JBIT(iw,i)
+         if (ibit.EQ.0) then
+            call SBIT0(i1,i)
+         else
+            call SBIT1(i1,i)
+         endif
+*        .. high word*2
+         ibit = JBIT(iw,16+i)
+         if (ibit.EQ.0) then
+            call SBIT0(i2,i)
+         else
+            call SBIT1(i2,i)
+         endif
+      enddo
+      END
+*                                         @METAGS .INVERT.COMIS
+*--------------- INVERT ---------------
+*
+      integer function INVERT(iword)
+*     .. Invert low <---> high INTEGER*2 words in INTEGER*4
+      int = 0
+      do i=1,16
+*        .. low word*2
+         ibit = JBIT(iword,i)
+         if (ibit.EQ.0) then
+            call SBIT0(int,16+i)
+         else
+            call SBIT1(int,16+i)
+         endif
+*        .. high word*2
+         ibit = JBIT(iword,16+i)
+         if (ibit.EQ.0) then
+            call SBIT0(int,i)
+         else
+            call SBIT1(int,i)
+         endif
+      enddo
+      INVERT = int
+      END
+
+*                                         @METAGS .MakeTRUE
+*--------------- MakeTRUE ---------------
+*
+      SUBROUTINE MakeTRUE(id)
+      parameter (Nchan = 96)
+      real conten(Nchan), errors(Nchan)
+      id1 = 10000+id
+      id2 = 20000+id
+      call HOPERA(id1,'-E',id2,id,1.,1.)
+      call HUNPAK(id,conten,' ',0)
+      call HUNPKE(id,errors,' ',0)
+      do i=1,Nchan
+         if (conten(i).LT.0.) conten(i)=0.
+         if (errors(i).LT.0.) errors(i)=1.
+      enddo
+      call HPAK(id,conten)
+      call HPAKE(id,errors)
+      END
+
+*                                         @METAGS .ITITDAT.COMIS
+*                                         02-10-98 06:53pm
+*--------------- ITITDAT ---------------
+*
+      integer function ITITDAT(id,match)
+      character*(*) match
+      character*80 chbuf,chtitl, ch*1
+      parameter (MAXCH=100)
+      real X(MAXCH),Y(MAXCH),dX(MAXCH),dY(MAXCH), S(MAXCH),dS(MAXCH)
+
+      ITITDAT = 0
+      call HGIVE(id,chbuf,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      chtitl = ' '
+      do i=1, 4*NWT
+         write(chtitl(i:i),1) chbuf(i:i)
+    1    format(A1)
+      enddo
+      len = LENOCC(chtitl)
+
+      ival = 0
+      lenmat = LENOCC(match)
+      if (lenmat.EQ.0) goto 99
+      n = INDEX(chtitl,match(1:lenmat))
+
+      if (n.GT.0) then
+         n = n+lenmat
+         read (chtitl(n:len),*) ival
+      else
+         print*, 'ITITDAT: Field ',match(1:lenmat), ' did not found'
+      endif
+
+      ITITDAT = ival
+   99 RETURN
+      END
+
+*                                         @METAGS .STATLIST
+*                                         02-11-99 03:21pm
+*--------------- STATLIST ---------------
+*
+      SUBROUTINE STATLIST(hlist,aMBE,file)
+      parameter (NDIM=100)
+      real hlist(NDIM), aMBE
+      character*(*) file
+            
+      parameter (tau=10.e-9, duty=20000.)
+      real normMBE,normCUR,normNd
+      real hist(NDIM)
+      real MBE(NDIM),rMBE(NDIM),TIME(NDIM),CUR(NDIM),rCUR(NDIM)
+      real GAS(NDIM),rGAS(NDIM),GAS1(NDIM)
+      real LIV(NDIM),rLIV(NDIM),LIV1(NDIM)
+      real NS(NDIM),rNS(NDIM),NS1(NDIM)
+      real Nc(NDIM),rNc(NDIM),Nc1(NDIM)
+      real Nd(NDIM),rNd(NDIM),Nd1(NDIM), dproc(NDIM)
+      real Nt(NDIM),rNt(NDIM),Nt1(NDIM), clact(NDIM)
+      real clactC(NDIM),clactD(NDIM)
+      real N2acc(NDIM),rN2acc(NDIM),N2acc1(NDIM)
+      parameter (gugol=1.e30)
+      character*20 str, dots
+      logical HEXIST
+      data dots/'....................'/
+
+      nhist = 0
+      do i=1,NDIM
+         id = hlist(i)
+         if (id.EQ.0) goto 100
+         if (.NOT.HEXIST(id)) then
+            nz = id/100
+            nf = id - nz*100
+* no info            call READAT(nz,nf)
+            call READSP(nz,nf)
+         endif
+         if (.NOT.HEXIST(id)) then
+            print '(''Data bin'',I3,''('',I2,'') did not exist'')',nz,nf
+            RETURN
+         endif
+         hist(i) = id
+         nhist = nhist+1
+      enddo
+  100 continue
+      if (nhist.EQ.0) RETURN
+
+      id = hlist(1)
+      if (aMBE .NE. 0.) then
+         normMBE = aMBE
+      else
+         normMBE = ITITDAT(id,'M=')
+         if (normMBE .EQ. 0.) then
+            print*, 'MBE field in hist', id, ' is absend'
+            RETURN
+         endif
+      endif
+      aTIME = ITITDAT(id,'T=')
+      if (aTIME .EQ. 0.) then
+         print*, 'TIME field in hist', id, ' is absend'
+         RETURN
+      endif
+      qMBE  = ITITDAT(id,'M=')
+      if (qMBE .EQ. 0.) then
+         print*, 'MBE field in hist', id, ' is absend'
+         RETURN
+      endif
+      normCUR = real(qMBE)/aTIME
+
+      do i=1,nhist
+         id = hlist(i)
+         idc = 10000+id
+         idd = 20000+id
+         MBE(i)  = ITITDAT(id,'M=')
+         rMBE(i) = -1.
+         if (MBE(i) .NE. 0.) rMBE(i)=MBE(i)/normMBE
+         TIME(i) = ITITDAT(id,'T=')
+         CUR(i)  = 0.
+         if (TIME(i) .NE. 0.) CUR(i)=MBE(i)/TIME(i)
+         rCUR(i) = 0.
+         if (CUR(i) .NE. 0.) rCUR(i)=CUR(i)/normCUR
+         GAS(i)  = ITITDAT(id,'G=')
+         rGAS(i) = GAS(i)/rMBE(i)
+         GAS1(i) = rGAS(i)/rGAS(1)
+         LIV(i)  = ITITDAT(id,'L=')
+         rLIV(i) = LIV(i)/rMBE(i)
+         LIV1(i) = rLIV(i)/rLIV(1)
+         NS(i)   = ITITDAT(id,'N=')
+         rNS(i)  = NS(i)/rMBE(i)
+         NS1(i)  = rNS(i)/rNS(1)
+         Nc(i)   = HSUM(idc)
+         rNc(i)  = Nc(i)/rMBE(i)
+         Nc1(i)  = rNc(i)/rNc(1)
+         Nd(i)   = HSUM(idd)
+         rNd(i)  = Nd(i)/rMBE(i)
+         Nd1(i)  = rNd(i)/rNd(1)
+         Nt(i)   = Nc(i)-Nd(i)
+         rNt(i)  = Nt(i)/rMBE(i)
+         Nt1(i)  = rNt(i)/rNt(1)
+
+         dproc(i) = 100.*Nd(i)/Nc(i)
+         clact(i) = 100.*Nt(i)/Ns(i)
+         clactC(i) = 100.*Nc(i)/Ns(i)
+         clactD(i) = 100.*Nd(i)/Ns(i)
+
+         N2acc(i) = 0.
+         if (TIME(i) .NE. 0.) then
+            N2acc(i) = 2.*tau*duty*GAS(i)*LIV(i)/TIME(i)
+            rN2acc(i) = N2acc(i)/rMBE(i)
+            N2acc1(i) = rN2acc(i)/rN2acc(1)
+         endif
+      enddo
+
+      lename = LENOCC(file)
+      if (lename.GT.0) then
+         lun = LUNFREE(1)
+         call FCLEAR(file)
+         open (lun,FILE=file,STATUS='UNKNOWN')
+      else
+         lun = 6
+      endif
+
+      write(lun,*) 'normMBE,normCUR', normMBE,normCUR
+
+      str = 'ID'
+      write(lun,10) str,(hist(i), i=1,nhist)
+      str = 'MBE'
+      write(lun,10) str,(MBE(i), i=1,nhist)
+      str = 'rMBE'
+      write(lun,12) str,(rMBE(i), i=1,nhist)
+      str = 'TIME'
+      write(lun,10) str,(TIME(i), i=1,nhist)
+      str = 'CUR'//dots
+      write(lun,10) str,(CUR(i), i=1,nhist)
+      str = 'rCUR'
+      write(lun,11) str,(rCUR(i), i=1,nhist)
+      str = 'GAS'
+      write(lun,10) str,(GAS(i), i=1,nhist)
+      str = 'Norm. GAS'//dots
+      write(lun,10) str,(rGAS(i), i=1,nhist)
+      str = 'Norm. 1 GAS'
+      write(lun,12) str,(GAS1(i), i=1,nhist)
+      str = 'LIV'
+      write(lun,10) str,(LIV(i), i=1,nhist)
+      str = 'Norm. LIV'//dots
+      write(lun,10) str,(rLIV(i), i=1,nhist)
+      str = 'Norm. 1 LIV'
+      write(lun,12) str,(LIV1(i), i=1,nhist)
+      str = 'NS'
+      write(lun,10) str,(NS(i), i=1,nhist)
+      str = 'Norm. NS'//dots
+      write(lun,10) str,(rNS(i), i=1,nhist)
+      str = 'Norm. 1 NS'
+      write(lun,12) str,(NS1(i), i=1,nhist)
+      str = 'True'
+      write(lun,10) str,(Nt(i), i=1,nhist)
+      str = 'Norm. True'//dots
+      write(lun,10) str,(rNt(i), i=1,nhist)
+      str = 'Norm. 1 True'
+      write(lun,12) str,(Nt1(i), i=1,nhist)
+      str = 'Counts'
+      write(lun,10) str,(Nc(i), i=1,nhist)
+      str = 'Norm. Counts'//dots
+      write(lun,10) str,(rNc(i), i=1,nhist)
+      str = 'Norm. 1 Counts'
+      write(lun,12) str,(Nc1(i), i=1,nhist)
+      str = 'Delays'
+      write(lun,10) str,(Nd(i), i=1,nhist)
+      str = 'Norm. Delays'//dots
+      write(lun,10) str,(rNd(i), i=1,nhist)
+      str = 'Norm. 1 Delays'
+      write(lun,12) str,(Nd1(i), i=1,nhist)
+      str = 'Delays,   %'
+      write(lun,13) str,(dproc(i), i=1,nhist)
+      str = 'Clasters, %'
+      write(lun,13) str,(clact(i), i=1,nhist)
+      str = 'Clasters of C %'
+      write(lun,13) str,(clactC(i), i=1,nhist)
+      str = 'Clasters of D %'
+      write(lun,13) str,(clactD(i), i=1,nhist)
+      str = 'N2acc'
+      write(lun,10) str,(N2acc(i), i=1,nhist)
+      str = 'Norm. N2acc'//dots
+      write(lun,10) str,(rN2acc(i), i=1,nhist)
+      str = 'Norm. 1 N2acc'
+      write(lun,12) str,(N2acc1(i), i=1,nhist)
+
+*      if (lename.GT.0) then
+      if (lun.NE.6) then
+         close(lun)
+         print*, 'Result in the file ', file
+      endif
+      RETURN
+   10 format(A,(100F10.0))
+   11 format(A,(100F10.1))
+   12 format(A,(100F10.2))
+*?   13 format(A,(100F8.1,' %'))
+   13 format(A,(100F10.1))
+      END
+QUIT
+RETURN
+
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+opt stat
+set stat 1000001
+opt grid
+set mtyp 24
+close 0
+
+D2HIST =''; g/imp D2HIST;  if [D2HIST]= '' then; exec D2HIST;  endif
+D2HFILE=''; g/imp D2HFILE; if [D2HFILE]='' then; exec D2HFILE; endif
+D2FOR=  ''; g/imp D2FOR;   if [D2FOR]  ='' then; exec D2FOR;   endif
+*D2PLOTL=''; g/imp D2PLOTL; if [D2PLOTL]='' then; exec D2PLOTL; endif
+
+exec FOR
+exec ALI CREATE
+
+ldir = $HCDIR()
+cd //PAWC
+cd WORK
+if $IQUEST(1) then
+   mess Work directory //PAWC/WORK does not exist.
+   mdir WORK
+   mess Created.
+   cd WORK
+   * Work directory //PAWC/WORK
+   g/cr WORKdir $HCDIR()   'Work directory'
+endif
+cd [ldir]
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = 'HELP' then
+   mess Usage:    $WORD([0],2,1,#) op=CREATE
+   mess Examples:
+   mess           $WORD([0],2,1,#) CREATE
+   mess           $WORD([0],2,1,#) DELETE
+   stopm
+endif
+
+mess $WORD([0],1,1,#):    Aliases are created.
+
+* ???
+*mess $WORD([0],1,1)
+*mess $WORD([0],1,1,.)
+*mess $WORD([0],1,1,#)
+*mess $WORD([0],1,1,.#)
+*tr on wait
+*ali/[op] -C VIEW        'exec '//$WORD([0],1,1,.)#VIEW
+*tr off
+
+ali/[op] -C Notes       'edit Notes.txt'
+ali/[op] -C XL          'exec '//$WORD([0],1,1,#)#XL
+ali/[op] -C INI         'exec '//$WORD([0],1,1,#)#INI
+ali/[op] -C PAN         'exec '//$WORD([0],1,1,#)#PAN
+ali/[op] -C VIEW        'exec '//$WORD([0],1,1,#)#VIEW
+ali/[op] -C COMP        'exec '//$WORD([0],1,1,#)#COMP
+ali/[op] -C READ        'exec '//$WORD([0],1,1,#)#READ
+ali/[op] -C READAT      'exec '//$WORD([0],1,1,#)#READAT
+ali/[op] -C READDM      'exec '//$WORD([0],1,1,#)#READDM
+ali/[op] -C HPLOTL      'exec '//$WORD([0],1,1,#)#HPLOTL
+ali/[op] -C READSP      'exec '//$WORD([0],1,1,#)#READSP
+ali/[op] -C PRINTSP     'exec '//$WORD([0],1,1,#)#PRINTSP
+ali/[op] -C TELE        'exec '//$WORD([0],1,1,#)#TELE
+ali/[op] -C DATA        'exec '//$WORD([0],1,1,#)#DATA
+ali/[op] -C CandD       'exec '//$WORD([0],1,1,#)#CandD
+ali/[op] -C MakeTRUE    'exec '//$WORD([0],1,1,#)#MakeTRUE
+ali/[op] -C TRUE        'exec '//$WORD([0],1,1,#)#TRUE
+ali/[op] -C PLOT        'exec '//$WORD([0],1,1,#)#PLOT
+ali/[op] -C PLOTS       'exec '//$WORD([0],1,1,#)#PLOTS
+ali/[op] -C PLUS        'exec '//$WORD([0],1,1,#)#PLUS
+ali/[op] -C MINUS       'exec '//$WORD([0],1,1,#)#MINUS
+ali/[op] -C BSCAL       'exec '//$WORD([0],1,1,#)#BSCAL
+ali/[op] -C UPTRUE      'exec '//$WORD([0],1,1,#)#UPTRUE
+ali/[op] -C MKERR       'exec '//$WORD([0],1,1,#)#MKERR
+ali/[op] -C BDEL        'exec '//$WORD([0],1,1,#)#BDEL
+ali/[op] -C BCOP        'exec '//$WORD([0],1,1,#)#BCOP
+ali/[op] -C BCOPmker    'exec '//$WORD([0],1,1,#)#BCOPmker
+ali/[op] -C BPUT        'exec '//$WORD([0],1,1,#)#BPUT
+ali/[op] -C BGET        'exec '//$WORD([0],1,1,#)#BGET
+ali/[op] -C BCOPPUT     'exec '//$WORD([0],1,1,#)#BCOPPUT
+ali/[op] -C FBDEL       'exec '//$WORD([0],1,1,#)#FBDEL
+ali/[op] -C BZERO       'exec '//$WORD([0],1,1,#)#BZERO
+ali/[op] -C Ibeam       'exec '//$WORD([0],1,1,#)#Ibeam
+ali/[op] -C PCrate      'exec '//$WORD([0],1,1,#)#PCrate
+ali/[op] -C statlist    'exec '//$WORD([0],1,1,#)#statlist
+RETURN
+
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+last 2
+x last
+ans = Y
+read ans 'Return to panels (Y/N)?'
+if $UPPER([ans]) = Y then
+   XP
+endif
+RETURN

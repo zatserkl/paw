@@ -1,0 +1,113 @@
+*                                         @METAGS det
+*--------------- det ---------------
+*
+MACRO det
+opt fit
+opt stat
+*set stat 1001111
+set stat 1111111
+
+clo 0
+h/de 0
+
+h/file 1 ntdata.hbook
+mess h/list:
+h/l
+wait
+hrin 10
+nt/print 10
+wait
+
+title $HTITLE(10)
+
+1dh 100 'PC data' 96 .5 96.5
+nt/proj 100 10.PCch
+1dh 200 'Titov data' 11 .5 11.5
+nt/proj 200 10.Tch
+
+h/pl 100
+wait
+h/pl 200
+
+cd //PAWC
+cd
+RETURN
+
+*                                         @METAGS PCcl
+*--------------- PCcl ---------------
+*
+MACRO PCcl
+h/pl 1
+h/pl 2 s
+sum1 = $HINFO(1,'SUM')
+sum2 = $HINFO(2,'SUM')
+ratio = [sum1]/[sum2] - 1
+proc = 100*[ratio]
+mess PC clasters = $FORMAT([proc],F5.1) %
+RETURN
+
+*                                         @METAGS RPCcl
+*--------------- RPCcl ---------------
+*
+MACRO RPCcl
+1dh 1000 'PC Rosenbluth total: w/o clasters' 96 .5 96.5
+h/cop 1000 1001 'PC Rosenbluth clasters only'
+h/cop 1000 1002 'PC Rosenbluth experimental i.e. add clasters'
+nt/proj 1000 10.PCch pdf=1.AND.PChit=1
+nt/proj 1001 10.PCch pdf=1.AND.PChit=1.AND.PCcl=1
+add 1000 1001 1002
+
+h/pl 1002
+h/pl 1000 s
+cl = $FORMAT(100*($HINFO(1002,SUM)/$HINFO(1000,SUM)-1), F0.1)
+mess PC clasters for FROS = [cl]%
+RETURN
+*                                         @METAGS UPCcl
+*--------------- UPCcl ---------------
+*
+MACRO UPCcl
+1dh 2000 'PC Rosenbluth total: w/o clasters' 96 .5 96.5
+h/cop 2000 2001 'PC Rosenbluth clasters only'
+h/cop 2000 2002 'PC Rosenbluth experimental i.e. add clasters'
+nt/proj 2000 10.PCch pdf=2.AND.PChit=1
+nt/proj 2001 10.PCch pdf=2.AND.PChit=1.AND.PCcl=1
+add 2000 2001 2002
+
+h/pl 2002
+h/pl 2000 s
+cl = $FORMAT(100*($HINFO(2002,SUM)/$HINFO(2000,SUM)-1), F0.1)
+mess PC clasters for FUNI = [cl]%
+RETURN
+
+*                                         @METAGS RTcl
+*--------------- RTcl ---------------
+*
+MACRO RTcl
+1dh 3000 'Titov Rosenbluth total: w/o clasters' 11 .5 11.5
+h/cop 3000 3001 'Titov Rosenbluth clasters only'
+h/cop 3000 3002 'Titov Rosenbluth experimental i.e. add clasters'
+nt/proj 3000 10.Tch pdf=1.AND.Thit=1
+nt/proj 3001 10.Tch pdf=1.AND.Thit=1.AND.Tcl=1
+add 3000 3001 3002
+
+h/pl 3002
+h/pl 3000 s
+cl = $FORMAT(100*($HINFO(3002,SUM)/$HINFO(3000,SUM)-1), F0.1)
+mess Titov clasters for FROS = [cl]%
+RETURN
+*                                         @METAGS UTcl
+*--------------- UTcl ---------------
+*
+MACRO UTcl
+1dh 4000 'Titov Rosenbluth total: w/o clasters' 11 .5 11.5
+h/cop 4000 4001 'Titov Rosenbluth clasters only'
+h/cop 4000 4002 'Titov Rosenbluth experimental i.e. add clasters'
+nt/proj 4000 10.Tch pdf=2.AND.Thit=1
+nt/proj 4001 10.Tch pdf=2.AND.Thit=1.AND.Tcl=1
+add 4000 4001 4002
+
+h/pl 4002
+h/pl 4000 s
+cl = $FORMAT(100*($HINFO(4002,SUM)/$HINFO(4000,SUM)-1), F0.1)
+mess Titov clasters for FUNI = [cl]%
+RETURN

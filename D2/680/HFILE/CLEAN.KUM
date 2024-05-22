@@ -1,0 +1,39 @@
+if $FEXIST(h680.his) then
+   mess File h680.his already exist!
+   mess File will be cleaned!
+   wait
+
+   mess
+   ans = 'N'
+   read ans 'Are yor sure to clean file h680.his (Y/N)?'
+   if [ans] <> 'Y' then
+      mess File h680.his is not touched
+      stopm
+   else
+      mess File h680.his is cleaned
+   endif
+endif
+
+h/file 1 h680.his ! n
+mdir  9.00
+mdir  9.81
+mdir 10.69
+mdir 11.65
+mdir 12.70
+mdir 13.84
+mdir 15.09
+mdir 16.45
+mdir 16.63
+mdir 17.10
+mdir 17.71
+mdir 17.93
+mdir 18.44
+mdir 19.54
+mdir 21.30
+mdir 22.32
+mdir 23.22
+mdir 24.92
+mdir 28.23
+mdir 30.60
+mdir 31.17
+clo 1

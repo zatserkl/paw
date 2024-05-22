@@ -1,0 +1,15 @@
+APPL COMIS QUIT
+*                                         @METAGS WAIT
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      if ((LEN(mess).GT.0) .AND. (mess.NE.' ')) print*, mess
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+QUIT

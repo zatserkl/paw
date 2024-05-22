@@ -1,0 +1,193 @@
+*                                         @METAGS peped
+*--------------- peped ---------------
+*
+MACRO peped id inifil=pmpar.ini nass=0
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] id inifil=pmpar.ini nass=0
+   stopm
+endif
+
+exec for
+
+if $INDEX([inifil],'.')=0 then
+   inifil = [inifil].ini
+endif
+
+if $FEXIST([inifil])=0 then
+   mess PM parameters file [inifil] did not found
+   stopm
+endif
+
+fcall = PEPED([id],$QUOTE([inifil]),[nass])
+Npe = $CALL([fcall])
+
+mess Npe=[Npe]
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+*                                         @METAGS PEPED
+*                                         01-21-00 11:49am
+*--------------- PEPED ---------------
+*
+      function PEPED(id,inifil,nass)
+      character match, line*78, inifil*32
+      data match/''''/
+*
+      lun = LUNFREE(1)
+      open (UNIT=lun, FILE=inifil, STATUS='OLD', ERR=99999)
+99900 read (lun,10, END=99990) line
+      if (line(1:1).EQ.match) goto 99900
+
+*      backspace lun   ! Don't work correctly in F2C!
+      read (line,*, ERR=99990) anorm
+      read (lun,*, ERR=99990) posp, eposp
+      read (lun,*, ERR=99990) sigp, esigp
+      read (lun,*, ERR=99990) pos1, epos1
+      read (lun,*, ERR=99990) sig1, esig1
+99990 close (UNIT=lun)
+
+*      print*, '--- Data from ini-file ---'
+*      print*, anorm, '                anorm'
+*      print*, posp, eposp,   '  posp, eposp'
+*      print*, sigp, esigp,   '  sigp, esigp'
+*      print*, pos1, epos1,   '  pos1, epos1'
+*      print*, sig1, esig1,   '  sig1, esig1'
+      
+      kpedhigh = posp + 3.*sigp + 1.
+
+      sumped  = 0.
+      do i=1,kpedhigh
+         sumped =  sumped + HI(id,i)
+      enddo
+
+      sumped = sumped-nass
+      if (sumped .LE. 0.) call STOPCR('Pedestal = 0')
+      sum = HSUM(id)
+      PEPED = log(sum/sumped)
+      RETURN
+99999 call STOPCR('.. Ini file did not found ..')
+      return
+    1 FORMAT(I3)
+   10 FORMAT(A)
+      END
+
+*                                         @METAGS SPMEAN
+*                                         01-20-00 11:55am
+*--------------- SPMEAN ---------------
+*
+      function SPMEAN(id,k1,k2)
+      parameter (MAXDIM=1024)
+      character*80 tit
+      real X(MAXDIM),Y(MAXDIM),dX(MAXDIM),dY(MAXDIM)
+
+      do i=1,MAXDIM
+         X(i)  = 0.
+         dX(i) = 0.
+         Y(i)  = 0.
+         dY(i) = 0.
+      enddo
+
+      call HGIVE (id,tit,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      call HREBIN(id,X,Y,dX,dY,NX,1,NX)
+
+      n1 = k1
+      n2 = k2
+      if (n2.GT.NX) n2=NX
+      
+      sum  = HSUM(id)
+      xsum = 0.
+      k = 0
+      do i=n1,n2
+         k = k+1
+         xsum = xsum + k*Y(i)
+      enddo
+      SPMEAN = xsum/sum
+      END
+
+*                                         @METAGS DELTA
+*                                         05-04-98 06:59pm
+*--------------- DELTA ---------------
+*
+      function DELTA(inifil)
+*      real posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      use PMPAR
+      character match, line*78, inifil*32
+      data match/''''/
+*
+      lun = LUNFREE(1)
+      open (UNIT=lun, FILE=inifil, STATUS='OLD', ERR=99999)
+99900 read (lun,10, END=99990) line
+      if (line(1:1).EQ.match) goto 99900
+
+*      backspace lun   ! Don't work correctly in F2C!
+      read (line,*, ERR=99990) anorm
+      read (lun,*, ERR=99990) posp, eposp
+      read (lun,*, ERR=99990) sigp, esigp
+      read (lun,*, ERR=99990) pos1, epos1
+      read (lun,*, ERR=99990) sig1, esig1
+99990 close (UNIT=lun)
+
+*      print*, '--- Data from ini-file ---'
+*      print*, anorm, '                anorm'
+*      print*, posp, eposp,   '  posp, eposp'
+*      print*, sigp, esigp,   '  sigp, esigp'
+*      print*, pos1, epos1,   '  pos1, epos1'
+*      print*, sig1, esig1,   '  sig1, esig1'
+      
+      DELTA = pos1-posp
+      return
+99999 call WAIT('.. Ini file not found ..')
+      return
+    1 FORMAT(I3)
+   10 FORMAT(A)
+      END
+
+*                                         @METAGS .LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      logical used
+      lun = lunstart-1
+      if (lun.LT.0) lun=0
+  100 lun = lun+1
+      inquire (UNIT=lun, OPENED=used)
+      if (used) goto 100
+      LUNFREE = lun
+      END
+*                                         @METAGS .WAIT.COMIS
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS .STOPCR.COMIS
+*                                         11-15-96 09:45pm
+*--------------- STOPCR ---------------
+*
+      SUBROUTINE STOPCR(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, 'Press <CR> to quit'
+      read 1, ch
+      STOP
+      RETURN
+    1 FORMAT(A)
+      END
+QUIT
+RETURN

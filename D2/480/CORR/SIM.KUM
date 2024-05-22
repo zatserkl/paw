@@ -1,0 +1,369 @@
+*                                         @METAGS SIM
+*--------------- SIM ---------------
+*
+MACRO SIM E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt
+if $VEXIST(set)=0 then
+   mess ***** ERROR: No vector SET in memory!
+   stopm
+endif
+*
+if $VEXIST(w)=0 then
+   mess ***** ERROR: No vector W in memory!
+   stopm
+endif
+*
+if $VEXIST(energy)=0 .OR. $VEXIST(crosec)=0 then
+   mess ***** ERROR: No vector ENERGY and/or CROSEC in memory!
+   stopm
+endif
+*
+opt grid
+
+ntot = $VLEN(set)
+if $VEXIST(et) then; v/de et; endif
+if $VEXIST(ct) then; v/de ct; endif
+if $VEXIST(em) then; v/de em; endif
+if $VEXIST(cm) then; v/de cm; endif
+if $VEXIST(ec) then; v/de ec; endif
+if $VEXIST(cc) then; v/de cc; endif
+v/cr et(96,[ntot])
+v/cr ct(96,[ntot])
+v/cr em(96,[ntot])
+v/cr cm(96,[ntot])
+v/cr cc(96,[ntot])
+
+v/cr ec(96,[ntot])
+*
+if $VEXIST(eff) = 0 then
+   mess '--- Efficiency coefficients are ZERO. Assume all equal to 1.     '
+   sigma eff=array(96,1.#1.)
+endif
+*
+if $VEXIST(weff) = 0 then
+   mess '--- W-matrix efficiency coefficients are ZERO. Assume all equal to 1.     '
+   sigma weff=array(96,1.#1.)
+endif
+*
+
+exec for
+
+do n=1,[ntot]
+   *mess --- Before SIM. F = $EVAL(set([n])) ---; wait
+   call SIMfor($RSIGMA(17.61*set([n])))
+   *mess --- After SIM ---; wait
+   
+   v/cop efoc(1:96) et(1:96,[n])
+   v/cop cfoc(1:96) ct(1:96,[n])
+   v/cop echan(1:96) em(1:96,[n])
+   v/cop count(1:96) cm(1:96,[n])
+   v/cop corr(1:96) cc(1:96,[n])
+
+   v/cop ecalc(1:96) ec(1:96,[n])
+enddo
+*
+*mess --- Before the PLOT ---; wait
+EXEC PLOT [E1] [E2] [opt]
+RETURN
+*                             @METAGS plot
+*----------- PLOT -----------
+*
+MACRO PLOT E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt
+ntot = $VLEN(set)
+nt = nsec
+*
+xmin = 0.95*$SIGMA(MIN(VMIN(et),VMIN(em)))
+xmax = 1.05*$SIGMA(MAX(VMAX(et),VMAX(em)))
+ymin = 0.95*$SIGMA(MIN(VMIN(ct),VMIN(cm)))
+ymax = 1.05*$SIGMA(MAX(VMAX(ct),VMAX(cm)))
+*mess xmin = [xmin]; wait
+
+if [E1] then
+   xmin = [E1]
+endif
+if [E2] then
+   xmax = [E2]
+endif
+
+if $INDEX($UPPER([opt]),S) = 0 then
+   null [xmin] [xmax] [ymin] [ymax]
+endif
+
+ci=1
+set pmci [ci]
+*
+mt = 24
+set mtyp [mt]
+mscf0 = $GRAFINFO('?mscf')
+igset mscf .3
+*set plci 5
+set plci 1
+
+do n=1,[ntot]
+   mty0 = $GRAFINFO('?mtyp')
+      set mtyp 1
+      graph 96 et(1:96,[n]) ct(1:96,[n]) sl
+   set mtyp [mty0]
+   graph 96 em(1:96,[n]) cm(1:96,[n]) sp
+*   graph 96 ec(:,[n]) cm(:,[n]) s*
+
+*  .. set next polymarker color index
+   ci = [ci]+1
+   if ([ci] .GT. 6) then
+      ci = 1
+   endif
+   set pmci [ci]
+   if ([ci].EQ.5) then
+      set pmci 11
+   endif
+*  .. set next polymarker type index
+   mt = [mt]+1
+   if ([mt] .GT. 30) then
+      mt = 24
+   endif
+   set mtyp [mt]
+enddo
+
+set plci 1
+set pmci 1
+igset mscf [mscf0]
+
+exec TEXT [ymax]
+RETURN
+*
+*
+*
+MACRO TEXT ymax
+   y1 = 1.02*[ymax]
+   y2 = 1.06*[ymax]
+*
+Emin=$GRAFINFO('WNXMIN')
+Emax=$GRAFINFO('WNXMAX')
+SELNT 1
+   y1 = 18.5
+   y2 = 19.0
+
+   ci = 1
+   set txci [ci]
+
+   sel = 0
+   do n=1,$VLEN(set)
+      E = set([n])
+      y = [y1]
+      if ([sel].EQ.0) then
+         y = [y2]
+         sel = 1
+      else
+         y = [y1]
+         sel = 0
+      endif
+      x = 2. + 16.*([E]-[Emin])/([Emax]-[Emin])
+      text [x] [y] [E] .3 ! C
+
+*     .. set next text color index
+      ci = [ci]+1
+      if ([ci] .GT. 6) then
+         ci = 1
+      endif
+      set txci [ci]
+      if ([ci].EQ.5) then
+         set txci 11
+      endif
+   enddo
+   set txci 1
+SELNT 10
+RETURN
+
+*                                         @METAGS SET
+*--------------- SET ---------------
+*
+MACRO SET name=high
+v/de set
+v/re set,buf [name].set ! ! '-/*/'
+v/de buf
+mess --- Current set:
+v/pr set
+RETURN
+
+*                                         @METAGS newset
+*--------------- newset ---------------
+*
+MACRO newset
+if [#] = 0 then
+   mess 'Usage:    SIM#newset F1 [F2 ...]'
+   stopm
+endif
+
+if $VEXIST(set) then; v/de set; endif
+tr on wait
+v/cr set($WORDS([*])) r $UNQUOTE([*])
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+*                                         @METAGS SOUT
+*                                         01-20-97 09:01pm
+*--------------- SOUT ---------------
+*
+      function SOUT(E)
+      parameter (MAX=1000)
+      vector energy(MAX),crosec(MAX)
+
+      Emin = energy(1)
+      Edelta = energy(2)-energy(1)
+
+      i = (E-Emin)/Edelta
+      if (i.LT.1) then
+         print*, 'Energy E=', E, ' underflow the vector ENERGY'
+         i=1
+      endif
+      if (i.GT.MAX) then
+         print*, 'Energy E=', E, ' overflow the vector ENERGY'
+         i = MAX
+      endif
+
+c     .. Linear approximation
+      E1 = energy(i)
+      s1 = crosec(i)
+      if (i.LT.MAX) then
+         E2 = energy(i+1)
+         s2 = crosec(i+1)
+         s = s1 + (s2-s1)*(E-E1)/(E2-E1)
+      else
+         s = s1
+      endif
+      SOUT = s
+      END
+*                                         @METAGS SIMfor
+*                                         01-20-97 08:33pm
+*--------------- SIMfor ---------------
+*
+      SUBROUTINE SIMfor(ECENTR)
+      parameter (NCENTR=36)
+*      parameter (Dcm=1.81)
+      parameter (Dcm=1.73)
+      vector nsec(1),sdelta(100),w(100,100)
+      real we(96)
+      vector echan(96), count(96), weff(96)
+      vector ecalc(96)
+      VECTOR efoc(100),cfoc(100)
+      vector corr(96)
+
+      ns = nsec(1)
+      if (ns.GT.96) then
+         call WAIT('Value of NSEC(1) must be LE 96')
+      endif
+
+c     .. distance between wires, cm. Always 2 mm at any chamber angle.
+      d = 0.2
+      cwidth = d*(.01/Dcm) * ECENTR
+      swidth = .01*(sdelta(2)-sdelta(1)) * ECENTR
+
+      E96 = ECENTR*(1. - (96-NCENTR)*d*.01/Dcm)
+      E1  = ECENTR*(1. - ( 1-NCENTR)*d*.01/Dcm)
+*      print*, 'Ec  =', ECENTR, '  cwidth =', cwidth
+*      print*, 'E96 =', E96, '  E1 =', E1
+c
+c     Factors for convert d2sigma/dEdomega --> rate
+c
+c     .. solid angle in mster
+      dOmega = 8.2
+c     .. Nnuclei in 10**23
+      target = 1.
+c     .. MBE constant in 10**(-10)
+      Qe = 1.
+c     .. electron charge in 10**(-19)
+      charge = 1.6
+c
+c     Monitor
+c     .. monitor counts in 10**6
+      QMBE = 10.
+
+c     .. number of electrons
+      elnum = (Qe/charge)*QMBE
+c     .. whole factor
+      sec2N = elnum*target*dOmega
+c     .. relative normalization
+      anorm = 1.
+      sec2N = anorm*sec2N
+c
+c     M E A S U R I N G
+c
+      sumfoc=0
+      sumcou=0
+      do k=1,96
+*        .. SP-02 dispersion slope
+         Dch = Dcm + 0.00320*(k-NCENTR)
+
+         echan(k) = ECENTR*(1. - (k-NCENTR)*d*.01/Dch)
+         efoc(k) = echan(k)
+         we(k) = 0.
+         ecalc(k) = 0.
+
+*        .. real chamber counts
+         count(k) = 0.
+*?         wtot = 0.
+         do j=1,ns
+            E = ECENTR + .01*sdelta(j) * ECENTR
+c           .. model cross section in pbarn
+            sec = SOUT(E)
+c           .. apply factors for convert d2sigma/dEdomega --> rate
+            rate = sec*sec2N
+c           .. number of particles in range swidth
+            partcl = rate*swidth
+
+*?            wtot = wtot+w(k,j)
+            part = partcl*w(k,j)
+            cwid = d*(.01/Dch) * ECENTR
+            count(k) = count(k) + weff(k)*QMBE*part / (QMBE*cwid)
+*            count(k) = count(k) + weff(k)*QMBE*part / (QMBE*cwidth)
+
+c           .. calculated energy
+            ecalc(k) = ecalc(k) + E*w(k,j)
+            we(k) = we(k) + w(k,j)
+*            print*,'k,j,E,part:', k,j,E,part
+*            call WAIT('')
+         enddo
+*?         count(k) = count(k)/wtot
+
+c        .. normalizing of the calculated energy
+         if (we(k).GT.0.) then
+            ecalc(k) = ecalc(k)/we(k)
+         else
+            ecalc(k) = 0.
+         endif
+
+*        .. focal chamber counts
+         sec = SOUT(echan(k))
+         rate = sec*sec2N
+c        .. number of particles in the channel acceptance cwidth
+         partcl = rate*cwidth
+         cfoc(k) = partcl/cwidth
+
+         cfoc(k) = cfoc(k) * 1.7481/Dcm
+
+*        .. correction efficiency coefs.
+         corr(k) = cfoc(k)/count(k)
+
+         sumcou = sumcou+count(k)
+         sumfoc = sumfoc+cfoc(k)
+      enddo
+*      print*, 'sumfoc,sumcou:', sumfoc,sumcou
+      END
+*                                         @METAGS WAIT
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      print*, mess
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+QUIT
+RETURN

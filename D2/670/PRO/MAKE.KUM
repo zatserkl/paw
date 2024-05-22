@@ -1,0 +1,1266 @@
+*                                      @METAGS MAKE
+*--------------- MAKE ---------------
+*
+MACRO MAKE
+   EXEC INI
+   mess Welcome to macro MAKE.
+   mess Aliases is created.
+RETURN
+*                                         @METAGS MODE
+*--------------- MODE ---------------
+*
+MACRO MODE amode
+   g/imp mode
+   if [amode] = '' then
+      mess Usage     MAKE#MODE mode
+      mess Possible modes: PC, TITOV
+      mess Current mode [mode]
+      stopm
+   endif
+
+   CASE $UPPER([amode]) IN
+      (PC)     g/cr mode PC
+      (TITOV)  g/cr mode TITOV
+      (*)      mess Unknown mode. Possible modes: PC, TITOV
+               stopm
+   ENDCASE
+
+   g/imp mode,nchan,minc,maxc,floc,lun,hfile
+
+   if $UPPER([mode])=PC then
+      g/cr nchan 96
+      g/cr minc  1
+      g/cr maxc  96
+      g/cr floc  \D2\670\SPECTRA
+      g/cr lun 99
+      g/cr hfile h670.his
+   endif
+
+   if $UPPER([mode])=TITOV then
+      g/cr nchan 11
+      g/cr minc  1
+      g/cr maxc  11
+      g/cr floc  \D2\670\TITOV
+      g/cr lun 98
+      g/cr hfile t670.his
+   endif
+RETURN
+*                              @METAGS .COMP.
+*---------- COMP ----------
+*
+MACRO COMP
+   g/imp init
+   if [init]<>1 then; EXEC INI; endif
+   g/imp idcur
+
+   if $VEXIST(idlist) then
+      ans = N
+      read ans 'Create new histogram list (Y/N)? '
+      if $UPPER([ans]) = 'Y' then
+         sigma idlist = array(100,0#0)
+      else
+         stopm
+      endif
+   else
+      sigma idlist = array(100,0#0)
+   endif
+
+   N = 0
+   AGAIN:
+   id = 0
+   read id 'Enter histogram ID (0 - EXIT)'
+   if [id] <> 0 then
+      idcur = $FORMAT([id],I4.4)
+      if $HEXIST([id]) = 0 then; EXEC READ [id]; endif
+      N = [N] + 1
+      v/inp idlist([N]) [id]
+      EXEC PLOTL [N]
+      goto AGAIN
+   else
+      stopm
+   endif
+RETURN
+*                             @METAGS NLIST
+*---------- NLIST ----------
+*
+MACRO NLIST
+   N = 0
+   do i=1, 100
+      if idlist([i]) = 0 goto EXIT
+      N = [N]+1
+   enddo
+   EXIT:
+RETURN [N]
+*                             @METAGS PLOTL
+*---------- PLOTL ----------
+*
+MACRO PLOTL N
+   if $VEXIST(idlist) = 0 then
+      mess No histogram list loaded
+      stopm
+   endif
+
+   if [N] = '' then; N = $EXEC(NLIST); endif
+
+   max = 0
+   do i=1, [N]
+      id = idlist([i])
+      val = $HINFO([id],'MAX')
+      if [val] > [max] then
+         max = 1.10*[val]
+      endif
+   enddo
+
+   g/imp nchan
+   nc = [nchan] + 1
+   null 0 [nc] 0 [max]
+   atitle 'channels' 'counts'
+
+   mt = 24
+   set mtyp [mt]
+   ci = 1
+   set pmci [ci]
+   x = 0.5
+   dx = 2
+   NT0 = $GRAFINFO('NT')
+   y1 = 19/([NT0]/10)
+   y2 = [y1] - .4
+   do i=1, [N]
+      id = $FORMAT(idlist([i]),I4.4)
+      h/pl [id] SP
+      selnt 1
+         key [x] [y1] [mt]
+         itx ([x]+.3) [y1] [id]
+         itx ([x]+.3) [y2] $HINFO([id],'EVENTS')
+      selnt [NT0]
+
+*     .. set next marker/text position
+      x  = [x] + [dx]
+*     .. set next color index
+      ci = [ci]+1
+      if ([ci] .GT. 6) then
+         ci = 1
+      endif
+      set pmci [ci]
+      if ([ci].EQ.5) then
+         set pmci 11
+      endif
+*     .. set next polymarker type index
+      mt = [mt]+1
+      if ([mt] .GT. 30) then
+         mt = 24
+      endif
+      set mtyp [mt]
+   enddo
+   set mtyp 24
+   set pmci 1
+RETURN
+*                             @METAGS READ
+*---------- READ ----------
+*
+MACRO READ id
+   g/imp init
+   if [init]<>1 then; EXEC INI; endif
+
+   if ([id].EQ.'') then
+      mess Usage:    MAKE#READ id
+      stopm
+   endif
+   id = $FORMAT([id],I4.4)
+
+   nz = $SUBSTRING([id],1,2)
+   nf = $SUBSTRING([id],3)
+
+   g/imp floc
+   datfil = [floc]\[nz].[nf]
+   if $FEXIST([datfil])=0 then
+      lcdir
+      mess File [datfil] did not found.
+   endif
+
+   if $VEXIST(vcount) then
+      v/de vcount,vdelay
+   endif
+   g/imp nchan
+   v/cr vcount([nchan]); v/cr vdelay([nchan])
+
+   g/imp mode
+   CASE $UPPER([mode]) IN
+      (PC)     v/re vcount,vdelay [datfil]
+      (TITOV)  v/re vdelay,vcount [datfil]
+      (*)      mess Unknown mode; mess Use MAKE#MODE; stopm
+   ENDCASE
+
+   EXEC BCRE [id]
+   v/de vcount,vdelay
+RETURN
+*                                         @METAGS HCRE
+*--------------- HCRE ---------------
+*
+MACRO HCRE id tit
+   g/imp nchan
+   1dh [id] [tit] [nchan] 0.5 [nchan].5
+RETURN
+*                             @METAGS BCRE
+*---------- BCRE ----------
+*
+MACRO BCRE id
+   id = $FORMAT([id],I4.4)
+   nz = $SUBSTRING([id],1,2)
+   nf = $SUBSTRING([id],3)
+
+   tit = Counts for [nz]([nf])
+   exec HCRE 1[id] [tit]
+   put/con 1[id] vcount
+
+   tit = Delays for [nz]([nf])
+   exec HCRE 2[id] [tit]
+   put/con 2[id] vdelay
+
+   tit = True counts for [nz]([nf])
+   exec HCRE [id] [tit]
+   sigma buf=vcount-vdelay
+   sigma buferr=sqrt(vcount+vdelay)
+
+   g/imp nchan
+   zero=0
+   do i=1,[nchan]
+      if buf([i]) < 0 then
+         v/inp buf([i]) 0
+         if [zero]=0 then
+            zero=[i]
+         else
+            zero=[zero],[i]
+         endif
+      endif
+   enddo
+   if [zero] <> 0 then
+      mess Zero negative channels: [zero]
+   endif
+
+   put/con [id] buf
+   put/err [id] buferr
+   v/de buf,buferr
+RETURN
+*                             @METAGS CandD
+*---------- CandD ----------
+*
+MACRO CandD
+   g/imp idcur,minc,maxc
+
+   idcur = $FORMAT([idcur],I4.4)
+   id = 1[idcur]
+   set mtyp 24
+   exec PLOT [id] [minc] [maxc]
+   id = 2[idcur]
+   set mtyp 25
+   exec PLOTS [id]
+   set mtyp 24
+   atitle 'channels' 'counts'
+RETURN
+*                             @METAGS TRUE
+*---------- TRUE ----------
+*
+MACRO TRUE
+   g/imp idcur
+
+   set mtyp 24
+   exec PLOT [idcur]
+   atitle 'channels' 'counts'
+RETURN
+*                             @METAGS PLOT
+*---------- PLOT ----------
+*
+MACRO PLOT id min=1 max=11 
+   if [id] = '' then
+      mess 'Usage:    MAKE#PLOT id [min=1] [max=11]'
+      stopm
+   endif
+   g/imp minc,maxc
+   h/pl [id]([minc]:[maxc]) PE0
+RETURN
+*                             @METAGS PLOTS
+*---------- PLOTS ----------
+*
+MACRO PLOTS id mt
+   if [id] = '' then
+      mess 'Usage:    MAKE#PLOTS id [mt]'
+      stopm
+   endif
+   mtcur = $GRAFINFO('?mtyp')
+
+   if [mt] <> '' then
+      set mtyp [mt]
+   endif
+   g/imp minc,maxc
+   h/pl [id]([minc]:[maxc]) PE0S
+   set mtyp [mtcur]
+RETURN
+*                             @METAGS ZOOM
+*---------- ZOOM ----------
+*
+MACRO ZOOM min max
+   g/imp idcur,minc,maxc,nchan
+
+   if [1] <> '' then
+      minc = [min]
+   else
+      min = [minc]
+   endif
+
+   if [2] <> '' then
+      maxc = [max]
+   else
+      max = [maxc]
+   endif
+
+   if (([1]<>'') .AND. ([2]<>'')) goto PLOT
+
+   if (([1] <> '').AND.([min] > [max])) then
+      max = [nchan]
+   endif
+   if (([2] <> '').AND.([max] < [min])) then
+      min = 1
+   endif
+   EXEC PLOT [idcur] [min] [max]
+
+   if [1] = '' then
+      mess '--- Locate MIN channel.'
+      if $VEXIST(vlocX) then; v/del vlocX; endif
+      if $VEXIST(vlocY) then; v/del vlocY; endif
+      vlocate vlocX vlocY
+      idim = $VLEN(vlocX,1)
+      if [idim] > 0 then
+         min = vlocX([idim])
+      endif
+   endif
+
+   if [2] = '' then
+      mess '--- Locate MAX channel.'
+      if $VEXIST(vlocX) then; v/del vlocX; endif
+      if $VEXIST(vlocY) then; v/del vlocY; endif
+      vlocate vlocX vlocY
+      idim = $VLEN(vlocX,1)
+      if [idim] > 0 then
+         max = vlocX([idim])
+      endif
+   endif
+
+   PLOT:
+   minc = [min]
+   maxc = [max]
+   EXEC PLOT [idcur] [minc] [maxc]
+RETURN
+*                             @METAGS UNZOOM
+*---------- UNZOOM ----------
+*
+MACRO UNZOOM
+   g/imp nchan
+   EXEC ZOOM 1 [nchan]
+RETURN
+*                             @METAGS SetID
+*---------- SetID ----------
+*
+MACRO SetID id
+   g/imp idcur
+   if [id] = '' then
+      read idcur 'Set ID: '
+      idcur = $FORMAT([idcur],I4.4)
+   else
+      idcur = $FORMAT([id],I4.4)
+   endif
+RETURN
+*                             @METAGS MINUS
+*---------- MINUS ----------
+*
+MACRO MINUS id1 id2 id3 tit scale2=1
+   if [id1] = '' then
+      mess 'Usage:    MAKE#MINUS id1 id2 id3 tit [scale2]'
+      stopm
+   endif
+   id1 = $FORMAT([id1],I4.4)
+   id2 = $FORMAT([id2],I4.4)
+   id3 = $FORMAT([id3],I4.4)
+
+   g/imp nchan
+   v/cr buf([nchan])
+   v/cop buf c1; v/cop buf c2; v/cop buf c3
+   v/cop buf d1; v/cop buf d2; v/cop buf d3
+
+   v/cr factor(1) r [scale2]
+
+   * counts
+   get/con 1[id1] c1
+   get/con 1[id2] c2
+   sigma c3=INT(.5+c1-factor(1)*c2)
+
+   * delays
+   get/con 2[id1] d1
+   get/con 2[id2] d2
+   sigma d3=INT(.5+d1-factor*d2)
+
+   * trues
+   sigma buf=c3-d3
+   zero=0
+   do i=1,[nchan]
+      if buf([i]) < 0 then
+         v/inp buf([i]) 0
+         if [zero]=0 then
+            zero=[i]
+         else
+            zero=[zero],[i]
+         endif
+      endif
+   enddo
+   if [zero] <> 0 then
+      mess Zero negative channels: [zero]
+   endif
+
+   exec HCRE [id3] [tit]
+   put/con [id3] buf
+   exec HCRE 1[id3] [tit]
+   put/con 1[id3] c3
+   exec HCRE 2[id3] [tit]
+   put/con 2[id3] d3
+
+   v/de buf,c1,c2,c3,d1,d2,d3,factor
+   exec HINFO [id3]
+RETURN
+*                             @METAGS PLUS
+*---------- PLUS ----------
+*
+MACRO PLUS id1 id2 id3 tit scale2=1
+   if [id1] = '' then
+      mess 'Usage:    MAKE#PLUS id1 id2 id3 tit [scale2=1]'
+      stopm
+   endif
+   id1 = $FORMAT([id1],I4.4)
+   id2 = $FORMAT([id2],I4.4)
+   id3 = $FORMAT([id3],I4.4)
+
+   g/imp nchan
+   v/cr buf([nchan])
+   v/cop buf c1; v/cop buf c2; v/cop buf c3
+   v/cop buf d1; v/cop buf d2; v/cop buf d3
+
+   v/cr factor(1) r [scale2]
+
+   * counts
+   get/con 1[id1] c1
+   get/con 1[id2] c2
+   sigma c3=INT(.5+c1+factor(1)*c2)
+
+   * delays
+   get/con 2[id1] d1
+   get/con 2[id2] d2
+   sigma d3=INT(.5+d1+factor*d2)
+
+   * trues
+   sigma buf=c3-d3
+   zero=0
+   do i=1,[nchan]
+      if buf([i]) < 0 then
+         v/inp buf([i]) 0
+         if [zero]=0 then
+            zero=[i]
+         else
+            zero=[zero],[i]
+         endif
+      endif
+   enddo
+   if [zero] <> 0 then
+      mess Zero negative channels: [zero]
+   endif
+
+   exec HCRE [id3] [tit]
+   put/con [id3] buf
+   exec HCRE 1[id3] [tit]
+   put/con 1[id3] c3
+   exec HCRE 2[id3] [tit]
+   put/con 2[id3] d3
+
+   v/de buf,c1,c2,c3,d1,d2,d3,factor
+   exec HINFO [id3]
+RETURN
+*                                      @METAGS HSCAL
+*--------------- HSCAL ---------------
+*
+MACRO HSCAL id1 id2 scale tit
+   if [scal] = '' then
+      mess 'Usage:    MAKE#HSCAL id1 id2 scale [tit]'
+      stopm
+   endif
+   
+   if [tit]='' then
+      tit = Scale [id1] to [id2] with factor [scale]
+      mess Default title: [tit]
+      read tit1 'Title:'
+      if [tit1] <> '' then; tit=[tit1]; endif
+   endif
+
+   g/imp nchan
+   v/cr factor(1) r [scale]
+   v/cr buf([nchan])
+   get/con [id1] buf
+
+   sigma buf=INT(.5+buf*factor(1))
+   exec HCRE [id2] [tit]
+   put/con [id2] buf
+   v/de buf,factor
+   exec HINFO [id2]
+RETURN
+*                                      @METAGS UPTRUE
+*--------------- UPTRUE ---------------
+*
+MACRO UPTRUE id
+   if [id] = '' then
+      mess 'Usage:    MAKE#UPTRUE id'
+      stopm
+   endif
+
+   if (($HEXIST(1[id])=0) .OR. ($HEXIST(2[id])=0)) then
+      mess Counts or/and Delays histogram for [id] do not exist
+      stopm
+   endif
+   if $HEXIST([id]) then; h/de [id]; endif
+
+   sub 1[id] 2[id] [id]
+
+   g/imp nchan
+   v/cr buf([nchan])
+   get/con [id] buf
+
+   zero=0
+   do i=1,[nchan]
+      if buf([i]) < 0 then
+         v/inp buf([i]) 0
+         if [zero]=0 then
+            zero=[i]
+         else
+            zero=[zero],[i]
+         endif
+      endif
+   enddo
+   if [zero] <> 0 then
+      mess Zero negative channels: [zero]
+   endif
+
+   put/con [id] buf
+   v/de buf
+RETURN
+*                                      @METAGS MKERR
+*--------------- MKERR ---------------
+*
+MACRO MKERR id
+   if [id] = '' then
+      mess 'Usage:    MAKE#MKERR id'
+      stopm
+   endif
+
+   sub 1[id] 2[id] [id] ! ! E
+
+   g/imp nchan
+   v/cr buf([nchan])
+   get/con [id] buf
+
+   zero=0
+   do i=1,[nchan]
+      if buf([i]) < 0 then
+         v/inp buf([i]) 0
+         if [zero]=0 then
+            zero=[i]
+         else
+            zero=[zero],[i]
+         endif
+      endif
+   enddo
+   if [zero] <> 0 then
+      mess Zero negative channels: [zero]
+   endif
+   put/con [id] buf
+   v/de buf
+
+   exec HINFO [id]
+RETURN
+*                                      @METAGS BDEL
+*--------------- BDEL ---------------
+*
+MACRO BDEL id
+   g/imp idcur
+   if [id] = '' then
+      mess 'Usage:    MAKE#BDEL id'
+      stopm
+   endif
+
+   if $HEXIST([id])=0 then
+      mess Histogram [id] do not exist.
+      stopm
+   endif
+   
+   id = $FORMAT([id],I4.4)
+   h/del  [id]
+   h/del 1[id]
+   h/del 2[id]
+
+   g/imp idcur
+   if [idcur]=[id] then; idcur=0; endif
+RETURN
+*                                      @METAGS BCOP
+*--------------- BCOP ---------------
+*
+MACRO BCOP id1 id2 tit
+   if [id1] = '' then
+      mess 'Usage:    MAKE#BCOP id1 id2 [title]'
+      stopm
+   endif
+   if $HEXIST([id2]) <> 0 then
+      mess Bin [id2] already exist
+      wait
+   endif
+   h/cop [id1] [id2] [tit]
+   h/cop 1[id1] 1[id2] [tit]
+   h/cop 2[id1] 2[id2] [tit]
+RETURN
+*                                      @METAGS TIT
+*--------------- TIT ---------------
+*
+MACRO TIT id tit
+   if [id] = '' then
+      mess 'Usage:    MAKE#TIT id title'
+      stopm
+   endif
+   if $HEXIST([id])=0 then
+      mess Histogram [id] do not exist.
+      stopm
+   endif
+
+   mess Old: $HTITLE([id])
+   if [tit]='' then
+      read tit 'New:'
+   endif
+
+   *mess New: [tit]
+   *ans = N
+   *read ans 'Replace (Y/N)?'
+   *if $UPPER([ans]) = 'N' then; stopm; endif
+
+   if $HEXIST(123456) then
+      mess Histogram 123456 will be used as buffer!
+      wait
+      h/de 123456
+   endif
+
+   h/cop [id] 123456
+   h/de [id]
+   h/cop 123456 [id] [tit]
+   h/de 123456
+RETURN
+*                                         @METAGS FTIT
+*--------------- FTIT ---------------
+*
+MACRO FTIT dir id tit
+   if [id] = '' then
+      mess 'Usage:    MAKE#TIT id title'
+      stopm
+   endif
+
+   exec HGET [dir] [id]
+   if $HEXIST([id])=0 then
+      mess Histogram [id] in the dir [dir] do not exist.
+      stopm
+   endif
+
+   exec TIT [id] [tit]
+   exec HPUT [dir] [id]
+RETURN
+*                             @METAGS HINFO
+*---------- HINFO ----------
+*
+MACRO HINFO id inquiry=ENTRIES
+   if [id] = '' then
+      mess 'Usage:    MAKE#HINFO id [INQUIRY=ENTRIES]'
+      stopm
+   endif
+   mess [id]: $HTITLE([id])
+   mess [inquiry] = $HINFO([id],[inquiry])
+RETURN
+*                                      @METAGS FHINFO
+*--------------- FHINFO ---------------
+*
+MACRO FHINFO dir id inquiry=ENTRIES
+   if (([dir]='').OR.([id]='')) then
+      mess 'Usage:    MAKE#FHINFO dir id [INQUIRY=ENTRIES]'
+      stopm
+   endif
+
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! ' '
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+      
+   if $HEXIST([id]) then
+      if $HEXIST(123456) then
+         mess Histogram 123456 will be used as buffer!
+         wait
+         h/de 123456
+      endif
+      h/cop [id] 123456
+      hrin [id]
+      close [lun]
+      EXEC HINFO [id] [inquiry]
+      h/de [id]
+      h/cop 123456 [id]
+      h/de 123456
+      exitm
+   endif
+
+   hrin [id]
+   close [lun]
+   EXEC HINFO [id] [inquiry]
+   h/de [id]
+   exitm
+   
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS CON
+*--------------- CON ---------------
+*
+MACRO CON id
+   g/imp nchan
+   v/cr buf([nchan])
+   get/con [id] buf
+   v/pr buf 2
+   v/de buf
+RETURN
+*                                      @METAGS FOPEN
+*--------------- FOPEN ---------------
+*
+MACRO FOPEN
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! U
+RETURN
+*                                      @METAGS FCLOSE
+*--------------- FCLOSE ---------------
+*
+MACRO FCLOSE
+   g/imp lun
+   close [lun]
+RETURN
+*                                      @METAGS FDIR
+*--------------- FDIR ---------------
+*
+MACRO FDIR dir
+   g/imp hfile,lun,mode
+   if [dir]='' then
+      dir = \\
+      read dir 'Directory?'
+   endif
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+      mess Current mode [mode]. --- File [hfile], lun [lun] ---
+      ld
+      close [lun]
+   exitm
+
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS FHLIST
+*--------------- FHLIST ---------------
+*
+MACRO FHLIST dir
+   g/imp hfile,lun,mode
+   if [dir]='' then
+      dir = \\
+      read dir 'Directory?'
+   endif
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+      mess Current mode [mode]. --- File [hfile], lun [lun] ---
+      h/l
+      close [lun]
+   exitm
+
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS FGOTO
+*--------------- FGOTO ---------------
+*
+MACRO FGOTO dir
+   g/imp hfile,lun
+   if [dir]='' then
+      dir = \\
+      read dir 'Go to directory. Directory?'
+   endif
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+      ld
+      mess Current directory now [dir]
+   exitm
+
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS FPUR
+*--------------- FPUR ---------------
+*
+MACRO FPUR dir
+   g/imp hfile,lun
+   if [dir] = '' then
+      mess Usage:    MAKE#FPUR dir
+      stopm
+   endif
+
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+      purge
+      ld
+   close [lun]
+   exitm
+
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS BPUT
+*--------------- BPUT ---------------
+*
+MACRO BPUT dir id
+   if [dir]='' .OR. [id]='' then
+      mess Usage:    MAKE#BPUT dir id
+      stopm
+   endif
+
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+      
+      hrout  [id]
+      hrout 1[id]
+      hrout 2[id]
+   close [lun]
+   exitm
+   
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS BGET
+*--------------- BGET ---------------
+*
+MACRO BGET dir id
+   if [dir]='' .OR. [id]='' then
+      mess Usage:    MAKE#BGET dir id
+      stopm
+   endif
+
+   if $HEXIST([id]) then
+      mess Bin [id] in memory will be deleted!
+      ans = 'N'
+      read ans 'Delete (Y/N)?'
+      if $UPPER([ans]) = 'Y' then
+         h/de [id]
+         h/de 1[id]
+         h/de 2[id]
+      else
+         mess Cansel.
+         stopm
+      endif
+   endif
+
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! ' '
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+
+      hrin  [id]
+      hrin 1[id]
+      hrin 2[id]
+   close [lun]
+   
+   if $HEXIST([id])=0 then
+      mess There is no bin [id] in the file.
+   endif
+   exitm
+   
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS HGET
+*--------------- HGET ---------------
+*
+MACRO HGET dir id info=Y
+   if [dir]='' .OR. [id]='' then
+      mess Usage:    MAKE#HGET dir id info=Y
+      stopm
+   endif
+
+   if $HEXIST([id]) then
+      ans = 'N'
+      read ans 'Histogram '//[id]//' in memory will be deleted!  Delete(Y/N)?'
+      if $UPPER([ans]) = 'Y' then
+         h/de [id]
+      else
+         mess Cansel.
+         stopm
+      endif
+   endif
+
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! ' '
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+
+      hrin  [id]
+      if $UPPER([info])=Y then; exec HINFO [id]; endif
+   close [lun]
+   
+   if $HEXIST([id]) = 0 then
+      mess There is no histogram [id] in the file.
+   endif
+   exitm
+   
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS HPUT
+*--------------- HPUT ---------------
+*
+MACRO HPUT dir id
+   if [dir]='' .OR. [id]='' then
+      mess Usage:    MAKE#HPUT dir id
+      stopm
+   endif
+
+   g/imp hfile,lun,mode
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+      
+      ans = Y
+      str = --- Mode [mode].  File [hfile], lun [lun].  Write (Y/N)?
+      read ans [str]
+      if $UPPER([ans]) <> Y then
+         close [lun]
+         stopm
+      endif
+
+      hrout  [id]
+   close [lun]
+   exitm
+   
+   NODIR:
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS FPLOT
+*--------------- FPLOT ---------------
+*
+MACRO FPLOT dir id
+   if [dir]='' .OR. [id]='' then
+      mess Usage:    MAKE#FPLOT dir id
+      stopm
+   endif
+
+   if $HEXIST([id]) then
+      ans = 'N'
+      read ans 'Histogram '//[id]//' in memory will be deleted!  Delete(Y/N)?'
+      if $UPPER([ans]) = 'Y' then
+         h/de [id]
+      else
+         mess Cansel.
+         stopm
+      endif
+   endif
+
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! ' '
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+
+      hrin  [id]
+   close [lun]
+   
+   if $HEXIST([id]) = 0 then
+      mess There is no histogram [id] in the file.
+   else
+      exec PLOT [id]
+   endif
+   exitm
+   
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS FBDEL
+*--------------- FBDEL ---------------
+*
+MACRO FBDEL dir id
+   if (([dir]='').OR.([id]='')) then
+      mess Usage:    MAKE#FBDEL dir id
+      stopm
+   endif
+
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+
+      if (([id].EQ.0).OR.([id].EQ.'*')) then
+         mess All bins in the directory [dir] will be deleted!
+         ans = N
+         read ans 'Delete (Y/N)?'
+         if $UPPER([ans])=N then
+            close [lun]
+            exitm
+         endif
+      endif
+
+      hscratch  [id]
+      hscratch 1[id]
+      hscratch 2[id]
+   close [lun]
+   exitm
+   
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS FHDEL
+*--------------- FHDEL ---------------
+*
+MACRO FHDEL dir id
+   if (([dir]='').OR.([id]='')) then
+      mess Usage:    MAKE#FHDEL dir id
+      stopm
+   endif
+
+   g/imp hfile,lun
+   h/file [lun] [hfile] ! U
+      cd \\[dir]
+      if $IQUEST(1) <> 0 goto NODIR
+
+      if (([id].EQ.0).OR.([id].EQ.'*')) then
+         mess All bins in the directory [dir] will be deleted!
+         ans = N
+         read ans 'Delete (Y/N)?'
+         if $UPPER([ans])=N then
+            close [lun]
+            exitm
+         endif
+      endif
+
+      hscratch  [id]
+   close [lun]
+   exitm
+   
+   NODIR:
+   mess No such directory!
+   close [lun]
+RETURN
+*                                      @METAGS HIS2ALP
+*--------------- HIS2ALP ---------------
+*
+MACRO HIS2ALP hisfil alpfil lunit
+   g/imp lun
+   if [hisfil]='' .OR. [alpfil]='' then
+      mess Usage:    exec HIS2ALP hisfil alpfil lunit=[lun]
+      stopm
+   endif
+
+   if [lunit]='' then; lunit=[lun]; endif
+
+   if $FEXIST([hisfil])=0 then
+      mess Histogram file [hisfil] did not found.
+      stopm
+   endif
+
+   if $FEXIST([alpfil])<>0 then
+      mess Alphanumeric file [alpfil] already exist.
+      stopm
+   endif
+
+   h/file [lunit] [hisfil]
+   toalp [alpfil]
+   close [lunit]
+RETURN
+*                                      @METAGS ALP2HIS
+*--------------- ALP2HIS ---------------
+*
+MACRO ALP2HIS alpfil hisfil lunit
+   g/imp lun,hfile
+   if [alpfil]='' .OR. [hisfil]='' then
+      mess Usage:    exec ALP2HIS alpfil hisfil lunit=[lun]
+      stopm
+   endif
+
+   if $FEXIST([alpfil])=0 then
+      mess Alphanumeric file [alpfil] did not found.
+      stopm
+   endif
+
+   if $FEXIST([hisfil])<>0 then
+      mess Histogram file [hisfil] already exist.
+      stopm
+   endif
+
+   if [lunit]='' then; lunit=[lun]; endif
+
+   h/file [lunit] [hisfil] ! n
+   fralp [alpfil]
+   ld
+   close [lunit]
+
+   ans = Y
+   str = Set [hisfil] as a current histogram file (Y/N)?
+   mess '                                                              '
+   read ans [str]
+   if $UPPER([ans])=Y then; hfile=[hisfile]; endif
+
+   ans = Y
+   str = Set [lunit] as a current logical unit of histogram file (Y/N)?
+   mess '                                                              '
+   read ans [str]
+   if $UPPER([ans])=Y then; lun=[lunit]; endif
+RETURN
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+   v/de *
+   h/de *
+
+   opt stat
+   set stat 0011
+   opt grid
+   set mtyp 24
+
+   g/cr macro MAKE
+   g/cr init 1
+   close 0
+   g/cr mode TITOV
+   g/cr floc TITOV
+   g/cr hfile t670.his Current histogram file.
+   g/cr lun 98 Current logical unit of histogram file.
+   g/cr idcur 0
+   g/cr nchan 11
+   g/cr minc 1
+   g/cr maxc 11
+   mess Current mode [mode]
+   mess -------------------
+
+   exec ALI CREATE
+   *exec BZERO
+RETURN
+*                                      @METAGS HZERO
+*--------------- HZERO ---------------
+*
+MACRO HZERO id=9999 tit='Zero histogram'
+   * Zero histogram
+   exec HCRE [id] [tit]
+RETURN
+*                                      @METAGS BZERO
+*--------------- BZERO ---------------
+*
+MACRO BZERO
+   * Zero histograms
+   exec HZERO 9999 
+   exec HZERO 19999 
+   exec HZERO 29999 
+RETURN
+*                             @METAGS PAN
+*---------- PAN ----------
+*
+MACRO PAN
+mess Panels from macro MAKE
+EXEC INI
+EXEC ALI DELETE
+EXEC ALI CREATE
+panel 0
+panel 1  'COMP' 'BIN-' 'ZOOM-' 'MINUS-' 'PLUS-' 'CandD' 'PLOTL' 'PLOT-'_
+         'HINFO-' 'SetID' 'BGET' 'BPUT'
+panel 2  'opt-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-' 'g/l-' 'mess [$]'
+panel 3  'pan' 'p/cr' 'p/pr-' 'Clear' 'Notes' 'edit-' 'shell' 'x-' '$' 'me'
+style gp ! ! .12
+RETURN
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op
+   if [op] = '' then
+      op = CREATE
+      read op 'MACRO MAKE#ALI: CReate or DElete aliases? '
+   endif
+   ali/[op] Notes 'edit Notes.txt' c
+   ali/[op] XL 'exec MAKE#XL' c
+   ali/[op] INI 'exec MAKE#INI' C 
+   ali/[op] ALI 'exec MAKE#ALI' C 
+   ali/[op] ALIcre 'exec MAKE#ALI CREATE' C 
+   ali/[op] PAN 'exec MAKE#PAN' C 
+   ali/[op] MODE 'exec MAKE#MODE' C 
+   ali/[op] HZERO 'exec MAKE#HZERO' C 
+   ali/[op] BZERO 'exec MAKE#BZERO' C 
+   ali/[op] COMP 'exec MAKE#COMP' C
+   ali/[op] PLOTL 'exec MAKE#PLOTL' C
+   ali/[op] READ 'exec MAKE#READ' C
+   ali/[op] ZOOM 'exec MAKE#ZOOM' C
+   ali/[op] UNZOOM 'exec MAKE#UNZOOM' C
+   ali/[op] CandD 'exec MAKE#CandD' C
+   ali/[op] TRUE 'exec MAKE#TRUE' C
+   ali/[op] SetID 'exec MAKE#SetID' C
+   ali/[op] PLOT 'exec MAKE#PLOT' C
+   ali/[op] PLOTS 'exec MAKE#PLOTS' C
+   ali/[op] MINUS 'exec MAKE#MINUS' C
+   ali/[op] PLUS 'exec MAKE#PLUS' C
+   ali/[op] HSCAL 'exec MAKE#HSCAL' C
+   ali/[op] UPTRUE 'exec MAKE#UPTRUE' C
+   ali/[op] MKERR 'exec MAKE#MKERR' C
+   ali/[op] BDEL 'exec MAKE#BDEL' C
+   ali/[op] BCOP 'exec MAKE#BCOP' C
+   ali/[op] TIT 'exec MAKE#TIT' C
+   ali/[op] FTIT 'exec MAKE#FTIT' C
+   ali/[op] HINFO 'exec MAKE#HINFO' C
+   ali/[op] FHINFO 'exec MAKE#FHINFO' C
+   ali/[op] CON 'exec MAKE#CON' C
+   ali/[op] FOPEN 'exec MAKE#FOPEN' C
+   ali/[op] FCLOSE 'exec MAKE#FCLOSE' C
+   ali/[op] FDIR 'exec MAKE#FDIR' C
+   ali/[op] FHLIST 'exec MAKE#FHLIST' C
+   ali/[op] FGOTO 'exec MAKE#FGOTO' C
+   ali/[op] FPUR 'exec MAKE#FPUR' C
+   ali/[op] BGET 'exec MAKE#BGET' C
+   ali/[op] BPUT 'exec MAKE#BPUT' C
+   ali/[op] HGET 'exec MAKE#HGET' C
+   ali/[op] HPUT 'exec MAKE#HPUT' C
+   ali/[op] FPLOT 'exec MAKE#FPLOT' C
+   ali/[op] FBDEL 'exec MAKE#FBDEL' C
+   ali/[op] FHDEL 'exec MAKE#FHDEL' C
+   ali/[op] HIS2ALP 'exec MAKE#HIS2ALP' C
+   ali/[op] ALP2HIS 'exec MAKE#ALP2HIS' C
+RETURN
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+   last 2
+   x last
+   ans = Y
+   read ans 'Return to panels (Y/N)?'
+   if $UPPER([ans]) = Y then
+      XP
+   endif
+RETURN

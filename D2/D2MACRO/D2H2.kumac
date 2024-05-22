@@ -1,0 +1,250 @@
+*                                      @METAGS D2H2
+*--------------- D2H2 ---------------
+*
+MACRO D2H2
+if $UPPER([1])='HELP' then
+   mess Usage:    $WORD([0],2,1,#)
+   stopm
+endif
+
+g/cr D2H2 $WORD([0],1,1,#)
+mess Welcome to macro $WORD([0],2,1,#)
+
+EXEC INI
+RETURN
+
+*                                         @METAGS H2plot
+*--------------- H2plot ---------------
+*
+MACRO H2plot [id] eff=0 mt=31 ci=1 opt=SPE0
+h635 = d:\d2\635\hfile\h635.his
+CASE [id] IN
+   (2237)   idh=9011624;   fdir=16.24; file=[h635];   ideff=0
+   (2737)   idh=9021624;   fdir=16.24; file=[h635];   ideff=0
+   (3637)   idh=9031624;   fdir=16.24; file=[h635];   ideff=0
+   (4937)   idh=9041624;   fdir=16.24; file=[h635];   ideff=0
+   ( 141)   idh=9051624;   fdir=16.24; file=[h635];   ideff=0
+   ( 241)   idh=9061624;   fdir=16.24; file=[h635];   ideff=0
+   ( 741)   idh=9071624;   fdir=16.24; file=[h635];   ideff=0
+   (2641)   idh=9081624;   fdir=16.24; file=[h635];   ideff=0
+   (*)      fdir=*;     file=*
+ENDCASE
+if [fdir]='*' then
+   mess Unknown H2 hist. ID=[id]
+   stopm
+endif
+
+if $HEXIST([idh]) goto PLOT
+
+g/imp D2HFILE
+
+hfile = ''
+g/imp hfile
+if $LOWER([file]) <> $LOWER([hfile]) then
+   mess Get H2 hist. ID=[idh] from the file [file]
+   ldir = $HCDIR()
+   unit = 1
+   mess Search free logical unit
+   AGAIN:
+   mess Try [unit]
+   CD //LUN[unit]
+   if $IQUEST(1) = 0 then
+      mess Busy
+      unit = [unit]+1
+      GOTO AGAIN
+   endif
+   mess OK. Use free logical unit=[unit]
+   h/file [unit] [file]
+   CD [fdir]
+   hrin [idh]
+   close [unit]
+   if $HEXIST([idh])=0 then
+      mess Hist. ID=[idh] in dir [fdir] of file [file] did not found
+      cd [ldir]
+      exitm
+   endif
+   cd [ldir]
+else
+   exec [D2HFILE]#HGET [fdir] [idh]
+endif
+
+PLOT:
+mtyp0 = $GRAFINFO('?mtyp')
+pmci0 = $GRAFINFO('?pmci')
+set mtyp [mt]
+set pmci [ci]
+h/pl [idh] [opt]
+set mtyp [mtyp0]
+set pmci [pmci0]
+RETURN
+
+*                                         @METAGS H2sec
+*--------------- H2sec ---------------
+*
+MACRO H2sec id Nn23=2.115 csec=2.67e-2 q11=9.05 omega=8.2e-3 E0=607 theta=143.5
+if [id]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] id Nn23=2.115 csec=2.67e-2 q11=9.05 omega=8.2e-3 E0=607 theta=143.5
+   stopm
+endif
+
+d2plotl=''; g/imp d2plotl
+if [d2plotl]='' then
+   exec d2plotl
+   g/imp d2plotl
+   exec [D2PLOTL]#E0teta 607 143.5
+endif
+
+exec for
+
+if $HEXIST([id])=0 then
+   mess No hist. ID=[id]
+   stopm
+endif
+
+h/pl [id] E0
+exec [d2plotl]#LimPlot set=1
+
+if $VEXIST(nchan) then; v/de nchan; endif
+v/cr nchan i
+call HXI([id],Emin,nchan)
+n1 = nchan
+call HXI([id],Emax,nchan)
+n2 = nchan
+
+tomcb = 1.602e-4*[csec]/[Nn23]/[q11]/[omega]
+nc = $HINFO([id],'XBINS')
+sigma   buf = array([nc])*0
+sigma  xbuf = array([nc])*0
+sigma dxbuf = array([nc])*0
+sigma  ybuf = array([nc])*0
+sigma dybuf = array([nc])*0
+rebin [id] xbuf ybuf dxbuf dybuf [nc] 1 [nc]
+if $VEXIST(buf1) then; v/de buf1; endif
+* the number of electrons
+sigma buf = ybuf*2*dxbuf
+v/cop buf([n1]:[n2]) buf1
+ctot = $SIGMA(VSUM(buf1))
+mess --- Total counts normalized to 1e6 MBE is [ctot] ---
+*mess --- tomcb is [tomcb] ---
+dsdoexp  = [tomcb]*[ctot]
+
+fcall = ROSHnb($RSIGMA([theta]),$RSIGMA([E0]))
+dsdoteor = $CALL([fcall])
+ratio = [dsdoexp]/[dsdoteor]
+mess --- Experiment [dsdoexp] nb/sr, theory [dsdoteor] nb/sr, ratio [ratio] ---
+v/de nchan,buf,buf1,xbuf,dxbuf,ybuf,dybuf
+RETURN
+
+*                                         @METAGS for.COMIS
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+
+C
+C
+C
+      SUBROUTINE ROS(E1,TETA, EH,ROSP,ROSN)
+C
+C   This subroutine calculates Rosenbluth cross sections
+C   for proton and neutron in cm2/sr.
+C   Inputing parameters(all REAL):
+C       E1-energy of incidet electron,GeV;
+C       TETA-scatering angle,rad;
+C   Outputing parametres(all REAL):
+C       ROSP-Rosenbluth for proton
+C       ROSN-Rosenbluth for neutron
+C     			 30-jun-89, A.Zatserkljanyi
+C
+      REAL MOTT,M,MAGP2,MAGN2
+C
+      DATA M/.93828/,MAGP2/7.800/,MAGN2/3.658/,CONST/5.1818E-33/
+C
+      ROSP=0.
+      ROSN=0.
+C
+      SIN2=SIN(TETA/2.)**2
+      COS2=COS(TETA/2.)**2
+      TAN2=SIN2/COS2
+C
+      MOTT=CONST/(E1**2)*COS2/SIN2**2
+C
+      EH=E1/(1.+2.*E1*SIN2/M)
+      QM2=4.*E1*EH*SIN2
+      TAU=QM2/4./M**2
+      G2=(1./(1+QM2/0.71)**2)**2
+C
+      GPE2=G2
+      GPM2=MAGP2*G2
+      GNE2=0.
+      GNM2=MAGN2*G2
+C
+      SIGNS=MOTT*EH/E1
+      ROSP=SIGNS*((GPE2+TAU*GPM2)/(1.+TAU)+2.*TAU*GPM2*TAN2)
+      ROSN=SIGNS*((GNE2+TAU*GNM2)/(1.+TAU)+2.*TAU*GNM2*TAN2)
+C
+      RETURN
+      END
+
+      function ROSHnb(TETAD,E)
+      ROSHnb = 0.
+      TETA = TETAD*3.14159/180.
+      E1 = .001*E
+      call ROS(E1,TETA, EH,ROSP,ROSN)
+      ROSHnb = 1e33*ROSP
+      END
+
+*                                         @METAGS WAIT
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      print*, mess
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+QUIT
+RETURN
+
+*                                         @METAGS FOR.MACRO
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+QUIT
+RETURN
+
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+*D2HIST='';  g/imp D2HIST;  if [D2HIST]=''  then; exec D2HIST;  endif
+D2HFILE=''; g/imp D2HFILE; if [D2HFILE]='' then; exec D2HFILE; endif
+*D2PLOTL=''; g/imp D2PLOTL; if [D2PLOTL]='' then; exec D2PLOTL; endif
+
+*exec FOR
+exec ALI CREATE
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = 'HELP' then
+   mess Usage:    $WORD([0],2,1,#) op=CREATE
+   mess Examples:
+   mess           $WORD([0],2,1,#) CREATE
+   mess           $WORD([0],2,1,#) DELETE
+   stopm
+endif
+
+mess $WORD([0],1,1,#):    Aliases are created.
+
+ali/[op] -C H2PLOT        'exec '//$WORD([0],1,1,#)#H2PLOT
+ali/[op] -C H2sec         'exec '//$WORD([0],1,1,#)#H2sec
+*ali/[op] -C PLOTS       'exec '//$WORD([0],1,1,#)#PLOTS
+RETURN

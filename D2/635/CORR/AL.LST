@@ -1,0 +1,32 @@
+ normMBE,normCUR  100000.0      154.0041    
+ID                       2137.     4737.
+MBE                    300000.   100000.
+rMBE                      3.00      1.00
+TIME                     1948.      357.
+CUR                       154.      280.
+rCUR                       1.0       1.8
+GAS                     10518.     4099.
+Norm. GAS                3506.     4099.
+Norm. 1 GAS               1.00      1.17
+LIV                      3030.     1132.
+Norm. LIV                1010.     1132.
+Norm. 1 LIV               1.00      1.12
+NS                        412.      173.
+Norm. NS                  137.      173.
+Norm. 1 NS                1.00      1.26
+True                      385.      154.
+Norm. True                128.      154.
+Norm. 1 True              1.00      1.20
+Counts                    392.      174.
+Norm. Counts              131.      174.
+Norm. 1 Counts            1.00      1.33
+Delays                      7.       20.
+Norm. Delays                2.       20.
+Norm. 1 Delays            1.00      8.57
+Delays,   %                1.8      11.5
+Clasters, %               93.4      89.0
+Clasters of C %           95.1     100.6
+Clasters of D %            1.7      11.6
+N2acc                       7.        5.
+Norm. N2acc                 2.        5.
+Norm. 1 N2acc             1.00      2.38

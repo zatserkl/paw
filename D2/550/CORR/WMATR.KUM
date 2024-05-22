@@ -1,0 +1,188 @@
+MACRO WMATR nf
+if [nf]='' then
+   mess Usage:    WMATR nfile
+   mess Example:  WMATR 1
+   stopm
+endif
+
+if ($VEXIST(w).NE.0) then
+   mess --- Current w-matrix in the memory will be replaced!
+   wait
+endif
+
+fname = w$FORMAT([nf],I2.2).bin
+mess --- Current w-matrix file [fname]
+
+exec readw [fname]
+RETURN
+*                                         @METAGS readw
+*--------------- readw ---------------
+*
+MACRO readw fname
+if [fname]='' then
+   mess Usage:    readw fname
+   stopm
+endif
+v/cr NRAND(1) i
+v/cr RASST(1)
+v/cr alpha(1)
+v/cr ch(1)
+v/cr nsec(1) i
+v/cr sdelta(100)
+v/cr nsstat(100) i
+v/cr w(100,100)
+
+exec readw_for
+
+call readw_
+($QUOTE([fname]),NRAND(1),RASST(1),alpha(1),ch(1),nsec(1),sdelta,nsstat,w)
+RETURN
+
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT
+if $HEXIST(101) then
+   h/del 101
+endif
+cre/2d 101 'W-matrix' 100 1 100 100 1 100
+put/con 101 w
+stat0 = $GRAFINFO('?stat')
+set stat 1
+h/pl 101 lego
+atitle 'channels' 'delta intervals' 'weight'
+set stat [stat0]
+RETURN
+*
+MACRO WA theta=30 phi=30
+angle [theta] [phi]
+exec PLOT
+angle ! !
+RETURN
+
+*
+*
+MACRO W smax=100
+if $HEXIST(1) then
+   h/del 1
+endif
+v/cre tmp(100,[smax]) r
+v/cop w(:,:[smax]) tmp
+cre/2d 1 'W-matrix' 100 1 100 [smax] 1 [smax]
+put/con 1 tmp
+v/del tmp
+opt stat
+set stat 0001
+h/pl 1 lego
+atitle 'channels' 'delta intervals' 'weight'
+RETURN
+
+*                                         @METAGS DELTA
+*--------------- DELTA ---------------
+*
+MACRO DELTA chan=60
+*mess W-matrix row No.[chan]
+if $HEXIST([chan]) then; h/de [chan]; endif
+v/cop w([chan],:) tmp
+tit=Delta weights for channel No.[chan]. Total weight = $SIGMA(VSUM(tmp))
+cre/1d [chan] [tit] 100 1 100
+put/con [chan] tmp
+
+v/de tmp
+idopt [chan] liny
+
+opt stat
+stat0 = $GRAFINFO('?stat')
+set stat 0001
+h/pl [chan]
+atitle 'delta numbers' 'weight'
+set stat [stat0]
+RETURN
+
+*                                         @METAGS CHAN
+*--------------- CHAN ---------------
+*
+MACRO CHAN ns=10
+*mess W-matrix column No.[ns]
+if $HEXIST([ns]) then; h/de [ns]; endif
+v/cop w(:,[ns]) tmp
+tit=Channel weights for delta No.[ns]. Total weight = $SIGMA(VSUM(tmp))
+cre/1d [ns] [tit] 100 1 100
+put/con [ns] tmp
+v/de tmp
+idopt [ns] liny
+
+opt stat
+stat0 = $GRAFINFO('?stat')
+set stat 0001
+h/pl [ns]
+atitle 'channels' 'weight'
+set stat [stat0]
+RETURN
+
+*
+*
+*
+MACRO WNS ns=10
+if $HEXIST(2) then
+   h/del 2
+endif
+v/cop w(:,[ns]) tmp1
+tit=W-matrix column No.[ns]
+cre/1d 2 [tit] 100 1 100
+idopt 2 liny
+put/con 2 tmp1
+v/del tmp1
+opt stat
+set stat 0001
+zon 1 2
+h/pl 1 lego
+h/pl 2
+RETURN
+
+*                                         @METAGS readw_for
+*--------------- readw_for ---------------
+*
+MACRO readw_for
+APPL COMIS QUIT
+c                                   @METAGS readW
+c------------- READW ----------------
+c
+      subroutine readw(fname,NRAND,R,alpha,ch,ns,sdelta,nsstat,w)
+      parameter (lun = 40)
+      character*(*) fname
+      integer NRAND,ns,nsstat(100)
+      real R,alpha,ch,sdelta(100),w(100,100)
+c
+      open (UNIT=lun, FILE=fname, STATUS='OLD',
+     +      ACCESS='DIRECT', RECL=4, ERR=10000)
+      read (lun,REC=1) rand
+      read (lun,REC=2) R
+      read (lun,REC=3) alpha
+      read (lun,REC=4) ch
+      read (lun,REC=5) totns
+      ns  = totns
+      irec=5
+      do j=1,ns
+         irec = irec+1
+         read (lun,REC=irec) sdelta(j)
+      enddo
+      do j=1,ns
+         irec = irec+1
+         read (lun,REC=irec) nsstat(j)
+***         print*, 'j, nsstat(j):', j, nsstat(j)
+      enddo
+      do j=1,100
+         do i=1,100
+            irec = irec+1
+            read (lun,REC=irec) w(i,j)
+         enddo
+      enddo
+      close (UNIT=lun)
+      NRAND  = rand
+      ns     = totns
+      RETURN
+10000 print*, 'File ', fname, ' did not found'
+      END
+QUIT
+RETURN

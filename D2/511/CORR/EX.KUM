@@ -1,0 +1,9 @@
+*                                         @METAGS ex
+*--------------- ex ---------------
+*
+MACRO ex
+sigma v=array(10,1#10)
+v/cop v ?
+v/de v
+vname = ?
+RETURN [vname]

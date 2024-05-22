@@ -1,0 +1,365 @@
+MACRO SP02mat LUN=40
+*--- CAUTION: The data must starts from the 6th line of this file! ---  00001000
+*(1)  Parameters of the calculated matrix SP-02 (AX0,AY0: in cm)        00002000
+*-----------------------------------------------------------------------00003000
+* #     parameter         X          THETA          Y           PHI     00004000
+* 1             X   -9.41600D-01 -6.28200D+00  0.00000D+00  0.00000D+00 00006000
+* 2            TH   -5.94900D-03 -1.15500D+00  0.00000D+00  0.00000D+00 00007000
+* 3             Y    0.00000D+00  0.00000D+00 -5.78100D+00 -1.18520D+01 00008000
+* 4            PH    0.00000D+00  0.00000D+00 -5.84300D-02 -4.05500D-01 00009000
+* 5           DEL    1.80100D+00  2.93200D+00  0.00000D+00  0.00000D+00 00010000
+* 6          X**2    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00011000
+* 7        X * TH    4.13500D-03 -3.49100D-03  0.00000D+00  0.00000D+00 00012000
+* 8         X * Y    0.00000D+00  0.00000D+00  2.53300D-01  2.87400D-01 00013000
+* 9        X * PH    0.00000D+00  0.00000D+00  2.03100D-02  2.52600D-02 00014000
+*10       X * DEL    1.83500D-02  4.11600D-02  0.00000D+00  0.00000D+00 00015000
+*11         TH**2   -4.14900D-05 -2.76400D-03  0.00000D+00  0.00000D+00 00016000
+*12        TH * Y    0.00000D+00  0.00000D+00  1.01900D-02  5.22700D-03 00017000
+*13       TH * PH    0.00000D+00  0.00000D+00 -1.96800D-03 -4.18900D-03 00018000
+*14      TH * DEL    4.63200D-03  8.74100D-03  0.00000D+00  0.00000D+00 00019000
+*15          Y**2    4.11800D-02  0.00000D+00  0.00000D+00  0.00000D+00 00020000
+*16        Y * PH    2.82400D-03 -3.47900D-02  0.00000D+00  0.00000D+00 00021000
+*17       Y * DEL    0.00000D+00  0.00000D+00  8.28500D-02  1.28900D-01 00022000
+*18         PH**2   -8.33000D-05 -3.15400D-03  0.00000D+00  0.00000D+00 00023000
+*19      PH * DEL    0.00000D+00  0.00000D+00  1.53100D-02  2.54400D-02 00024000
+*20        DEL**2   -1.42900D-02 -2.28200D-02  0.00000D+00  0.00000D+00 00025000
+*21          X**3    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00026000
+*22     X**2 * TH    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00027000
+*23      X**2 * Y    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00028000
+*24     X**2 * PH    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00029000
+*25    X**2 * DEL    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00030000
+*26     X * TH**2    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00031000
+*27    X * TH * Y    0.00000D+00  0.00000D+00 -1.25700D-03  0.00000D+00 00032000
+*28   X * TH * PH    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00033000
+*29  X * TH * DEL    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00034000
+*30      X * Y**2    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00035000
+*31    X * Y * PH    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00036000
+*32   X * Y * DEL    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00037000
+*33     X * PH**2    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00038000
+*34  X * PH * DEL    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00039000
+*35    X * DEL**2    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00040000
+*36         TH**3    8.77000D-07  0.00000D+00  0.00000D+00  0.00000D+00 00041000
+*37     TH**2 * Y    0.00000D+00  0.00000D+00  5.00400D-05  0.00000D+00 00042000
+*38    TH**2 * PH    0.00000D+00  0.00000D+00  1.25800D-05  0.00000D+00 00043000
+*39   TH**2 * DEL    4.68400D-06  0.00000D+00  0.00000D+00  0.00000D+00 00044000
+*40     TH * Y**2    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00045000
+*41   TH * Y * PH    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00046000
+*42  TH * Y * DEL    0.00000D+00  0.00000D+00 -1.60300D-04  0.00000D+00 00047000
+*43    TH * PH**2    3.29300D-06  0.00000D+00  0.00000D+00  0.00000D+00 00048000
+*44 TH * PH * DEL    0.00000D+00  0.00000D+00  1.68800D-05  0.00000D+00 00049000
+*45   TH * DEL**2   -4.22800D-05  0.00000D+00  0.00000D+00  0.00000D+00 00050000
+*46          Y**3    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00051000
+*47     Y**2 * PH    0.00000D+00  0.00000D+00 -1.42800D-02  0.00000D+00 00052000
+*48    Y**2 * DEL    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00053000
+*49     Y * PH**2    0.00000D+00  0.00000D+00 -2.57100D-03  0.00000D+00 00054000
+*50  Y * PH * DEL    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00055000
+*51    Y * DEL**2    0.00000D+00  0.00000D+00 -7.90000D-04  0.00000D+00 00056000
+*52         PH**3    0.00000D+00  0.00000D+00 -1.74000D-04  0.00000D+00 00057000
+*53   PH**2 * DEL    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00058000
+*54   PH * DEL**2    0.00000D+00  0.00000D+00 -1.41800D-04  0.00000D+00 00059000
+*55        DEL**3    1.30000D-04  2.11900D-04  0.00000D+00  0.00000D+00 00060000
+*56    DZ (BX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00061000
+*57   DTH (BX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00062000
+*58    DX (BX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00063000
+*59   DPH (BX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00064000
+*60    DY (BX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00065000
+*61   DZ (BõX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00066000
+*62  DTH (BõX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00067000
+*63   DX (BõX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00068000
+*64  DPH (BõX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00069000
+*65   DY (BõX.Cè)    0.00000D+00  0.00000D+00  0.00000D+00  0.00000D+00 00070000
+*--- End of data -------------------------------------------------------00071000 
+
+SP02MAT = ''
+g/imp SP02MAT
+if [SP02MAT] = '' then
+   g/cr SP02MAT [0]
+else
+   exitm
+endif
+
+APPL COMIS QUIT
+*                                         @METAGS COMMON_declaration
+*                                         01-24-97 10:14pm
+*--------------- COMMON_declaration ---------------
+*
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      COMMON /SPADIM/ AAX(55),X0,AAT(55),TH0,AAY(55),Y0H,AAP(55),PH0
+      COMMON /SPARIM/ AX(66),AT(66),AY(66),AP(66)
+      END
+
+*                                         @METAGS M02RE
+*                                         01-24-97 11:18pm
+*--------------- M02RE ---------------
+*
+      SUBROUTINE M02RE(NF,JTR)
+*      SUBROUTINE MTRDRF(NF,JTR)                                        00001000
+*
+*     DOUBLE PRECISION version
+*
+* 24-JAN-97. Changed variable names:
+*            XF0 -> X0, THF0 -> TH0, YF0 -> Y0, PHF0 -> PH0
+*            and common declaration for SPADIM
+*            to make identical common declaration for SPADIM
+*            in the routines MTRDRF and SPMRAY
+*
+*            Changed common declaration for SPARIM:
+*            statement DIMENSION is removed
+*            and array dimensions are declared in COMMON
+*
+C-----------------------------------------------------------------------00002000
+C  HAáHAóEHàE: óTEHàE MATPàñõ Cè àá îOPMATHOâ áAèàCà                    00003000
+C  èAPAMETPõ: NF: N îAâãA C MATPàñEâ                                    00004000
+C     JTR: =1(2): Ñãü èPüMOâ (OÅPATHOâ) MATPàñõ                         00005000
+C  COMMON-Åã: /SPADIM/: èEPEÑAET èAPAMETPõ MATPàñõ: DIM(55)+F0          00006000
+C     /SPARIM/: èEPEÑAET èAPAMETPõ MATPàñõ: DIM(66)                     00007000
+C-----------------------------------------------------------------------00008000
+C                                                                       00009000
+C  OÅECèEóEHàE óTEHàü MATPàñ Cè àá îAâãA N NF                           00010000
+c
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+c
+      DIMENSION F0X(10),F0T(10),F0Y(10),F0P(10)                         00011000
+*      DIMENSION AAX(55),AAT(55),AAY(55),AAP(55)                        00012000
+*      COMMON /SPADIM/ AAX,XF0,AAT,THF0,AAY,YF0,AAP,PHF0                00013000
+comis COMMON /SPADIM/ AAX(55),X0,AAT(55),TH0,AAY(55),Y0H,AAP(55),PH0    ********
+*       DIMENSION AX(66),AT(66),AY(66),AP(66)                           00014000
+*       COMMON /SPARIM/ AX,AT,AY,AP                                     00015000
+comis  COMMON /SPARIM/ AX(66),AT(66),AY(66),AP(66)                      00015000
+      use SPADIM,SPARIM
+C                                                                       00016000
+C  CóàTõBAHàE MACCàBOB AAX,..,AAP àá îAâãA N NF                         00017000
+      REWIND NF                                                         00018000
+      NPRST=5                                                           00019000
+      DO 10 IAA=1,NPRST                                                 00020000
+   10 READ (NF,20)                                                      00021000
+   20 FORMAT(1X)                                                        00022000
+      DO 30 IAA=1,55                                                    00023000
+      READ (NF,40) AAX(IAA),AAT(IAA),AAY(IAA),AAP(IAA)                  00024000
+       AX(IAA)=AAX(IAA)                                                 00025000
+       AT(IAA)=AAT(IAA)                                                 00026000
+       AY(IAA)=AAY(IAA)                                                 00027000
+   30  AP(IAA)=AAP(IAA)                                                 00028000
+   40 FORMAT(19X,4(1X,E12.5))                                           00029000
+      DO 50 IAA=1,10                                                    00030000
+      READ (NF,40) F0X(IAA),F0T(IAA),F0Y(IAA),F0P(IAA)                  00031000
+       IAB=55+IAA                                                       00032000
+       AX(IAB)=F0X(IAA)                                                 00033000
+       AT(IAB)=F0T(IAA)                                                 00034000
+       AY(IAB)=F0Y(IAA)                                                 00035000
+   50  AP(IAB)=F0P(IAA)                                                 00036000
+       X0=F0X(8)                                                        00037000
+      TH0=F0T(7)                                                        00038000
+       Y0=F0Y(10)                                                       00039000
+      PH0=F0P(9)                                                        00040000
+      IF(JTR.EQ.2)  X0=F0X(3)                                           00041000
+      IF(JTR.EQ.2) TH0=F0T(2)                                           00042000
+      IF(JTR.EQ.2)  Y0=F0Y(5)                                           00043000
+      IF(JTR.EQ.2) PH0=F0P(4)                                           00044000
+C                                                                       00045000
+      RETURN                                                            00046000
+      END                                                               00047000
+
+*                                         @METAGS SPMRAY
+*                                         01-24-97 10:16pm
+*--------------- SPMRAY ---------------
+*
+      SUBROUTINE SPMRAY(DEL,X,TH,Y,PH,XS,THS,YS,PHS)                    00001000
+*
+*     DOUBLE PRECISION version
+*
+C-----------------------------------------------------------------------00002000
+C  HAáHAóEHàE: èO èAPAMETPAM TPEKA óACTàñõ, èPà JTR=1(2): B CK 'BXOÑ    00003000
+C     Cè' ('BõXOÑ Cè') BOCCTAHABãàBAET èAPAMETPõ TPEKA óACTàñõ B        00004000
+C     CK 'BõXOÑ Cè' (CK 'BXOÑ Cè') MATPàóHõM CèOCOÅOM                   00005000
+C  èAPAMETPõ: DEL: àMèìãúC óACTàñõ                          / % /       00006000
+C     X,Y: KOOPÑ.èAPAMETPõ TPEKA óACTàñõ                    / MM /      00007000
+C     TH,PH: ìÉãOBõE èAPAMETPõ TPEKA óACTàñõ                / MPAÑ /    00008000
+C      /B CàCT.KOOPÑ.: JTR=1(2): 'BXOÑ Cè'('BõXOÑ Cè')/                 00009000
+C     XS,YS: KOOPÑ.èAPAMETPõ TPEKA óACTàñõ                  / MM /      00010000
+C     THS,PHS: ìÉãOBõE èAPAMETPõ TPEKA óACTàñõ              / MPAÑ /    00011000
+C      /B CàCT.KOOPÑ.: JTR=1(2): 'BõXOÑ Cè'('BXOÑ Cè')/                 00012000
+C  COMMON-Åã.: /SPADIM/: èEPEÑAET MATPàñì Cè: AX,ATH,AY,APH             00013000
+C-----------------------------------------------------------------------00014000
+c
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+      real DEL,X,TH,Y,PH,XS,THS,YS,PHS
+c
+comis COMMON /SPADIM/ AAX(55),X0,AAT(55),TH0,AAY(55),Y0,AAP(55),PH0     00015000
+      DIMENSION XX(5)                                                   00016000
+      use SPADIM
+C                                                                       00017000
+      NMAX=5                                                            00018000
+      L=NMAX                                                            00019000
+      MN=14                                                             00020000
+      IF(NMAX.EQ.5) MN=20                                               00021000
+C  èPEÑBAPàTEãúHOE áAHìãEHàE                                            00022000
+      XS8=0.D0                                                          00023000
+      THS8=0.D0                                                         00024000
+      YS8=0.D0                                                          00025000
+      PHS8=0.D0                                                         00026000
+C  èOÑÉOTOBKA MACCàBA èEPEMEHHõX XX                                     00027000
+      XX(1)=X                                                           00028000
+      XX(2)=TH                                                          00029000
+      XX(3)=Y                                                           00030000
+      XX(4)=PH                                                          00031000
+      XX(5)=DEL                                                         00032000
+C  èEPEBOÑ KOOPÑàHAT àá MM B CM                                         00033000
+      XX(1)=XX(1)/10.D0                                                 00034000
+      XX(3)=XX(3)/10.D0                                                 00035000
+C  BOCCT.ÉOPàá.èPOEKñàû TPEKA                                           00036000
+      G0=0.D0                                                           00037000
+      THS8=TH0                                                          00038000
+      DO 10 I=1,NMAX                                                    00039000
+      G0=G0+AAX(I)*XX(I)                                                00040000
+      THS8=THS8+AAT(I)*XX(I)                                            00041000
+      DO 10 K=I,NMAX                                                    00042000
+      L=L+1                                                             00043000
+      G0=G0+AAX(L)*XX(I)*XX(K)                                          00044000
+      THS8=THS8+AAT(L)*XX(I)*XX(K)                                      00045000
+      DO 10 J=K,NMAX                                                    00046000
+      MN=MN+1                                                           00047000
+      G0=G0+AAX(MN)*XX(I)*XX(K)*XX(J)                                   00048000
+      THS8=THS8+AAT(MN)*XX(I)*XX(K)*XX(J)                               00049000
+   10 CONTINUE                                                          00050000
+C  èEPEBOÑ KOOPÑàHATõ X àá CM B MM                                      00051000
+      XS8=(X0+G0)*10.D0                                                 00052000
+C                                                                       00053000
+      L=NMAX                                                            00054000
+      MN=14                                                             00055000
+      IF(NMAX.EQ.5) MN=20                                               00056000
+C  BOCCT.BEPTàK.èPOEKñàû TPEKA                                          00057000
+      V0=0.D0                                                           00058000
+      PHS8=PH0                                                          00059000
+      DO 20 I=1,NMAX                                                    00060000
+      V0=V0+AAY(I)*XX(I)                                                00061000
+      PHS8=PHS8+AAP(I)*XX(I)                                            00062000
+      DO 20 K=I,NMAX                                                    00063000
+      L=L+1                                                             00064000
+      V0=V0+AAY(L)*XX(I)*XX(K)                                          00065000
+      PHS8=PHS8+AAP(L)*XX(I)*XX(K)                                      00066000
+      DO 20 J=K,NMAX                                                    00067000
+      MN=MN+1                                                           00068000
+      V0=V0+AAY(MN)*XX(I)*XX(K)*XX(J)                                   00069000
+      PHS8=PHS8+AAP(MN)*XX(I)*XX(K)*XX(J)                               00070000
+   20 CONTINUE                                                          00071000
+C  èEPEBOÑ KOOPÑàHATõ Y àá CM B MM                                      00072000
+      YS8=(Y0+V0)*10.D0                                                 00073000
+c
+      XS  = XS8
+      THS = THS8
+      YS  = YS8
+      PHS = PHS8
+C                                                                       00074000
+      RETURN                                                            00075000
+C     DEBUG INIT,SUBTRACE                                               00076000
+      END                                                               00077000
+
+*                                         @METAGS Mprint
+*                                         01-25-97 00:24am
+*--------------- Mprint ---------------
+*
+      SUBROUTINE Mprint()
+      IMPLICIT DOUBLE PRECISION (A-H,O-Z)
+comis COMMON /SPADIM/ AAX(55),X0,AAT(55),TH0,AAY(55),Y0,AAP(55),PH0
+      use SPADIM
+      do IAA=1,55
+         print 40, AAX(IAA),AAT(IAA),AAY(IAA),AAP(IAA)
+      enddo
+   40 FORMAT(4(1X,D12.5))
+      END
+
+*                                         @METAGS SetD
+*                                         03-11-98 11:39am
+*--------------- SetD ---------------
+*
+      SUBROUTINE SetD(DEL)
+      use SPADIM
+      IAA=5
+      if (DEL.LT.0.) then
+         print 40, AAX(IAA)
+      elseif (DEL.EQ.0.) then
+         AAX(IAA) = 1.80100D+00
+      else
+         AAX(IAA) = DEL
+      endif
+   40 FORMAT(4(1X,D12.5))
+      END
+*                                         @METAGS DvsER
+*                                         03-13-98 10:53pm
+*--------------- DvsER ---------------
+*
+      SUBROUTINE DvsER(Emev,Rcm, D0,Dslope)
+*     .. Rcm is chamber distance to the flange
+      LOGICAL CROSS, lres
+*     .. Up to 600 MeV D does not depend from Emev
+      DfromE = 18.17 - 0.*Emev
+*     .. set coef. at DEL
+      Dcm = .1*DfromE
+      call SetD(Dcm)
+*     .. focal plane distance to the flange
+      Rfoc = 94.87+0.01137*Emev
+*     .. chamber distance to focal plane
+      R = Rcm-Rfoc
+*
+      Xcm = 0.
+      TH  = 0.
+      Ycm = 0.
+      PH  = 0.
+*     .. do not used
+      Nc  = 36
+*     .. good range
+      del1 = -2.
+      del2 =  1.
+      lres = CROSS(del1,Xcm,TH,Ycm,PH,R,Nc, Xch,Nch)
+      posmm1 = Xch*10.
+      D1 = (0.-posmm1)/del1
+      lres = CROSS(del2,Xcm,TH,Ycm,PH,R,Nc, Xch,Nch)
+      posmm2 = Xch*10.
+      D2 = (0.-posmm2)/del2
+*     .. slope
+      Dslope = (D1-D2)/(posmm1-posmm2)
+*     .. D(0)
+      D0 = D1 - Dslope*posmm1
+      END
+
+*                                         @METAGS CROSS
+*                                         01-25-97 03:28am
+*--------------- CROSS ---------------
+*
+      LOGICAL FUNCTION CROSS(DEL,Xcm,TH,Ycm,PH,Rcm,Nc, Xch,Nch)
+*     .. input pars
+*     DEL = 100.*(E-Ec)/Ec, %
+*     Xcm,Ycm in cm
+*     TH,PH in mrad
+*     Rcm - the coordinate of the center of chamber, cm
+*     Nc - the central channel. Central particle cross the center of Nc
+*     .. output pars
+*     Xch - coordinate of the cross point, cm
+*     Nch - cross channel
+*
+*     Returns .TRUE. if particle cross the chamber
+*
+      CROSS = .FALSE.
+      x0  = -X*10.
+      y0  = -Y*10.
+      ph0 = -PH
+      call SPMRAY(DEL,x0,TH,y0,ph0,XS,THS,YS,PHS)
+      Xch = -.1*XS - Rcm*TAN(.001*THS)
+      Nch = .5 + Nc+(Xch/.2)
+      if ((Nch.GE.1) .AND. (Nch.LE.96)) CROSS=.TRUE.
+      END
+QUIT
+
+*
+* Read the data from this file
+* and fill the SP-matrix commons
+*
+macroname = [0]
+last = $INDEX([macroname],'#') - 1
+thisfile = $SUBSTRING([macroname],1,[last])
+for/file [LUN] [thisfile] OLD
+call M02RE([LUN],1)
+close [LUN]
+mess COMMONs SPADIM and SPARIM are declared and filled by SP matrix.
+RETURN

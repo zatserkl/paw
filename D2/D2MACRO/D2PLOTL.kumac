@@ -1,0 +1,1369 @@
+*                                         @METAGS D2PLOTL
+*--------------- D2PLOTL ---------------
+*
+MACRO D2PLOTL
+g/cr D2PLOTL $WORD([0],1,1,#)
+
+* Macro Select uses D2FOR#FUNplot, D2FOR#FunCop
+D2FOR=''; g/imp D2FOR; if [D2FOR]='' then; exec D2FOR; endif
+
+exec FOR
+exec ALI
+RETURN
+
+*                                         @METAGS Prepare
+*--------------- Prepare ---------------
+*
+MACRO Prepare id sum=0 subTheFUN=0
+*  .. commomly macro works in work directory have choosen by PLOTL
+g/imp D2HFILE
+if $HEXIST([id])=0 then
+   fdir  = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+   if $INDEX([fdir],'0') = 1 then; fdir = $SUBSTRING([fdir],2); endif
+   if $EXEC([D2HFILE]#HGET [fdir] [id] prompt=N) = 0 then
+      result = 'ERROR'
+      exitm [result]
+   endif
+endif
+
+idin = -1
+h/cop [id] [idin]
+idout = -[id]
+
+* Efficiency
+exec EFFcorr [id] [idin]
+
+g/imp Nchan,minc,maxc,naver
+
+hsum=' '
+if [sum]<>0 then
+   * calc sum from minc to maxc
+   v/cr bufsum0(96)
+   v/cr bufsum1(96)
+   * hist [idin] contains corrected to efficiency original hist
+   get/con [idin] bufsum0
+   cmi = [Nchan]-[maxc]+1
+   cma = [Nchan]-[minc]+1
+   v/cop bufsum0([cmi]:[cma]) bufsum1
+   hsum = $FORMAT($SIGMA(VSUM(bufsum1)),F0.0)
+   v/de bufsum0,bufsum1
+endif
+
+exec HAVER [idin] [idout] [naver] [minc] [maxc]
+h/de [idin]
+
+if [subTheFUN] then
+   * subtruct a function TheFUN
+   exec HSUBF [idout]
+endif
+
+xmin = $HINFO([idout],'XMIN')
+xmax = $HINFO([idout],'XMAX')
+ymin = $HINFO([idout],'MIN')
+ymax = $HINFO([idout],'MAX')
+result = [xmin] [xmax] [ymin] [ymax] [hsum]
+RETURN [result]
+
+*                                         @METAGS EFFcorr
+*--------------- EFFcorr ---------------
+*
+MACRO EFFcorr id idcorr
+g/imp D2HFILE
+eff=''; g/imp eff
+if [eff]='' then
+   mess Efficiency flag is not defened
+   eff = 0
+   read eff 'Efficiency flag'
+   g/cr eff 'Channel efficiency flag'
+endif
+
+CASE [eff] IN
+   (0)   goto EXIT   | use no correction
+   (1)   goto LOCAL  | use local efficiency if one exists. Else - no corr.
+   (2)   goto GLOBAL | use global efficiency
+   (3)   goto LOCAL  | use local efficiency if one exists. Else - global
+ENDCASE
+
+LOCAL:
+ideff = $SUBSTRING([id],1,1)1$SUBSTRING([id],3)
+if $HEXIST([ideff])=0 then
+   fdir  = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+   if $INDEX([fdir],'0') = 1 then; fdir = $SUBSTRING([fdir],2); endif
+   if $EXEC([D2HFILE]#HGET [fdir] [ideff] prompt=N errmess=N) = 0 then
+      *mess $WORD([0],2,1,#): No efficiency hist [ideff] in [fdir]
+      ideff = 0
+      if [eff] = 3 then
+         * use global efficiency
+         goto GLOBAL
+      endif
+   endif
+endif
+goto CORRECT
+
+GLOBAL:
+ideffglo = ''
+g/imp ideffglo
+if [ideffglo] = '' then
+   ideffglo = 0
+   s = Global efficiency histogram ID for [id]. 0=None
+   read ideffglo [s]
+   if [ideffglo] <> 0 then
+      g/cr ideffglo [ideffglo] 'Global efficiency ID'
+   endif
+endif
+
+ideff = [ideffglo]
+if $HEXIST([ideff]) = 0 then
+   s = For [id] did not found global eff. hist [ideff] in $HCDIR()
+   buf = Continue
+   read buf [s]
+   ideff = 0
+endif
+goto CORRECT
+
+CORRECT:
+if [ideff] <> 0 then
+   mult [id] [ideff] [idcorr]
+endif
+EXIT:
+RETURN
+
+*                                         @METAGS NT1PAR
+*--------------- NT1PAR ---------------
+*
+MACRO NT1PAR
+NT1xmin=0
+NT1xlen=0
+xscal=1
+NT0 = $GRAFINFO('NT')
+nt = [NT0]/10
+xzones = $GRAFINFO('XZONES')
+yzones = $GRAFINFO('YZONES')
+* row of current window (start from 0)
+row = INT( ([nt]-1)/[xzones] )
+* column of current window (start from 1)
+col = [nt] - [xzones]*[row]
+* x-parameters
+xsiz = $GRAFINFO('?xsiz')
+xmgl = $GRAFINFO('?xmgl')
+xmgr = $GRAFINFO('?xmgr')
+xwin = $GRAFINFO('?xwin')
+xmin = $GRAFINFO('WNXMIN')
+xmax = $GRAFINFO('WNXMAX')
+NT1xlen = ([xsiz]-[xmgl]-[xmgr] - ([xzones]-1)*[xwin]) / [xzones]
+xscal = [NT1xlen]/([xmax]-[xmin])
+NT1xmin = [xmgl] + ([col]-1)*([NT1xlen]+[xwin])
+* y-parameters
+ysiz = $GRAFINFO('?ysiz')
+ymgu = $GRAFINFO('?ymgu')
+ymgl = $GRAFINFO('?ymgl')
+ywin = $GRAFINFO('?ywin')
+ymin = $GRAFINFO('WNYMIN')
+ymax = $GRAFINFO('WNYMAX')
+NT1ylen = ([ysiz]-[ymgu]-[ymgl] - ([yzones]-1)*[ywin]) / [yzones]
+yscal = [NT1ylen]/([ymax]-[ymin])
+ytop = [ysiz] - [ymgu] - [row]*([NT1ylen]+[ywin])
+NT1ymin = [ytop] - [NT1ylen]
+*  1     2      3         4         5       6      7         8         9
+s=[NT0] [xmin] [NT1xmin] [NT1xlen] [xscal] [ymin] [NT1ymin] [NT1ylen] [yscal]
+RETURN [s]
+
+*                                         @METAGS PLOTL
+*--------------- PLOTL ---------------
+*
+MACRO PLOTL N1 N2 mt=0 ci=0 err=1 sum=0 subf hli wdir q2=1 opt
+if $UPPER([1]) = 'HELP' then
+   mess Usage:    $WORD([0],2,1,#)_
+                  N1(or hli) N2 mt=0 ci=0 err=1 sum=0 subf hli wdir q2=1 opt
+   stopm
+endif
+
+if [sum]<>0 then; q2=0; endif
+
+mark = [mt]
+mcol = [ci]
+
+if [1] <> '' then
+   char = $SUBSTRING([1],1,1)
+   fcall = isalpha($QUOTE([char]))
+   alpha = $ICALL([fcall])
+   if [alpha] then
+      * first parameter is file hli to read
+      hli = [1]
+      N1  = 1
+   endif
+endif
+
+if [hli]<>'' then
+   if $VEXIST(hlist)=0 then; sigma hlist=array(100)*0; endif
+   fcall=idhli(hlist,$QUOTE([hli]))
+   if $ICALL([fcall]) = 0 then
+      if $INDEX([hli],'.') = 0 then; hli=[hli].hli; endif
+      mess File [hli] did not found
+      STOPM
+   endif
+endif
+
+if $VEXIST(hlist)=0 then
+   mess No histogram list loaded
+   stopm
+endif
+if $VLEN(hlist)=0 then
+   mess Histogram list is empty
+   stopm
+endif
+
+if [subf] <> '' then
+   if $INDEX([subf],'.')=0 then; subf=[subf].for; endif
+   if $FEXIST([subf])=0 then
+      mess Function [subf] does not defened. Nothing to substruct.
+      subTheFUN = 0
+   else
+      if $UPPER([subf]) <> 'THEFUN.FOR' then
+         g/imp D2FOR
+         exec [D2FOR]#FunCop [subf] TheFUN over=1
+      endif
+      dummy = $CALL('TheFUN.for(0.)')
+      subTheFUN = 1
+   endif
+endif
+
+ldir = $HCDIR()
+if [wdir]='' then
+   WORKdir = //PAWC; g/imp WORKdir
+   wdir = [WORKdir]
+endif
+cd [wdir]
+
+dmod0 = $GRAFINFO('?dmod')
+SET DMOD 1
+
+if [N1] = '' then; N1 = 1; endif
+if [N2] = '' then; N2 = $VLEN(hlist); endif
+
+xmin = 1e10
+xmax = -1e10
+ymin = 1e10
+ymax = -1e10
+do i=[N1],[N2]
+   id = hlist([i])
+   s = $EXEC(Prepare [id] sum=[sum] subTheFUN=[subTheFUN])
+   if [s] = 'ERROR' then
+      cd [ldir]
+      STOPM
+   endif
+   xmi = $WORD([s],1,1); xmin=$SIGMA(MIN([xmin],[xmi]))
+   xma = $WORD([s],2,1); xmax=$SIGMA(MAX([xmax],[xma]))
+   ymi = $WORD([s],3,1); ymin=$SIGMA(MIN([ymin],[ymi]))
+   yma = $WORD([s],4,1); ymax=$SIGMA(MAX([ymax],[yma]))
+   hsum_[i] = $WORD([s],5,1)
+enddo
+xmin = 0.97*[xmin]
+xmax = 1.02*[xmax]
+if [ymin]=0. then
+   * for logy value of ymin=0 gets WNYMIN=1
+   valmin = ''
+   g/imp valmin
+   if [valmin]<>'' then
+      ymin = [valmin]
+   endif
+endif
+ymin = 0.90*[ymin]
+ymax = 1.10*[ymax]
+* global xyminmax to debug
+*g/cr xyminmax ' ' 'xmin,xmax,ymin,ymax'
+*xyminmax = [xmin] [xmax] [ymin] [ymax]
+
+XaxisMIN=''; XaxisMAX=''; YaxisMIN=''; YaxisMAX=''
+g/imp XaxisMIN,XaxisMAX,YaxisMIN,YaxisMAX
+if [XaxisMIN] <> '' then; xmin=[XaxisMIN]; endif
+if [XaxisMAX] <> '' then; xmax=[XaxisMAX]; endif
+if [YaxisMIN] <> '' then; ymin=[YaxisMIN]; endif
+if [YaxisMAX] <> '' then; ymax=[YaxisMAX]; endif
+
+if $INDEX($UPPER([opt]),S) = 0 then
+   null [xmin] [xmax] [ymin] [ymax]
+   *if [q2] <> 0 then
+   *   process = ''; g/imp process
+   *   if [process] <> '' then
+   *      E0 = $WORD([process],1,1)
+   *      th = $WORD([process],2,1)
+   *      q2min = $SIGMA(4.e-6*[E0]*[xmin]*(sin([th]*pi/360.))**2)
+   *      q2max = $SIGMA(4.e-6*[E0]*[xmax]*(sin([th]*pi/360.))**2)
+   *      null [q2min] [q2max] [ymin] [ymax] S
+   *      null [xmin] [xmax] [ymin] [ymax] ARS
+   *   endif
+   *endif
+endif
+*atitle 'E, MeV' 'd^2![s]/d[w]d[W], arb.units'
+*atitle 'E, MeV' ' '
+NT0 = $GRAFINFO('NT')
+SELNT 1
+itx 22.5 .25 'E, MeV'
+SELNT [NT0]
+
+txci0 = $GRAFINFO('?txci')
+
+mt0 = $GRAFINFO('?mtyp')
+mt = 24
+if [mark]<>0 then; mt=[mark]; endif
+set mtyp [mt]
+
+ci0 = $GRAFINFO('?pmci')
+hc0 = $GRAFINFO('?hcol')
+ci = 1
+if [mcol]<>0 then; ci=[mcol]; endif
+set pmci [ci]
+set hcol [ci]
+
+exec NT1PAR
+NT0      = $WORD([@],1,1)
+NT1xmin  = $WORD([@],3,1)
+NT1xlen  = $WORD([@],4,1)
+NT1ymin  = $WORD([@],7,1)
+NT1ylen  = $WORD([@],8,1)
+NT1xmax = [NT1xmin]+[NT1xlen]+$GRAFINFO('?xwin')
+
+NT1ymax = [NT1ymin]+[NT1ylen]+$GRAFINFO('?ywin')
+
+* marker/text initial position and step
+x  = [NT1xmin]
+dx = 1.8
+
+y1 = [NT1ymin]+[NT1ylen]+1
+y2 = [y1] - .4
+y3 = [y2] - .4
+do i=[N1],[N2]
+   id = -hlist([i])
+
+   if [ci] = 5 then
+      set pmci 11
+      set hcol 11
+   endif
+   
+   set mtyp [mt]
+   if [err] = 0 then
+      nxbin = $HINFO([id],'XBINS')
+      put/err [id] $SIGMA(array([nxbin])*0)
+   endif
+   h/pl [id] SE0
+
+   if [x] > [NT1xmax] goto NEXT
+   SELNT 1
+      itype = $SUBSTRING([id],2,1)
+      CASE [itype] IN
+         (5)   type=D2
+         (6)   type=AL
+         (7)   type=D2P
+               if $SUBSTRING([id],4,1) = 1 then
+                  * special case of D2p-ALp
+                  type = D2p-ALp
+               endif
+         (8)   type=ALP
+         (9)   type=H2
+         (1)   type=NUC
+      ENDCASE
+*      F = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+      F = $SUBSTRING([id],-4)
+      F = $FORMAT([F]/100,F5.2)
+      if [type] = 'H2' then
+         * for H2 print BIN instead of F
+         idH2 = hlist([i])
+         tit = $HTITLE([idH2])
+         iBIN = $INDEX([tit],'BIN=')
+         if [iBIN] > 0 then
+            iBIN = [iBIN]+4
+            F = $WORD($SUBSTRING([tit],[iBIN]),1,1)
+            set txci 4
+         endif
+      endif
+      mtkey = [mt]; if [mark]<>0 then; mtkey=[mark]; endif
+      key [x] [y1] [mtkey]
+      *xtxt = [x]+.3
+      xtxt = [x]+.2
+      *itx [xtxt] [y1] [F]
+      text [xtxt] [y1] [F] .3
+      *itx [xtxt] [y2] [type]
+      text [xtxt] [y2] [type] .3
+      if [sum] <> 0 then
+         id0 = -1*[id]
+         *itx [xtxt] [y3] [hsum_[i]]
+         text [xtxt] [y3] [hsum_[i]] .3
+      endif
+      set txci [txci0]
+   SELNT [NT0]
+
+   NEXT:
+   
+   * set next marker/text position
+   x  = [x] + [dx]
+   * set next color index
+   ci = [ci]+1
+   if ([ci] .GT. 6) then
+      ci = 1
+   endif
+   if ([ci].EQ.5) then
+      ci = 11
+   endif
+   if [mcol]<>0 then; ci=[mcol]; endif
+   set pmci [ci]
+   set hcol [ci]
+   * set next polymarker type index
+   mt = [mt]+1
+   if ([mt] .GT. 30) then
+      mt = 24
+   endif
+   if [mark]<>0 then; mt=[mark]; endif
+   set mtyp [mt]
+enddo
+set mtyp [mt0]
+set pmci [ci0]
+set hcol [hc0]
+set dmod [dmod0]
+exec Eprocess
+
+if [q2]<>0 .AND. $INDEX($UPPER([opt]),S)=0 then
+   process = ''; g/imp process
+   if [process] <> '' then
+      E0 = $WORD([process],1,1)
+      th = $WORD([process],2,1)
+      q2min = $SIGMA(4.e-6*[E0]*[xmin]*(sin([th]*pi/360.))**2)
+      q2max = $SIGMA(4.e-6*[E0]*[xmax]*(sin([th]*pi/360.))**2)
+      xval0 = $GRAFINFO('?xval')
+      set xval 0.1
+      null [q2min] [q2max] [ymin] [ymax] S
+      set xval [xval0]
+      null [xmin] [xmax] [ymin] [ymax] ARS
+      SELNT 1
+      xq2 = [NT1xmin]+[NT1xlen] - $GRAFINFO('?xval')
+      yq2 = [NT1ymin]+[NT1ylen] + $GRAFINFO('?yval')
+      txci0 = $GRAFINFO('?txci')
+      set txci 2
+      itx [xq2] [yq2] 'q^2!'
+      set txci [txci0]
+      SELNT [NT0]
+   endif
+endif
+
+cd [ldir]
+RETURN
+
+*                                         @METAGS HSUBF
+*--------------- HSUBF ---------------
+*
+MACRO HSUBF id
+* Subtruct function TheFUN from hist.
+valmin=0.01; g/imp valmin
+np = $HINFO([id],'XBINS')
+sigma xbuf=array([np])*0
+sigma ybuf=array([np])*0
+get/abscissa [id] xbuf
+get/contents [id] ybuf
+call VSUBF(xbuf,ybuf,[np],$RSIGMA([valmin]))
+put/con [id] ybuf
+v/de xbuf,ybuf
+RETURN
+
+*                                         @METAGS SELECT
+*--------------- SELECT ---------------
+*
+MACRO SELECT list Emi Ema header set=1 fun subf
+if $UPPER([1])='HELP' .OR. [list] = '' then
+   mess Usage:    $WORD([0],2,1,#) list Emi Ema header set=1 fitplot=0
+   stopm
+endif
+
+* Uses D2FOR#FUNplot
+
+if $LEN([list]) > 7 then
+   mess Vector name must be < 8 characters
+   stopm
+endif
+
+exec PLOTL subf=[subf]
+if [fun] <> '' then
+   g/imp D2FOR
+   if $DEFINED(D2FOR) <> '' then
+      *exec [$DEFINED(D2FOR)]#FUNplot [fun]  | possible form
+      exec [D2FOR]#FUNplot [fun]
+   endif
+endif
+exec LimPlot [Emi] [Ema] set=[set]
+
+N = $VLEN(hlist)
+sigma [list]=array(100)*0
+
+mess [header] (A=All, Q=Quit)
+mess
+mess
+
+all = 0
+ilist = 0
+do i=1, [N]
+   id = hlist([i])
+   nt = $SUBSTRING([id],1,1)
+   F  = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+   if $INDEX([F],'0') = 1 then; F = $SUBSTRING([F],2); endif
+*   F100 = $SUBSTRING([id],-4)
+*   F = [F100]/100
+*   F = $FORMAT([F],F5.2)
+   CASE [nt] IN
+      (5)   type=D2
+      (6)   type=AL
+      (7)   type=D2P
+            if $SUBSTRING([id],3,1) = 1 then
+               * special case of D2p-ALp
+               type = D2p-ALp
+            endif
+      (8)   type=ALP
+      (9)   type=H2
+      (1)   type=NUC
+   ENDCASE
+   ask = [type] [F]
+   
+   include = Y
+   if [all] = 0 then
+      read include [ask]
+   endif
+   
+   if $UPPER([include]) = Q goto EXIT
+   if $UPPER([include]) = A then
+      include = Y
+      all=1
+   endif
+
+   if $UPPER([include]) = Y then
+      ilist = [ilist]+1
+      v/inp [list]([ilist]) [id]
+   endif
+enddo
+
+EXIT:
+RETURN
+
+*                                         @METAGS plocate
+*--------------- plocate ---------------
+*
+MACRO plocate text
+mess [text]
+if $VEXIST(vlocX) then; v/de vlocX; endif
+if $VEXIST(vlocY) then; v/de vlocY; endif
+vlocate vlocX vlocY
+idim = $VLEN(vlocX)
+if [idim] > 0 then
+   xlocate = vlocX([idim])
+   ylocate = vlocY([idim])
+   v/de vlocX,vlocY
+else
+   EXITM 'UNDEFENED'
+endif
+RETURN [xlocate] [ylocate]
+
+*                                         @METAGS loc
+*--------------- loc ---------------
+*
+MACRO loc
+exec plocate
+if [@]='UNDEFENED' then
+   stopm
+else
+   x = $WORD([@],1,1)
+   y = $WORD([@],2,1)
+   mess x=[x]
+   mess y=[y]
+endif
+RETURN [x] [y]
+
+*                                         @METAGS xloc
+*--------------- xloc ---------------
+*
+MACRO xloc
+exec plocate
+if [@]='UNDEFENED' then
+   stopm
+else
+   x = $WORD([@],1,1)
+   mess [x]
+endif
+RETURN [x]
+
+*                                         @METAGS LimRead
+*--------------- LimRead ---------------
+*
+MACRO LimRead fname
+if $UPPER([1])='HELP' .OR. [fname] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' fname[.for]'
+   stopm
+endif
+
+file = [fname]
+if $INDEX([file],'.')=0 then
+   file=[fname].for
+endif
+
+if $FEXIST([file])=0 then
+   mess File [file] did not found
+   stopm
+endif
+
+v/re Emin [file] '8X,F8.0' ! /*EMIN/
+v/re Emax [file] '8X,F8.0' ! /*EMAX/
+RETURN
+
+*                                         @METAGS LimPlot
+*--------------- LimPlot ---------------
+*
+MACRO LimPlot Emi Ema col=2 set=0
+if $UPPER([1]) = 'HELP' then
+   mess Usage:    $WORD([0],2,1,#) Emi Ema col=2 set=0
+   stopm
+endif
+
+xmin = $GRAFINFO('WNXMIN')
+xmax = $GRAFINFO('WNXMAX')
+plci0 = $GRAFINFO('?plci')
+
+*  --- Emin ---
+if [Emi] <> '' then
+   sigma Emin = [Emi]
+   goto PlotEmin
+else
+   if $VEXIST(Emin) = 0 then
+      sigma Emin = [xmin]
+      goto SetEmin
+   endif
+endif
+
+if [set]=0 goto PlotEmin
+
+SetEmin:
+igset plci 4
+LINE Emin $GRAFINFO('WNYMIN') Emin $GRAFINFO('WNYMAX')
+igset plci [plci0]
+
+Emi = Emin
+read Emi 'Enter Emin (G=Graphics cursor)'
+if $UPPER([Emi])='G' then
+   EXEC plocate 'Locate Emin'
+   xlocate = $WORD([@],1,1)
+   if [xlocate] = 'UNDEFENED' then
+      mess Emin undefened
+      stopm
+   endif
+   Emi = [xlocate]
+endif
+sigma Emin = [Emi]
+
+PlotEmin:
+igset plci [col]
+LINE Emin $GRAFINFO('WNYMIN') Emin $GRAFINFO('WNYMAX')
+igset plci [plci0]
+
+*  --- Emax ---
+if [Ema] <> '' then
+   sigma Emax = [Ema]
+   goto PlotEmax
+else
+   if $VEXIST(Emax) = 0 then
+      sigma Emax = [xmax]
+      goto SetEmax
+   endif
+endif
+
+if [set]=0 goto PlotEmax
+
+SetEmax:
+igset plci 4
+LINE Emax $GRAFINFO('WNYMIN') Emax $GRAFINFO('WNYMAX')
+igset plci [plci0]
+
+Ema = Emax
+read Ema 'Enter Emax (G=Graphics cursor)'
+if $UPPER([Ema])='G' then
+   EXEC plocate 'Locate Emax'
+   xlocate = $WORD([@],1,1)
+   if [xlocate] = 'UNDEFENED' then
+      mess Emax undefened
+      stopm
+   endif
+   Ema = [xlocate]
+endif
+sigma Emax = [Ema]
+
+PlotEmax:
+igset plci [col]
+LINE Emax $GRAFINFO('WNYMIN') Emax $GRAFINFO('WNYMAX')
+igset plci [plci0]
+
+if Emin > Emax then
+   v/cop Emin Eminbuf
+   v/cop Emax Emin
+   v/cop Eminbuf Emax
+   v/de Eminbuf
+endif
+RETURN
+
+*                                         @METAGS Eprocess
+*--------------- Eprocess ---------------
+*
+MACRO Eprocess E0 theta ion=1
+if [E0]<>'' .OR. [theta]<>'' then
+   exec E0theta [E0] [theta]
+endif
+
+g/imp process
+E0    = $WORD([process],1)
+theta = $WORD([process],2)
+
+thetar = $RSIGMA([theta]*pi/180)
+Mp = 938.27
+Md = 1874.0
+recp = $SIGMA( 1. + ([E0]/[Mp])*(1-cos([thetar])) )
+recd = $SIGMA( 1. + ([E0]/[Md])*(1-cos([thetar])) )
+Ep = $SIGMA( [E0] / [recp] )
+if [ion] <> 0 then
+   dEionH2 = 1.
+   Ep = [Ep] - [dEionH2]
+endif
+Ed = $SIGMA( [E0] / [recd] )
+if [ion] <> 0 then
+   dEionD2 = 2.3
+   Ed = [Ed] - [dEionD2]
+endif
+kdelta = $SIGMA( (1236**2 - [Mp]**2)/(2*[Mp]) )
+Edelta = $SIGMA( ([E0]-[kdelta])/[recp] )
+k1922 = $SIGMA( (1922**2 - [Md]**2)/(2*[Md]) )
+E1922 = $SIGMA( ([E0]-[k1922])/[recd] )
+
+exec NT1PAR
+NT0      = $WORD([@],1,1)
+xmin     = $WORD([@],2,1)
+NT1xmin  = $WORD([@],3,1)
+xscal    = $WORD([@],5,1)
+NT1ymin  = $WORD([@],7,1)
+
+col0 = $GRAFINFO('?plci')
+SELNT 1
+   y1arr = [NT1ymin]
+   y2arr = [y1arr]+1
+   * EH
+   set plci 4
+   *xarr = $GRAFINFO('?xmgl') + ([Ep]-[xmin])*[xscal]
+   xarr = [NT1xmin] + ([Ep]-[xmin])*[xscal]
+   arrow [xarr] [xarr] [y2arr] [y1arr]
+   * Ed
+   set plci 2
+   *xarr = $GRAFINFO('?xmgl') + ([Ed]-[xmin])*[xscal]
+   xarr = [NT1xmin] + ([Ed]-[xmin])*[xscal]
+   arrow [xarr] [xarr] [y2arr] [y1arr]
+   * E1922
+   set plci 3
+   *xarr = $GRAFINFO('?xmgl') + ([E1922]-[xmin])*[xscal]
+   xarr = [NT1xmin] + ([E1922]-[xmin])*[xscal]
+   arrow [xarr] [xarr] [y2arr] [y1arr]
+   * Edelta
+   set plci 1
+   *xarr = $GRAFINFO('?xmgl') + ([Edelta]-[xmin])*[xscal]
+   xarr = [NT1xmin] + ([Edelta]-[xmin])*[xscal]
+   arrow [xarr] [xarr] [y2arr] [y1arr]
+
+   text = Arrows for E?0! = [E0] MeV
+   itx 6 .25 [text]
+SELNT [NT0]
+   set plci [col0]
+RETURN
+
+*                                         @METAGS E0theta
+*--------------- E0theta ---------------
+*
+MACRO E0theta E0 theta
+process=''; g/imp process
+if [process]='' then
+   defined=0
+else
+   defined=1
+endif
+
+if [E0]<>'' .OR. [theta]<>'' goto DEFINE
+
+if $UPPER([1])='HELP' .OR. [defined]=0 then
+   mess Usage:    $WORD([0],2,1,#) E0 theta
+   stopm
+endif
+
+DEFINE:
+
+if [defened]=0 then
+   if [E0]='' then
+      read E0 'Enter incident energy'
+      if [E0]='' then; mess Process is undefened; STOPM; endif
+   endif
+   if [theta]='' then
+      read theta 'Enter scattering angle'
+      if [theta]='' then; mess Process is undefened; STOPM; endif
+   endif
+   process = [E0] [theta]
+   g/cr process $QUOTE([process]) 'E0, theta'
+else
+   if [E0]='' .AND. [theta]='' then
+      mess Current process [process]
+      EXITM
+   endif
+
+   if [E0]='' then;    E0    = $WORD([process],1,1); endif
+   if [theta]='' then; theta = $WORD([process],2,1); endif
+   process = [E0] [theta]
+   g/cr process $QUOTE([process]) 'E0, theta'
+endif
+RETURN
+
+*                                         @METAGS DefProcess
+*--------------- DefProcess ---------------
+*
+MACRO DefProcess
+LCDIR
+mess
+mess Define process E0 and theta
+mess List of predefened settings:
+E0theta480  = 451 143.5
+E0theta511  = 485 143.5
+E0theta550  = 520 143.5
+E0theta670  = 645 143.5
+E0theta1200 = 1200 60
+E0theta635  = 607 143.5
+E0theta590  = 583 143.5
+mess 480:  [E0theta480]   for 480 143.5
+mess 511:  [E0theta511]   for 511 143.5
+mess 550:  [E0theta550]   for 550 143.5
+mess 670:  [E0theta670]   for 670 143.5
+mess 1200: [E0theta1200]  for 1200 60
+mess 670:  [E0theta635]   for 635 143.5
+mess 590:  [E0theta590]   for 590 143.5
+mess
+
+nw = $WORDS($SHELL(cd),\) - 1
+dir = $WORD($SHELL(cd),[nw],1,\)
+
+E0theta = [dir]
+read E0theta 'Enter E0 and theta (or disarable number)'
+CASE [E0theta] IN
+   (480)    E0theta = [E0theta480]
+   (511)    E0theta = [E0theta511]
+   (550)    E0theta = [E0theta550]
+   (670)    E0theta = [E0theta670]
+   (1200)   E0theta = [E0theta1200]
+   (635)    E0theta = [E0theta635]
+   (590)    E0theta = [E0theta590]
+   (*)      mess Undefened process. No change.; EXITM
+ENDCASE
+exec E0theta $UNQUOTE([E0theta])
+RETURN
+
+*                                         @METAGS E0fromEH
+*--------------- E0fromEH ---------------
+*
+MACRO E0fromEH ion=1 set=1
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] ion=1 set=1
+   stopm
+endif
+
+exec xloc
+EH = [@]
+if [ion] <> 0 then
+   dEionH2 = 1.
+   EH = [EH] + [dEionH2]
+endif
+EH = $FORMAT([EH],F0.1)
+g/imp d2for
+g/imp process
+theta = $WORD([process],2,1)
+exec [d2for]#E0 [EH] [theta]
+E0 = $FORMAT([@],F0.1)
+if [set] <> 0 then
+   exec E0theta [E0] [theta]
+   exec Eprocess
+endif
+RETURN
+*                                         @METAGS E0fromED
+*--------------- E0fromED ---------------
+*
+MACRO E0fromED ion=1 set=1
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] ion=1 set=1
+   stopm
+endif
+
+exec xloc
+ED = [@]
+if [ion] <> 0 then
+   dEionD2 = 2.3
+   ED = [ED] + [dEionD2]
+endif
+ED = $FORMAT([ED],F0.1)
+g/imp d2for
+g/imp process
+theta = $WORD([process],2,1)
+exec [d2for]#E0 [ED] [theta] target=D2
+E0 = $FORMAT([@],F0.1)
+if [set] <> 0 then
+   exec E0theta [E0] [theta]
+   exec Eprocess
+endif
+RETURN
+
+*                                         @METAGS MARK
+*--------------- MARK ---------------
+*
+MACRO MARK E ci=2 set=0
+if $UPPER([1]) = 'HELP' then
+   mess Usage:    $WORD([0],2,1,#) E ci=2 set=0 | set/show vector Emark
+   stopm
+endif
+
+if [set] <> 0 .AND. $VEXIST(Emark)=1 then; v/de Emark; endif
+
+if [E]='' then
+   if $VEXIST(Emark)=0 then
+      EXEC plocate
+      xlocate = $WORD([@],1,1)
+      if [xlocate] = 'UNDEFENED' then
+         stopm
+      endif
+      sigma Emark = [xlocate]
+   endif
+else
+   sigma Emark = [E]
+endif
+
+ci0 = $GRAFINFO('?plci')
+igset plci [ci]
+LINE Emark $GRAFINFO('WNYMIN') Emark $GRAFINFO('WNYMAX')
+igset plci [ci0]
+RETURN
+
+*                              @METAGS VIEW
+*---------- VIEW ----------
+*
+MACRO VIEW opt
+mess This macro is now obsolete!
+mess ---------------------------
+wait
+
+if $VEXIST(idlist)<>0 .AND. $UPPER([opt]) = ADD then
+   plotl
+   N = $VLEN(idlist)
+   goto ADD
+endif
+
+if $VEXIST(idlist)<>0 .AND. $VEXIST(ntlist)<>0 then
+   ans = Y
+   read ans 'Create new histogram list (Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      sigma idlist = array(100,0#0)
+      sigma ntlist = array(100,0#0)
+   else
+      stopm
+   endif
+else
+   sigma idlist = array(100,0#0)
+   sigma ntlist = array(100,0#0)
+endif
+
+N = 0
+
+ADD:
+g/imp typedef,ntdef
+type = [typedef]
+nt   = [ntdef]
+
+AGAIN:
+ntid = [type]
+read ntid 'Enter Type & F (0 - EXIT)'
+
+if [ntid] = [type] goto AGAIN
+if $WORDS([ntid]) = 1 then
+   id = [ntid]
+else
+   type = $UPPER($WORD([ntid],1))
+   CASE [type] IN
+      (D2)   nt=1; goto NEXT
+      (AL)   nt=2; goto NEXT
+      (D2+)  nt=3; type=D2P; goto NEXT
+      (D2P)  nt=3; goto NEXT
+      (AL+)  nt=4; type=ALP; goto NEXT
+      (ALP)  nt=4; goto NEXT
+      (NUC)  nt=5; goto NEXT
+   ENDCASE
+   mess Unknown type [type]
+   mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+   goto AGAIN
+   
+   NEXT:
+   id = $WORD([ntid],2,1)
+endif
+
+if [id] <> 0 then
+   N = [N] + 1
+   v/inp ntlist([N]) [nt]
+   v/inp idlist([N]) [id]
+   
+   EXEC PLOTL 1 [N]
+   goto AGAIN
+else
+   stopm
+endif
+RETURN
+
+*                                         @METAGS SAVEL
+*--------------- SAVEL ---------------
+*
+MACRO SAVEL fname
+if $UPPER([1])='HELP' .OR. [fname] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' fname[.hli]'
+   stopm
+endif
+if $INDEX([fname],'.')=0 then; fname=[fname].hli; endif
+N = $VLEN(hlist)
+v/cop hlist(1:[N]) hlistbuf
+v/wr hlistbuf [fname] 'F10.0'
+v/de hlistbuf
+RETURN
+
+*                                         @METAGS READL
+*--------------- READL ---------------
+*
+MACRO READL fname
+if $UPPER([1])='HELP' .OR. [fname] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' fname[.hli]'
+   stopm
+endif
+
+OK=0
+
+file = [fname]
+if $INDEX([file],'.')=0 then
+   file=[fname].hli
+endif
+if $FEXIST([file]) = 0 then
+   mess File [file] did not found
+   goto OLD
+endif
+sigma hlist=array(100)*0
+v/re hlist [file] 'F10.0' ! -/*/
+OK = 1
+EXITM [OK]
+
+OLD:
+* search file with extension set
+nperiod = $INDEX([fname],'.')
+if [nperiod]=0 then
+   file=[fname].set
+else
+   file=$SUBSTRING([fname],1,[nperiod])SET
+endif
+
+if $FEXIST([file]) = 0 then
+   mess Old format list file [file] did not found also.
+   EXITM [OK]
+endif
+
+OK = 1
+mess Old format list file [file] has been found.
+sigma idlist=array(100)*0
+sigma ntlist=array(100)*0
+v/re idlist,ntlist [file]
+* construct hlist
+sigma hlist=array(100)*0
+do i=1,$VLEN(idlist)
+   id = idlist([i])
+   nt = ntlist([i])
+   CASE [nt] IN
+      (1)   type=D2 ; idh=5000000+[id]*100
+      (2)   type=AL ; idh=6000000+[id]*100
+      (3)   type=D2P; idh=7000000+[id]*100
+      (4)   type=ALP; idh=8000000+[id]*100
+      (5)   type=NUC; idh=1000000+[id]*100
+   ENDCASE
+   v/inp hlist([i]) [idh]
+enddo
+
+ans = Y
+read ans 'Save histogram list in new format (Y/N)?'
+if $UPPER([ans])='Y' then
+   nperiod = $INDEX([fname],'.')
+   if [nperiod]=0 then
+      file=[fname].hli
+   else
+      file=$SUBSTRING([fname],1,[nperiod])HLI
+   endif
+   read file 'Enter file name'
+   exec SAVEL [file]
+endif
+
+ans = Y
+read ans 'Delete vectors idlist,ntlist (Y/N)'
+if $UPPER([ans])='Y' then; v/de idlist,ntlist; endif
+RETURN [OK]
+
+*                                         @METAGS MINMAX
+*--------------- MINMAX ---------------
+*
+MACRO MINMAX min max
+g/imp minc,maxc,Nchan
+if $UPPER([1])='HELP' .OR. [min] = '' then
+   mess Usage:    $WORD([0],2,1,#) min max
+   mess Now minc = [minc], maxc = [maxc]
+   EXITM
+endif
+
+if [min]<>'' then; minc=[min]; endif
+if [max]<>'' then; maxc=[max]; endif
+mess Now minc = [minc], maxc = [maxc]
+RETURN
+
+*                                         @METAGS HAVER
+*--------------- HAVER ---------------
+*
+MACRO HAVER id1 id2 nsum n1 n2
+if $UPPER([1])='HELP' .OR. [nsum]='' then
+   mess Usage:    $WORD([0],2,1,#)//' id1 id2 nsum n1=[minc] n2=[maxc]'
+   mess Example:  $WORD([0],2,1,#) 100 200 4
+   stopm
+endif
+
+if [chtitl]='' then; chtitl=$HTITLE([id1]); endif
+
+g/imp minc,maxc
+if [n1]='' then; n1 = [minc]; endif
+if [n2]='' then; n2 = [maxc]; endif
+* channels count from 96 to 1
+nc1 = 97 - [n2]
+nc2 = 97 - [n1]
+
+if $HEXIST([id2]) then; h/de [id2]; endif
+
+call HAVER([id1],[nsum],[nc1],[nc2],[id2])
+RETURN
+
+*                                         @METAGS NAVER
+*--------------- NAVER ---------------
+*
+MACRO NAVER Naverage
+g/imp Naver
+if [Naverage] = '' then
+   mess Usage:    $WORD([0],2,1,#) Naverage
+   mess Note:     if Naverage = ALL then summing all channels from minc to maxc
+   mess Naver=[Naver]
+   stopm
+endif
+
+if $UPPER([Naverage]) = ALL then
+   g/imp minc,maxc
+   Naver = [maxc] - [minc] + 1
+else
+   Naver = [Naverage]
+endif
+mess Naver=[Naver]
+RETURN
+*                                         @METAGS AV
+*--------------- AV ---------------
+*
+MACRO AV Naverage
+g/imp Naver
+if [Naverage] = '' then
+   mess naver=[Naver]
+   stopm
+endif
+
+if $UPPER([Naverage]) = ALL then
+   g/imp minc,maxc
+   Naver = [maxc] - [minc] + 1
+else
+   Naver = [Naverage]
+endif
+RETURN
+
+*                                         @METAGS FOR
+*
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+*                                         @METAGS .idhli
+*                                         11-05-98 02:03pm
+*--------------- idhli ---------------
+*
+      integer function idhli(hlist,file)
+      parameter (IDIM=100)
+      character*32 file,fname
+      character line*128
+      real hlist(IDIM)
+
+      idhli = 0
+      call FPARSE(file,fname,file,'hli')
+      lun = LUNFREE(1)
+      open (lun, FILE=file, STATUS='OLD', ERR=20000)
+      n = 1
+      do 100 i=1,IDIM
+         read (lun,1,END=10000) line
+         len = LENOCC(line)
+         if (len.GT.0) then
+            if (line(1:1).NE.'*') then
+               read (line,*,ERR=1000) hlist(n)
+               n = n+1
+               goto 100
+ 1000          continue
+*              .. try read as an integer
+               read (line,*,ERR=10000) int
+               hlist(n) = int
+               n = n+1
+            endif
+         endif
+  100 enddo
+10000 close(lun)
+*     .. clear the rest
+      do i=n,IDIM
+         hlist(i)=0.
+      enddo
+      idhli = 1
+      RETURN
+20000 continue
+      idhli = 0
+*      len = LENOCC(file)
+*      print*, 'File ', file(1:len), ' did not found'
+*      call WAIT('*** ERROR idhli')
+      RETURN
+    1 format (A)
+    2 format (F10.0)
+      END
+
+*                                         @METAGS .VSUBF.COMIS
+      subroutine VSUBF(E,S,idim,Smin)
+      real E(idim),S(idim)
+      do i=1,idim
+         S(i) = S(i)-TheFUN(E(i))
+         if (S(i).LE.Smin) S(i)=Smin
+      enddo
+      END
+
+*                                         @METAGS .HAVER.COMIS
+*--------------- HAVER ---------------
+*
+      SUBROUTINE HAVER(id1,nsum,n1,n2,id2)
+*     .. Note: field chtitl is inaccessible to read!
+      character*80 chtitl
+      parameter (chtitl='Groupped channels')
+      parameter (NDIM=100)
+      real x(NDIM),y(NDIM),ex(NDIM),ey(NDIM)
+
+      np = n2-n1+1
+      ncx = np/nsum
+      last = n1 + ncx*nsum - 1
+      call HREBIN(id1,x,y,ex,ey,ncx,n1,last)
+      if (MOD(np,nsum).GT.0) then
+         ncx = ncx+1
+         call HREBIN(id1,x(ncx),y(ncx),ex(ncx),ey(ncx),1,last+1,n2)
+      endif
+
+*     .. construct the bin lower edges
+      do i=1,ncx
+         x(i) = x(i)-ex(i)
+      enddo
+*     .. upper edge of the last bin
+      x(ncx+1) = x(ncx) + 2.*ex(ncx)
+*     .. booking
+      call HBOOKB(id2,chtitl,ncx,x,0.)
+*     .. filling
+      call HPAK(id2,y)
+      call HPAKE(id2,ey)
+      END
+
+*                                         @METAGS .AVER.COMIS
+*--------------- AVER ---------------
+*
+      SUBROUTINE AVER(minc,maxc,Naver,Npoint,e0,s0,d0,e,s,d)
+*
+*     Old style program for vector averaging
+*
+      integer minc,maxc,Naver,Npoint
+      real e0(96),s0(96),d0(96),e(Npoint),s(Npoint),d(Npoint)
+*
+      ncur=minc-1
+      do i=1,npoint-1
+         e(i)=0.
+         s(i)=0.
+         d(i)=0.
+         do n=1,Naver
+            ncur = ncur+1
+            e(i) = e(i) + e0(ncur)
+            s(i) = s(i) + s0(ncur)
+            d(i) = d(i) + d0(ncur)**2
+         enddo
+         e(i) = e(i)/Naver
+         s(i) = s(i)/Naver
+         d(i) = sqrt(d(i))/Naver
+      enddo
+
+      krest=MOD(maxc-minc+1,Naver)
+      if (krest.eq.0) then
+         last = Naver
+      else
+         last = krest
+      endif
+
+      e(Npoint)=0.
+      s(Npoint)=0.
+      d(Npoint)=0.
+      do n=1,last
+         ncur = ncur+1
+         e(Npoint) = e(Npoint) + e0(ncur)
+         s(Npoint) = s(Npoint) + s0(ncur)
+         d(Npoint) = d(Npoint) + d0(ncur)**2
+      enddo
+      e(Npoint) = e(Npoint)/last
+      s(Npoint) = s(Npoint)/last
+      d(Npoint) = sqrt(d(Npoint))/last
+      END
+QUIT
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = '?' then
+   op = CREATE
+   ask = MACRO $WORD([0],2,1,#): CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):   Aliases are created.
+
+*tr on wait
+*ali/[op] -C PLOTL1      'exec '//$WORD([0],1,1,.)#PLOTL1
+*tr off
+
+
+ali/[op] -C E0theta     'exec '//$WORD([0],1,1,#)#E0theta
+ali/[op] -C Eprocess    'exec '//$WORD([0],1,1,#)#Eprocess
+ali/[op] -C MINMAX      'exec '//$WORD([0],1,1,#)#MINMAX
+ali/[op] -C HAVER       'exec '//$WORD([0],1,1,#)#HAVER
+ali/[op] -C NAVER       'exec '//$WORD([0],1,1,#)#NAVER
+ali/[op] -C AV          'exec '//$WORD([0],1,1,#)#AV
+ali/[op] -C VIEW        'exec '//$WORD([0],1,1,#)#VIEW
+ali/[op] -C PLOTL       'exec '//$WORD([0],1,1,#)#PLOTL
+ali/[op] -C PL          'exec '//$WORD([0],1,1,#)#PLOTL
+ali/[op] -C LimRead     'exec '//$WORD([0],1,1,#)#LimRead
+ali/[op] -C LimPlot     'exec '//$WORD([0],1,1,#)#LimPlot
+ali/[op] -C Select      'exec '//$WORD([0],1,1,#)#Select 
+ali/[op] -C plocate     'exec '//$WORD([0],1,1,#)#plocate
+ali/[op] -C loc         'exec '//$WORD([0],1,1,#)#loc
+ali/[op] -C xloc        'exec '//$WORD([0],1,1,#)#xloc
+ali/[op] -C E0fromEH    'exec '//$WORD([0],1,1,#)#E0fromEH
+ali/[op] -C E0fromED    'exec '//$WORD([0],1,1,#)#E0fromED
+ali/[op] -C MARK        'exec '//$WORD([0],1,1,#)#MARK
+ali/[op] -C SAVEL       'exec '//$WORD([0],1,1,#)#SAVEL
+ali/[op] -C READL       'exec '//$WORD([0],1,1,#)#READL
+ali/[op] -C VGET        'exec '//$WORD([0],1,1,#)#VGET
+RETURN

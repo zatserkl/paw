@@ -1,0 +1,1485 @@
+*                                         @METAGS D2HFILE
+*--------------- D2HFILE ---------------
+*
+MACRO D2HFILE ali=CREATE
+g/cr D2HFILE $WORD([0],1,1,#)
+D2HIST=''; g/imp D2HIST; if [D2HIST]='' then; exec D2HIST; endif
+exec ALI [ali]
+RETURN
+
+*                                         @METAGS FTIT
+*--------------- FTIT ---------------
+*
+MACRO FTIT fdir id tit quiet=0
+if $UPPER([1])='HELP' .OR. [id] = '' then
+   mess Usage:    $WORD([0],2,1,#) fdir id title
+   stopm
+endif
+
+exec HGET [fdir] [id] prompt=N
+if $HEXIST([id])=0 then
+   mess Histogram [id] in the fdir [fdir] do not exist.
+   stopm
+endif
+
+g/imp D2HIST
+
+EXEC [D2HIST]#TIT [id] [tit] quiet=[quiet]
+titout = [@]
+if [tit]<>'' then
+   exec HPUT [fdir] [id]
+endif
+RETURN [titout]
+
+*                                      @METAGS FHINFO
+*--------------- FHINFO ---------------
+*
+MACRO FHINFO fdir id inquiry=SUM
+if $UPPER([1])='HELP' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#)//' fdir id [INQUIRY=SUM]'
+   stopm
+endif
+
+ldir = $HCDIR()
+
+g/imp D2HIST
+g/imp hfile,lun
+h/file [lun] [hfile]
+   cd \\[fdir]
+   if $IQUEST(1) <> 0 goto NODIR
+   
+if $HEXIST([id]) then
+   if $HEXIST(123456) then
+      mess Histogram 123456 will be used as buffer!
+      wait
+      h/de 123456
+   endif
+   h/cop [id] 123456
+   hrin [id]
+   close [lun]
+   cd [ldir]
+   EXEC [D2HIST]#HINFO [id] [inquiry]
+   h/de [id]
+   h/cop 123456 [id]
+   h/de 123456
+   exitm
+endif
+
+hrin [id]
+close [lun]
+cd [ldir]
+EXEC [D2HIST]#HINFO [id] [inquiry]
+h/de [id]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS FOPEN
+*--------------- FOPEN ---------------
+*
+MACRO FOPEN
+g/imp hfile,lun
+h/file [lun] [hfile] ! U
+cd
+RETURN
+
+*                                      @METAGS FCLOSE
+*--------------- FCLOSE ---------------
+*
+MACRO FCLOSE
+g/imp lun
+close [lun]
+cd
+RETURN
+
+*                                         @METAGS FMDIR
+*--------------- FMDIR ---------------
+*
+MACRO FMDIR dir
+if $UPPER([1])='HELP' .OR. [dir]='' then
+   mess Usage:    $WORD([0],2,1,#) dir
+   stopm
+endif
+
+ldir = $HCDIR()
+
+g/imp hfile,lun
+
+h/file [lun] [hfile] ! U
+   if $IQUEST(1) <> 0 goto NODIR
+   mess $HCDIR()
+   MDIR [dir]
+   close [lun]
+   cd [ldir]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS FDIR
+*--------------- FDIR ---------------
+*
+MACRO FDIR fdir
+ldir = $HCDIR()
+
+g/imp hfile,lun,mode
+if [fdir]='' then
+   fdir = \
+   read fdir 'Directory?'
+endif
+h/file [lun] [hfile]
+ld [fdir]
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS FHLIST
+*--------------- FHLIST ---------------
+*
+MACRO FHLIST fdir opt
+ldir = $HCDIR()
+
+g/imp hfile,lun,mode
+if [fdir]='' then
+   fdir = \
+   read fdir 'Directory?'
+endif
+h/file [lun] [hfile]
+   cd \[fdir]
+   if $IQUEST(1) <> 0 goto NODIR
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   h/l [opt]
+   close [lun]
+   cd [ldir]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS FGOTO
+*--------------- FGOTO ---------------
+*
+MACRO FGOTO fdir 
+if $UPPER([1])='HELP' .OR. [fdir]='' then
+   mess Usage:    $WORD([0],2,1,#) fdir
+   stopm
+endif
+
+ldir = $HCDIR()
+
+g/imp hfile,lun
+
+h/file [lun] [hfile] ! U
+   cd \\[fdir]
+   if $IQUEST(1) <> 0 goto NODIR
+   ld
+   mess Current directory now [fdir]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS FPUR
+*--------------- FPUR ---------------
+*
+MACRO FPUR fdir keep=1 show=Y
+if $UPPER([1])='HELP' .OR. [fdir] = '' then
+   mess Usage:    $WORD([0],2,1,#) fdir keep show=Y
+   stopm
+endif
+
+ldir = $HCDIR()
+
+g/imp hfile,lun
+
+h/file [lun] [hfile] ! U
+   cd \\[fdir]
+   if $IQUEST(1) <> 0 goto NODIR
+   purge [keep]
+
+   if $UPPER([show])=Y then
+      ld
+   endif
+close [lun]
+cd [ldir]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS HPUT
+*--------------- HPUT ---------------
+*
+MACRO HPUT fdir id dirfrom=$HCDIR() ask=Y
+if $UPPER([1])='HELP' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#)//' fdir id dirfrom=$HCDIR() ask=Y'
+   stopm
+endif
+
+OK=0
+ldir = $HCDIR()
+* Directory test
+cd [dirfrom]
+if $IQUEST(1) then
+   cd [ldir]
+   exitm [OK]
+else
+   dirfrom = $HCDIR()
+endif
+
+if $INDEX([id],',') = 0 then
+   if [id]<>0 .AND. $HEXIST([id])=0 then
+      mess Histogram [id] did not found in $HCDIR()
+      cd [ldir]
+      exitm [OK]
+   endif
+endif
+
+g/imp hfile,lun,mode
+h/file [lun] [hfile] ! U
+cd \[fdir]
+if $IQUEST(1) goto NODIR
+
+ans = Y
+if $UPPER([ask]) = Y then
+   str = Mode [mode]. [hfile] Write hist [id] to [fdir] (Y/N)?
+   read ans [str]
+endif
+if $UPPER([ans]) <> Y then
+   close [lun]
+   cd [ldir]
+   exitm [OK]
+endif
+
+hrout  [id]
+OK=1
+close [lun]
+cd [ldir]
+exitm [OK]
+
+NODIR:
+mess Current mode [mode]. --- File [hfile], lun [lun] ---
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN [OK]
+
+*                                      @METAGS HGET
+*--------------- HGET ---------------
+*
+MACRO HGET fdir id dirto=$HCDIR() prompt=Y delete=N errmess=Y
+if $UPPER([1])='HELP' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#)//' fdir id dirto=$HCDIR() prompt=Y delete=N'
+   mess Return:   1=OK, 0=fault
+   stopm
+endif
+
+OK=0
+ldir = $HCDIR()
+* Directory test
+CD [dirto]
+if $IQUEST(1) then
+   CD [ldir]
+   exitm [OK]
+else
+   dirto = $HCDIR()
+endif
+
+if [id]<>0 .AND. $HEXIST([id])=1 then
+   ans = 'Y'
+   if $UPPER([delete])='N' then
+      ask = Histogram [id] in [dirto] will be deleted!  Delete(Y/N)?
+      read ans [ask]
+   endif
+   if $UPPER([ans]) = 'Y' then
+      h/de [id]
+   else
+      mess Cancel.
+      cd [ldir]
+      exitm [OK]
+   endif
+endif
+
+g/imp D2HIST
+g/imp hfile,lun
+
+h/file [lun] [hfile]
+cd \[fdir]
+if $IQUEST(1) goto NODIR
+
+hrin  [id]
+if $UPPER([prompt])=Y .AND. [id]<>0 then
+   exec [D2HIST]#HINFO [id] inquiry=NONE
+endif
+close [lun]
+cd [dirto]
+
+OK = 1
+if [id]<>0 .AND. $HEXIST([id])=0 then
+   OK = 0
+   if $UPPER([errmess])=Y then
+      mess ERROR HGET: There is no histogram [id] in the fdir [fdir]
+   endif
+endif
+cd [ldir]
+EXITM [OK]
+
+NODIR:
+mess No such directory!
+OK = 0
+close [lun]
+cd [ldir]
+RETURN [OK]
+
+*                                         @METAGS FHCOP
+*--------------- FHCOP ---------------
+*
+MACRO FHCOP fdir id idout dirout
+if $UPPER([1])='HELP' .OR. [idout]='' then
+   mess Usage:    $WORD([0],2,1,#)//' fdir id idout [dirout=fdir]'
+   stopm
+endif
+
+if [dirout]='' then; dirout=[fdir]; endif
+exec HGET [fdir] [id]
+
+tit = $HTITLE([id])
+ans = A
+ACT:
+read ans 'Histogram title Old, New or Add to old (O/N/A)?:'
+CASE $UPPER([ans]) IN
+   (O)      titout=[tit]
+   (N)      read titout 'New title:'
+   (A)      read titadd 'Add to title:'
+            space = ' '
+            titout = [tit]//[space]//[titadd]
+   (*)      goto ACT
+ENDCASE
+mess New title: [titout]
+
+h/cop [id] [idout] [titout]
+HPUT [dirout] [idout]
+RETURN
+
+*                                      @METAGS FPLOT
+*--------------- FPLOT ---------------
+*
+MACRO FPLOT fdir id opt=E0 over=N ci=2
+if $UPPER([1])='HELP' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#) fdir id opt=E0
+   stopm
+endif
+
+ldir = $HCDIR()
+
+if $HEXIST([id])=1 .AND. $UPPER([over])='N' then
+   ans = 'Y'
+   read ans 'Histogram '//[id]//' in memory will be deleted!  Delete(Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      h/de [id]
+   else
+      mess Cancel.
+      stopm
+   endif
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile]
+   cd \\[fdir]
+   if $IQUEST(1) <> 0 goto NODIR
+
+   hrin  [id]
+close [lun]
+cd [ldir]
+
+if $HEXIST([id]) = 0 then
+   mess There is no histogram [id] in the file.
+else
+   ci0 = $GRAFINFO('?pmci')
+   set pmci [ci]
+   h/pl [id] [opt]
+   set pmci [ci0]
+endif
+EXITM
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                      @METAGS FHDEL
+*--------------- FHDEL ---------------
+*
+MACRO FHDEL fdir id ask=Y
+if $UPPER([1])='HELP' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#) fdir id
+   stopm
+endif
+
+ldir = $HCDIR()
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! U
+   cd \\[fdir]
+   if $IQUEST(1) <> 0 goto NODIR
+
+   if (([id].EQ.0).OR.([id].EQ.'*')) .AND. $UPPER([ask])='Y' then
+      mess All bins in the directory [fdir] will be deleted!
+      ans = N
+      read ans 'Delete (Y/N)?'
+      if $UPPER([ans])=N then
+         close [lun]
+         cd [ldir]
+         EXITM
+      endif
+   endif
+
+   hscratch  [id]
+close [lun]
+cd [ldir]
+EXITM
+
+NODIR:
+mess No such directory!
+close [lun]
+cd [ldir]
+RETURN
+
+*                                         @METAGS EUPDATE
+*--------------- EUPDATE ---------------
+*
+MACRO EUPDATE dir Rcm Nc ALPdeg=0 verb=Y stdtit=N
+if $UPPER([1])='HELP' .OR. [Nc]='' then
+   mess Usage:    $WORD([0],2,1,#) dir Rcm Nc verb=Y stdtit=N ALPdeg=0
+   stopm
+endif
+
+g/imp hfile
+
+* to call EUDATE for dir may be used $FORMAT([dir],F0.2)
+
+if $UPPER([verb])='Y' then
+   ans = Y
+   str = Process directory [dir] in [hfile] (Y/N, Q=Quit)?
+   read ans [str]
+
+   if $UPPER([ans])  = 'Q' then; STOPM; endif
+   if $UPPER([ans]) <> 'Y' then
+      mess Skipped
+      EXITM
+   endif
+endif
+
+mess Process dir=[dir]
+h/de 0
+exec HGET [dir] 0
+
+F = [dir]
+F100 = [F]*100
+FOR id IN_
+    1000000 _
+    5000 6000 7000 8000 1_
+    5000000+[F100] 6000000+[F100] 7000000+[F100] 8000000+[F100] 9000000+[F100]_
+    5100000+[F100] 6100000+[F100] 7100000+[F100] 8100000+[F100] 9100000+[F100]
+    if $HEXIST([id]) then; h/de [id]; endif
+ENDFOR
+
+g/imp D2HIST
+
+g/imp hfile
+fMBE = $WORD([hfile],1,1,'.').MBE
+if $FEXIST([fMBE]) = 0 then
+   mess FMBE file [fMBE] did not found
+   STOPM
+endif
+
+sigma D2MBE=0; sigma ALMBE=0; sigma D2pMBE=0; sigma ALpMBE=0
+v/re D2MBE,ALMBE,D2pMBE,ALpMBE [fMBE] '8X,4F8.0' ! /[dir]/
+
+idc = 1000
+if $HEXIST([idc]) then
+   idE = 5000000+[F100]
+   MBE = D2MBE*1e6
+   mess id=[idc] old title: $HTITLE([idc])
+   title = D2  F=$FORMAT([F],F0.2) MBE=[MBE]
+   if $UPPER([stdtit])='N' then; read title 'Enter title'; endif
+   exec [D2HIST]#EHIST [F] D2MBE [Rcm] [Nc] [idc] [idE] [title] [ALPdeg]
+endif
+
+idc = 2000
+if $HEXIST([idc]) then
+   idE = 6000000+[F100]
+   MBE = ALMBE*1e6
+   mess id=[idc] old title: $HTITLE([idc])
+   title = AL  F=$FORMAT([F],F0.2) MBE=[MBE]
+   if $UPPER([stdtit])='N' then; read title 'Enter title'; endif
+   exec [D2HIST]#EHIST [F] ALMBE [Rcm] [Nc] [idc] [idE] [title] [ALPdeg]
+endif
+
+idc = 3000
+if $HEXIST([idc]) then
+   idE = 7000000+[F100]
+   MBE = D2pMBE*1e6
+   mess id=[idc] old title: $HTITLE([idc])
+   title = D2+ F=$FORMAT([F],F0.2) MBE=[MBE]
+   if $UPPER([stdtit])='N' then; read title 'Enter title'; endif
+   exec [D2HIST]#EHIST [F] D2pMBE [Rcm] [Nc] [idc] [idE] [title] [ALPdeg]
+endif
+
+idc = 4000
+if $HEXIST([idc]) then
+   idE = 8000000+[F100]
+   MBE = ALpMBE*1e6
+   mess id=[idc] old title: $HTITLE([idc])
+   title = AL+ F=$FORMAT([F],F0.2) MBE=[MBE]
+   if $UPPER([stdtit])='N' then; read title 'Enter title'; endif
+   exec [D2HIST]#EHIST [F] ALpMBE [Rcm] [Nc] [idc] [idE] [title] [ALPdeg]
+endif
+
+idc = 9000
+if $HEXIST([idc]) then
+   idE = 9000000+[F100]
+   MBE = 0
+   fcall=TITDAT([idc],'MBE=')
+   MBE = $CALL([fcall])
+   mess id=[idc] old title: $HTITLE([idc])
+   mess --- MBE from old title is [MBE]
+   wait 'Press <CR>'
+   if [MBE]=0 then
+      mess MBE field in title of hist [idc] in [dir] did not found
+      mess Skip histogram
+      goto NEXT
+   endif
+   rMBE = [MBE]/1e6
+   
+   title = H2 F=$FORMAT([F],F0.2) MBE=[MBE]
+   if $UPPER([stdtit])='N' then; read title 'Enter title'; endif
+   exec [D2HIST]#EHIST [F] [rMBE] [Rcm] [Nc] [idc] [idE] [title] [ALPdeg]
+endif
+NEXT:
+
+if $UPPER([verb])='Y' then
+   ans = Y
+   str = Update directory [dir] in [hfile] (Y/N)?
+   read ans [str]
+else
+   ans = Y
+endif
+
+if $UPPER([ans]) = 'Y' then
+   exec FHDEL [dir] 0 ask=N
+   exec HPUT [dir] 0 ask=N
+   mess dir [dir] in [hfile] is updated
+else
+   mess dir [dir] in [hfile] is not changed
+endif
+mess
+RETURN
+
+*                                         @METAGS EUPDATE480
+*--------------- EUPDATE480 ---------------
+*
+MACRO EUPDATE480 Rcm=76 Nc=52
+need = D:\D2\480
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN  8.80  9.67 10.63 11.68 12.84 14.11 15.28_
+           15.71 16.09 16.29 16.78 18.29 18.68
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE511
+*--------------- EUPDATE511 ---------------
+*
+MACRO EUPDATE511 Rcm=76 Nc=45
+need = D:\D2\511
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN  8.47  9.32 10.25 11.27 12.28 13.39 14.54 15.85_
+           16.92 17.25 17.60 19.18 20.16 29.26
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=Y stdtit=N
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE550
+*--------------- EUPDATE550 ---------------
+*
+MACRO EUPDATE550 Rcm=76 Nc=45 ALPdeg=12
+need = D:\D2\550
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN  11.44 12.47 13.59 14.81 15.23 16.15 17.61 18.04_
+            18.90 19.19 20.39 22.22
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] ALPdeg=[ALPdeg] verb=Y stdtit=N
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE670
+*--------------- EUPDATE670 ---------------
+*
+MACRO EUPDATE670 Rcm=76 Nc=52
+need = D:\D2\670
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN  9.03 10.73 11.69 12.75 13.89 15.14 15.88 16.51_
+           18.01 19.62 21.38 22.71
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EtUPDATE670
+*--------------- EtUPDATE670 ---------------
+*
+MACRO EtUPDATE670 Rcm=54.5 Nc=5
+need = D:\D2\670
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'TITOV' then
+   mess Change to TITOV mode
+   mess --------------------
+   g/imp D2MODE
+   exec [D2MODE]#mode TITOV
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN  9.03  9.84 10.73 11.69 12.75 13.89 15.14 15.88 16.51_
+           18.01 19.62 21.38 22.71
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE1200
+*--------------- EUPDATE1200 ---------------
+*
+MACRO EUPDATE1200 Rcm=39 Nc=52
+need = D:\D2\1200
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN 29.53 32.19 35.08 38.24 41.32 45.04 49.09 52.24
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE1000
+*--------------- EUPDATE1000 ---------------
+*
+MACRO EUPDATE1000 Rcm=46 Nc=52
+need = D:\D2\1000
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN 23.94 26.10 28.45 31.01 33.80 36.84 40.16 42.34 45.94
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE850
+*--------------- EUPDATE850 ---------------
+*
+MACRO EUPDATE850 Rcm=54 Nc=52
+need = D:\D2\850
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN 20.60 22.64 24.88 27.34 30.05 33.02 35.99 39.20
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE700
+*--------------- EUPDATE700 ---------------
+*
+MACRO EUPDATE700 Rcm=61 Nc=52
+need = D:\D2\700
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN 17.16 18.71 20.39 22.22 24.22 26.40 28.78 31.09 33.89
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE635
+*--------------- EUPDATE635 ---------------
+*
+MACRO EUPDATE635 Rcm=82 Nc=52
+need = D:\D2\635
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN 8.88 9.68 10.56 11.51 12.54 13.67 14.90 16.24 17.70 19.29_
+           20.55 22.40 36.12
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE590
+*--------------- EUPDATE590 ---------------
+*
+MACRO EUPDATE590 Rcm=82 Nc=52
+need = D:\D2\590
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN 8.52 9.28 10.12 11.03 12.02 13.10 14.29 15.46 15.85 16.85_
+           18.37 20.02 20.85
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS EUPDATE940
+*--------------- EUPDATE940 ---------------
+*
+MACRO EUPDATE940 Rcm=82 Nc=52
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] Rcm=82 Nc=52
+   stopm
+endif
+
+need = D:\D2\940
+current = $SHELL(cd)
+lcdir ..
+parent = $SHELL(cd)
+if [parent] <> [need] then
+   mess You must work in subdirectory of parent directory [need]
+   lcdir [current]
+   stopm
+endif
+lcdir [current]
+
+g/imp hfile,mode
+
+if $UPPER([mode]) <> 'PC' then
+   mess Change to PC mode
+   mess -----------------
+   g/imp D2MODE
+   exec [D2MODE]#mode PC
+endif
+
+mess
+mess Mode [mode]
+mess
+mess Update energy histograms in file [hfile]
+mess
+wait
+
+FOR dir IN 22.68 24.72 26.95 29.37 32.02 34.90 38.04 41.46
+    exec EUPDATE $FORMAT([dir],F0.2) [Rcm] [Nc] verb=N stdtit=Y
+ENDFOR
+RETURN
+
+*                                         @METAGS dp590
+*--------------- dp590 ---------------
+*
+MACRO dp590
+ldir = $HCDIR()
+
+WORKdir = //PAWC; g/imp WORKdir
+if $UPPER([WORKdir]) <> '//PAWC' then
+   cd [WORKdir]
+endif
+
+sigma hlistDP = array(100)*0
+i = 0
+for F in 9.28 11.03 12.02 13.10 15.46 18.37 20.85
+   F = $FORMAT([F],F0.2)
+   mess Create D2p-ALp difference hist. for F = [F]
+   idD2p = 7000000 + [F]*100
+   idALp = 8000000 + [F]*100
+   idDP  = 7010000 + [F]*100
+   if $HEXIST([idD2p])=0 then
+      if $EXEC(HGET [F] [idD2p] prompt=N) = 0 then
+         mess Hist [idD2p] did not found in [F]
+         STOPM
+      endif
+   endif
+   if $HEXIST([idALp])=0 then
+      if $EXEC(HGET [F] [idALp] prompt=N) = 0 then
+         mess Hist [idALp] did not found in [F]
+         STOPM
+      endif
+   endif
+
+   i = [i]+1
+   v/inp hlistDP([i]) [idDP]
+   tit = D2p-ALp F=[F]
+   h/cop [idD2p] [idDP] [tit]
+   sub [idD2p] [idALp] [idDP] 1 1 E
+   
+   nc = $HINFO([idDP],'XBINS')
+   sigma buf = array([nc])*0
+   get/con [idDP] buf
+   if $SIGMA(VSUM(buf LT 0)) then
+      buf = buf*(buf GE 0)
+      put/con [idDP] buf
+   endif
+   v/de buf
+   exec hput [F] [idDP]
+endfor
+
+cd [ldir]
+file = dp.hli
+read file 'Enter file name for D2p-ALp difference histogram list (Q=Quit)'
+if $UPPER([file]) <> 'Q' then
+   v/wr hlistDP(1:[i]) [file] 'F9.0'
+endif
+RETURN
+
+*                                         @METAGS dp940
+*--------------- dp940 ---------------
+*
+MACRO dp940
+ldir = $HCDIR()
+
+WORKdir = //PAWC; g/imp WORKdir
+if $UPPER([WORKdir]) <> '//PAWC' then
+   cd [WORKdir]
+endif
+
+sigma hlistDP = array(100)*0
+i = 0
+for F in 22.68 29.37 34.90 38.04 41.46
+   F = $FORMAT([F],F0.2)
+   mess Create D2p-ALp difference hist. for F = [F]
+   idD2p = 7000000 + [F]*100
+   idALp = 8000000 + [F]*100
+   idDP  = 7010000 + [F]*100
+   if $HEXIST([idD2p])=0 then
+      if $EXEC(HGET [F] [idD2p] prompt=N) = 0 then
+         mess Hist [idD2p] did not found in [F]
+         STOPM
+      endif
+   endif
+   if $HEXIST([idALp])=0 then
+      if $EXEC(HGET [F] [idALp] prompt=N) = 0 then
+         mess Hist [idALp] did not found in [F]
+         STOPM
+      endif
+   endif
+
+   i = [i]+1
+   v/inp hlistDP([i]) [idDP]
+   tit = D2p-ALp F=[F]
+   h/cop [idD2p] [idDP] [tit]
+   sub [idD2p] [idALp] [idDP] 1 1 E
+   
+   nc = $HINFO([idDP],'XBINS')
+   sigma buf = array([nc])*0
+   get/con [idDP] buf
+   if $SIGMA(VSUM(buf LT 0)) then
+      buf = buf*(buf GE 0)
+      put/con [idDP] buf
+   endif
+   v/de buf
+   exec hput [F] [idDP]
+endfor
+
+cd [ldir]
+file = dp.hli
+read file 'Enter file name for D2p-ALp difference histogram list (Q=Quit)'
+if $UPPER([file]) <> 'Q' then
+   v/wr hlistDP(1:[i]) [file] 'F9.0'
+endif
+RETURN
+
+*                                         @METAGS dp1000
+*--------------- dp1000 ---------------
+*
+MACRO dp1000
+ldir = $HCDIR()
+
+WORKdir = //PAWC; g/imp WORKdir
+if $UPPER([WORKdir]) <> '//PAWC' then
+   cd [WORKdir]
+endif
+
+sigma hlistDP = array(100)*0
+i = 0
+for F in 23.94 31.01 36.84 42.34 45.94
+   F = $FORMAT([F],F0.2)
+   mess Create D2p-ALp difference hist. for F = [F]
+   idD2p = 7000000 + [F]*100
+   idALp = 8000000 + [F]*100
+   idDP  = 7010000 + [F]*100
+   if $HEXIST([idD2p])=0 then
+      if $EXEC(HGET [F] [idD2p] prompt=N) = 0 then
+         mess Hist [idD2p] did not found in [F]
+         STOPM
+      endif
+   endif
+   if $HEXIST([idALp])=0 then
+      if $EXEC(HGET [F] [idALp] prompt=N) = 0 then
+         mess Hist [idALp] did not found in [F]
+         STOPM
+      endif
+   endif
+
+   i = [i]+1
+   v/inp hlistDP([i]) [idDP]
+   tit = D2p-ALp F=[F]
+   h/cop [idD2p] [idDP] [tit]
+   sub [idD2p] [idALp] [idDP] 1 1 E
+   
+   nc = $HINFO([idDP],'XBINS')
+   sigma buf = array([nc])*0
+   get/con [idDP] buf
+   if $SIGMA(VSUM(buf LT 0)) then
+      buf = buf*(buf GE 0)
+      put/con [idDP] buf
+   endif
+   v/de buf
+   exec hput [F] [idDP]
+endfor
+
+cd [ldir]
+file = dp.hli
+read file 'Enter file name for D2p-ALp difference histogram list (Q=Quit)'
+if $UPPER([file]) <> 'Q' then
+   v/wr hlistDP(1:[i]) [file] 'F9.0'
+endif
+RETURN
+
+*                                         @METAGS dp1200
+*--------------- dp1200 ---------------
+*
+MACRO dp1200
+ldir = $HCDIR()
+
+WORKdir = //PAWC; g/imp WORKdir
+if $UPPER([WORKdir]) <> '//PAWC' then
+   cd [WORKdir]
+endif
+
+sigma hlistDP = array(100)*0
+i = 0
+for F in 29.53 35.08 41.32 49.09
+   F = $FORMAT([F],F0.2)
+   mess Create D2p-ALp difference hist. for F = [F]
+   idD2p = 7000000 + [F]*100
+   idALp = 8000000 + [F]*100
+   idDP  = 7010000 + [F]*100
+   if $HEXIST([idD2p])=0 then
+      if $EXEC(HGET [F] [idD2p] prompt=N) = 0 then
+         mess Hist [idD2p] did not found in [F]
+         STOPM
+      endif
+   endif
+   if $HEXIST([idALp])=0 then
+      if $EXEC(HGET [F] [idALp] prompt=N) = 0 then
+         mess Hist [idALp] did not found in [F]
+         STOPM
+      endif
+   endif
+
+   i = [i]+1
+   v/inp hlistDP([i]) [idDP]
+   tit = D2p-ALp F=[F]
+   h/cop [idD2p] [idDP] [tit]
+   sub [idD2p] [idALp] [idDP] 1 1 E
+   
+   nc = $HINFO([idDP],'XBINS')
+   sigma buf = array([nc])*0
+   get/con [idDP] buf
+   if $SIGMA(VSUM(buf LT 0)) then
+      buf = buf*(buf GE 0)
+      put/con [idDP] buf
+   endif
+   v/de buf
+   exec hput [F] [idDP]
+endfor
+
+cd [ldir]
+file = dp.hli
+read file 'Enter file name for D2p-ALp difference histogram list (Q=Quit)'
+if $UPPER([file]) <> 'Q' then
+   v/wr hlistDP(1:[i]) [file] 'F9.0'
+endif
+RETURN
+
+*                                         @METAGS dp700
+*--------------- dp700 ---------------
+*
+MACRO dp700
+ldir = $HCDIR()
+
+WORKdir = //PAWC; g/imp WORKdir
+if $UPPER([WORKdir]) <> '//PAWC' then
+   cd [WORKdir]
+endif
+
+sigma hlistDP = array(100)*0
+i = 0
+for F in 17.16 22.22 31.09 33.89
+   F = $FORMAT([F],F0.2)
+   mess Create D2p-ALp difference hist. for F = [F]
+   idD2p = 7000000 + [F]*100
+   idALp = 8000000 + [F]*100
+   idDP  = 7010000 + [F]*100
+   if $HEXIST([idD2p])=0 then
+      if $EXEC(HGET [F] [idD2p] prompt=N) = 0 then
+         mess Hist [idD2p] did not found in [F]
+         STOPM
+      endif
+   endif
+   if $HEXIST([idALp])=0 then
+      if $EXEC(HGET [F] [idALp] prompt=N) = 0 then
+         mess Hist [idALp] did not found in [F]
+         STOPM
+      endif
+   endif
+
+   i = [i]+1
+   v/inp hlistDP([i]) [idDP]
+   tit = D2p-ALp F=[F]
+   h/cop [idD2p] [idDP] [tit]
+   sub [idD2p] [idALp] [idDP] 1 1 E
+   
+   nc = $HINFO([idDP],'XBINS')
+   sigma buf = array([nc])*0
+   get/con [idDP] buf
+   if $SIGMA(VSUM(buf LT 0)) then
+      buf = buf*(buf GE 0)
+      put/con [idDP] buf
+   endif
+   v/de buf
+   exec hput [F] [idDP]
+endfor
+
+cd [ldir]
+file = dp.hli
+read file 'Enter file name for D2p-ALp difference histogram list (Q=Quit)'
+if $UPPER([file]) <> 'Q' then
+   v/wr hlistDP(1:[i]) [file] 'F9.0'
+endif
+RETURN
+
+*                                         @METAGS dp850
+*--------------- dp850 ---------------
+*
+MACRO dp850
+ldir = $HCDIR()
+
+WORKdir = //PAWC; g/imp WORKdir
+if $UPPER([WORKdir]) <> '//PAWC' then
+   cd [WORKdir]
+endif
+
+sigma hlistDP = array(100)*0
+i = 0
+for F in 20.60 27.34 33.02 35.99 39.20
+   F = $FORMAT([F],F0.2)
+   mess Create D2p-ALp difference hist. for F = [F]
+   idD2p = 7000000 + [F]*100
+   idALp = 8000000 + [F]*100
+   idDP  = 7010000 + [F]*100
+   if $HEXIST([idD2p])=0 then
+      if $EXEC(HGET [F] [idD2p] prompt=N) = 0 then
+         mess Hist [idD2p] did not found in [F]
+         STOPM
+      endif
+   endif
+   if $HEXIST([idALp])=0 then
+      if $EXEC(HGET [F] [idALp] prompt=N) = 0 then
+         mess Hist [idALp] did not found in [F]
+         STOPM
+      endif
+   endif
+
+   i = [i]+1
+   v/inp hlistDP([i]) [idDP]
+   tit = D2p-ALp F=[F]
+   h/cop [idD2p] [idDP] [tit]
+   sub [idD2p] [idALp] [idDP] 1 1 E
+   
+   nc = $HINFO([idDP],'XBINS')
+   sigma buf = array([nc])*0
+   get/con [idDP] buf
+   if $SIGMA(VSUM(buf LT 0)) then
+      buf = buf*(buf GE 0)
+      put/con [idDP] buf
+   endif
+   v/de buf
+   exec hput [F] [idDP]
+endfor
+
+cd [ldir]
+file = dp.hli
+read file 'Enter file name for D2p-ALp difference histogram list (Q=Quit)'
+if $UPPER([file]) <> 'Q' then
+   v/wr hlistDP(1:[i]) [file] 'F9.0'
+endif
+RETURN
+
+*                                      @METAGS HIS2ALP
+*--------------- HIS2ALP ---------------
+*
+MACRO HIS2ALP hisfil alpfil lunit
+g/imp lun
+if $UPPER([1])='HELP' .OR. [alpfil]='' then
+   mess Usage:    $WORD([0],2,1,#)//' hisfil alpfil lunit=[lun]'
+   stopm
+endif
+
+if [lunit]='' then; lunit=[lun]; endif
+
+if $FEXIST([hisfil])=0 then
+   mess Histogram file [hisfil] did not found.
+   stopm
+endif
+
+if $FEXIST([alpfil])<>0 then
+   mess Alphanumeric file [alpfil] already exist.
+   stopm
+endif
+
+ldir = $HCDIR()
+
+h/file [lunit] [hisfil]
+toalp [alpfil]
+close [lunit]
+cd [ldir]
+RETURN
+
+*                                      @METAGS ALP2HIS
+*--------------- ALP2HIS ---------------
+*
+MACRO ALP2HIS alpfil hisfil lunit
+g/imp lun,hfile
+if $UPPER([1])='HELP' .OR. [hisfil]='' then
+   mess Usage:    $WORD([0],2,1,#)//' alpfil hisfil lunit=[lun]'
+   stopm
+endif
+
+if $FEXIST([alpfil])=0 then
+   mess Alphanumeric file [alpfil] did not found.
+   stopm
+endif
+
+if $FEXIST([hisfil])<>0 then
+   mess Histogram file [hisfil] already exist.
+   stopm
+endif
+
+if [lunit]='' then; lunit=[lun]; endif
+
+ldir = $HCDIR()
+
+h/file [lunit] [hisfil] ! n
+fralp [alpfil]
+ld
+close [lunit]
+cd [ldir]
+
+ans = Y
+str = Set [hisfil] as a current histogram file (Y/N)?
+mess '                                                              '
+read ans [str]
+if $UPPER([ans])=Y then; hfile=[hisfile]; endif
+
+ans = Y
+str = Set [lunit] as a current logical unit of histogram file (Y/N)?
+mess '                                                              '
+read ans [str]
+if $UPPER([ans])=Y then; lun=[lunit]; endif
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if $UPPER([1])='HELP' then
+   op = CREATE
+   ask = MACRO $WORD([0],2,1,#): CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):   Aliases are created.
+
+ali/[op] -C FTIT        'exec '//$WORD([0],1,1,#)#FTIT
+ali/[op] -C FHINFO      'exec '//$WORD([0],1,1,#)#FHINFO
+ali/[op] -C FOPEN       'exec '//$WORD([0],1,1,#)#FOPEN
+ali/[op] -C FCLOSE      'exec '//$WORD([0],1,1,#)#FCLOSE
+ali/[op] -C FMDIR       'exec '//$WORD([0],1,1,#)#FMDIR
+ali/[op] -C FDIR        'exec '//$WORD([0],1,1,#)#FDIR
+ali/[op] -C FHLIST      'exec '//$WORD([0],1,1,#)#FHLIST
+ali/[op] -C FL          'exec '//$WORD([0],1,1,#)#FHLIST
+ali/[op] -C FGOTO       'exec '//$WORD([0],1,1,#)#FGOTO
+ali/[op] -C FPUR        'exec '//$WORD([0],1,1,#)#FPUR
+ali/[op] -C HPUT        'exec '//$WORD([0],1,1,#)#HPUT
+ali/[op] -C HGET        'exec '//$WORD([0],1,1,#)#HGET
+ali/[op] -C FHCOP       'exec '//$WORD([0],1,1,#)#FHCOP
+ali/[op] -C FPLOT       'exec '//$WORD([0],1,1,#)#FPLOT
+ali/[op] -C FHDEL       'exec '//$WORD([0],1,1,#)#FHDEL
+ali/[op] -C EUPDATE     'exec '//$WORD([0],1,1,#)#EUPDATE
+ali/[op] -C HIS2ALP     'exec '//$WORD([0],1,1,#)#HIS2ALP
+ali/[op] -C ALP2HIS     'exec '//$WORD([0],1,1,#)#ALP2HIS
+RETURN

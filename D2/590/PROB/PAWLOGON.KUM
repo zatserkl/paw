@@ -1,0 +1,115 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)\pawlogon
+mess Local PAWLOGON
+LCDIR
+mess Hello, folks!
+
+EXEC $ENV(HOME)\pawlogon#BigWin
+EXEC $ENV(HOME)\pawlogon#xargs
+
+opt grid
+*opt logy
+
+*g/cr eff 1 'Efficiency flag'
+*g/cr valmin .1
+
+*exec D2CORR 583 143.5
+
+a/cr -c fc 'set fcol'
+exec prob#for
+ENDKUMAC
+
+
+
+exec d2for
+
+APPL COMIS QUIT
+      subroutine openlun(lun)
+      integer idata4(200)
+      character file*32, fname*12
+      data fname /'sp**__.dat'/
+
+      nz = 20
+      nf = 32
+      write (fname(3:4),3) nf
+    3 FORMAT (I2.2)
+      file = '\D2\DAT\'//fname
+      
+**     .. the sample of uncorrect name
+*      file = 'sp42.dat'
+
+      open (UNIT=lun, FILE=file, STATUS='OLD', IOSTAT=icode,
+     &      ACCESS='DIRECT', RECL=800, ERR=10000)
+      call FREELUN(lun,file)
+      print*, 'open icode =', icode
+      RETURN
+10000 print*, 'open ERROR'
+      call FREELUN(lun,file)
+      RETURN
+20000 print*, 'read ERROR'
+      call FREELUN(lun,file)
+      end
+
+      subroutine tstlun()
+      character*32 acc,fil,seq,dir
+      logical used
+      do i=1,5
+         print*, i
+*         seq = 'DONTNOWN'
+*         inquire (UNIT= i, SEQUENTIAL=seq, ERR=10000, IOSTAT=icode)
+*         print*, 'icode =', icode
+*         call WAIT(seq)
+
+*         dir = 'DONTNOWN'
+*         inquire (UNIT= i, DIRECT=dir, ERR=10000, IOSTAT=icode)
+*         print*, 'icode =', icode
+*         call WAIT(dir)
+
+*         fil = 'UNKNOWN'
+*         inquire (UNIT= i, NAME=fil, ERR=10000, IOSTAT=icode)
+*         print*, 'icode =', icode
+*         call WAIT(fil)
+
+*         acc = 'UNDEFENED'
+*         inquire (UNIT= i, ACCESS=acc, ERR=10000, IOSTAT=icode)
+*         print*, 'icode =', icode
+*         call WAIT(acc)
+
+         inquire (UNIT= i, OPENED=used, ERR=10000, IOSTAT=icode)
+*         print*, 'icode =', icode
+         if (used) then
+            print*, 'used'
+         else
+            print*, 'free'
+         endif
+      enddo
+      RETURN
+10000 print*, 'inquire ERROR'
+      end
+QUIT
+
+*exec D2CORR 583 143.5
+
+*pl el
+
+*x d2look
+
+*x d2look#NtNS 42 2 5 legend=0
+*alp
+*x d2look#READAT 2042
+
+*wait
+
+lun = 1
+read lun 'Enter lun'
+
+call openlun([lun])
+call tstlun
+*wait
+
+*pl el
+
+RETURN

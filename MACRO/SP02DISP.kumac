@@ -1,0 +1,49 @@
+*                                         @METAGS sp02disp
+*--------------- sp02disp ---------------
+*
+MACRO sp02disp
+* Dmm/% = 18.26 - .5341e-3*Emev
+v/cr E(4)  r   100   450   760   850
+v/cr D(4)  r   18.1  18.46 17.85 17.37
+v/cr eD(4) r   .2    .29   .41   .43
+v/cr Rmm(4) r  960.  1000. 1035. 980.
+v/cr eRmm(4) r 10.   10.   12.   20.
+zon 1 2
+exec Dplot
+exec Dfit
+exec Rplot
+exec Rfit
+zon
+RETURN
+*                                         @METAGS Dplot
+*--------------- Dplot ---------------
+*
+MACRO Dplot
+opt liny
+opt grid
+h/err E D $SIGMA(0*E) eD $VLEN(E) 20 ! AW0
+atitle 'E, MeV' 'Dispersion D?n!, mm/"Y#'
+RETURN
+*                                         @METAGS Dfit
+*--------------- Dfit ---------------
+*
+MACRO Dfit
+opt fit
+v/fit E(1:3) D eD p1 qs
+RETURN
+*                                         @METAGS Rplot
+*--------------- Rplot ---------------
+*
+MACRO Rplot
+opt liny
+opt grid
+h/err E Rmm $SIGMA(0*E) eRmm $VLEN(E) 20 ! AW0
+atitle 'E, MeV' 'Focal plane from the flange, mm'
+RETURN
+*                                         @METAGS Rfit
+*--------------- Rfit ---------------
+*
+MACRO Rfit
+opt fit
+v/fit E(1:3) Rmm eRmm p1 qs
+RETURN

@@ -1,0 +1,148 @@
+*                                      @METAGS D2CORR
+*--------------- D2CORR ---------------
+*
+MACRO D2CORR E0 theta valmin=1.
+if $UPPER([1])='HELP' then
+   mess Usage:    [0] E0 theta
+   stopm
+endif
+
+mess Welcome to macro [0]
+EXEC INI
+
+g/imp D2PLOTL
+if [theta] = '' then
+   process = ''; g/imp process
+   if [process] <> '' then
+      ans = 'N'
+      read ans 'Change the process marks (Y/N)?'
+      if $UPPER([ans])='Y' then
+         exec [D2PLOTL]#DefProcess
+      endif
+   else
+      exec [D2PLOTL]#DefProcess
+   endif
+else
+   g/imp D2PLOTL
+   exec [D2PLOTL]#E0theta [E0] [theta]
+endif
+
+D2MODE=''; g/imp D2MODE
+if [D2MODE]='' then; exec D2MODE; endif
+
+mode=''; g/imp D2MODE,mode
+if [mode] = '' then
+   exec [D2MODE]#MODE PC
+else
+   exec [D2MODE]#MODE [mode]
+endif
+
+*g/cr const 10
+*g/cr const 0
+*read const 'Constant fon to reject'
+
+g/cr valmin [valmin]
+*read valmin 'Minimum value to keep for spectrum'
+
+eff = 0; g/imp eff
+if [eff]=0 then
+   g/cr eff 1 'Efficiency flag'
+endif
+
+*g/cr reff 1
+*read reff 'Resolution correction flag'
+RETURN
+
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+opt logy
+opt stat
+set stat 1000001
+opt grid
+set mtyp 24
+igset pmci 1
+close 0
+if $VEXIST(hlist) then; v/de hlist; endif
+
+* Globals
+
+D2HIST='';  g/imp D2HIST;  if [D2HIST]=''  then; exec D2HIST;  endif
+D2HFILE=''; g/imp D2HFILE; if [D2HFILE]='' then; exec D2HFILE; endif
+D2PLOTL=''; g/imp D2PLOTL; if [D2PLOTL]='' then; exec D2PLOTL; endif
+D2FIT='';   g/imp D2FIT;   if [D2FIT]=''   then; exec D2FIT;   endif
+D2EFF='';   g/imp D2EFF;   if [D2EFF]=''   then; exec D2EFF;   endif
+*D2REF='';   g/imp D2REF;   if [D2REF]=''   then; exec D2REF;   endif
+
+*g/cr MAIN $WORD([0],1,1,#)
+
+ldir = $HCDIR()
+
+* Create WORK directory
+cd //PAWC
+cd WORK
+if $IQUEST(1) then
+   mess Work directory //PAWC/WORK does not exist.
+   mdir WORK
+   mess Created.
+   cd WORK
+   * Work directory //PAWC/WORK
+   g/cr WORKdir $HCDIR()   'Work directory'
+   * Clear work directory
+   h/de 0
+endif
+
+cd [ldir]
+
+exec ALI CREATE
+RETURN
+
+*                             @METAGS PAN
+*---------- PAN ----------
+*
+MACRO PAN
+mess Panels from macro CORR
+EXEC INI
+EXEC ALI DELETE
+EXEC ALI CREATE
+panel 0
+panel 1  'VIEW' 'BIN-' 'ZOOM-' 'MINUS-' 'PLUS-' 'CandD' 'PLOTL' 'PLOT-'_
+         'HINFO-' 'SetID' 'BGET' 'BPUT'
+panel 2  'opt-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-' 'g/l-' 'mess [$]'
+panel 3  'pan' 'p/cr' 'p/pr-' 'Clear' 'Notes' 'edit-' 'shell' 'x-' '$' 'me'
+style gp ! ! .12
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = 'HELP' then
+   mess Usage:    [0] op=CREATE
+   mess Examples:
+   mess           [0] CREATE
+   mess           [0] DELETE
+   stopm
+endif
+
+mess $WORD([0],1,1,#):    Aliases are created.
+
+ali/[op] -C INI         'exec '//$WORD([0],1,1,#)#INI
+ali/[op] -C XL          'exec '//$WORD([0],1,1,#)#XL
+ali/[op] -C PAN         'exec '//$WORD([0],1,1,#)#PAN
+ali/[op] -C Note        'edit Note.txt'
+RETURN
+
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+last 2
+exec last
+ans = Y
+read ans 'Return to panels (Y/N)?'
+if $UPPER([ans]) = Y then
+   XP
+endif
+RETURN

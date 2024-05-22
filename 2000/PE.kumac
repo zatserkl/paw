@@ -1,0 +1,1470 @@
+* Andriy_Zatserklyniy@fnal.gov
+
+*                                      @METAGS PE
+*--------------- PE ---------------
+*
+MACRO PE id idpe=100 eps=0.01 iter=10 idest=1000 inifil=pmpar.ini k1=8 k2=300 maxped=9 npeaks=7 read=1
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:      [0] id idpe=100 eps=0.01 iter=10 idest=1000 inifil=pmpar.ini k1=8 k2=300 maxped=9 npeaks=7 read=1
+   stopm
+endif
+
+exec FOR
+
+if $INDEX([inifil],'.')=0 then
+   inifil = [inifil].ini
+endif
+
+if $FEXIST([inifil])=0 then
+   mess PM parameters file [inifil] did not found
+   stopm
+endif
+
+if [read] <> 0 then
+   call READPM($QUOTE([inifil]))
+   mess 'PM data is read'
+endif
+
+fcall = ESTPE([id],[idest],[maxped])
+npe = $CALL([fcall])
+mess Estimation of Npe: [npe]
+
+idrest = 1000 + [id]
+
+*getnpe(id,idpe,idrest,maxped,eps,iter)
+fcall = GETNPE([id],[idpe],[idrest],[maxped],$RSIGMA([eps]),[iter])
+Npe = $CALL([fcall])
+g/cr Npe [Npe]
+
+fcall = xi2([id],[idrest],[maxped],0]
+xi2 = $CALL([fcall])
+g/cr xi2 [xi2]
+
+mess Npe = [Npe], xi2 = [xi2]
+
+wait '<CR>=Plot the result, Q=Quit'
+
+*tit = N?PE!=[Npe], [h]^2!=[xi2]
+*title_global [tit]
+
+exec plot [id] [idrest] [k1] [k2] [idpe] [npeaks]
+
+*title_global ''
+RETURN
+
+*                                         @METAGS data
+*--------------- data ---------------
+*
+MACRO data
+exec sp pe85a 1 N
+exec sp pe200 2 N
+exec sp tpe7a 3 N
+exec sp pe85e 4 N
+exec sp pe85h 5 N
+
+h/file 1 mono.his
+hrin 102
+close 1
+RETURN
+
+*                                      @METAGS plot
+*--------------- plot ---------------
+*
+MACRO plot id idrest k1=8 k2=300 idpe=100 npeaks=7
+if [id]='' then
+   mess Usage:    [0]//' id idrest=1000+[id] k1=8 k2=300 idpe=100 npeaks=7'
+   stopm
+endif
+   mtyp0 = $GRAFINFO('?mtyp')
+   set mtyp 1
+
+   g/imp Npe,xi2
+   tit = N?PE!=[Npe], [h]^2!=[xi2]
+   title_global [tit]
+
+   h/pl [id]([k1]:[k2]) pe0
+   set mtyp [mtyp0]
+   title ' '
+
+   if [idrest] = '' then; idrest = 1000+[id]; endif
+   hcol0 = $GRAFINFO('?hcol')
+   set hcol 2
+   h/pl [idrest]([k1]:[k2]) s
+   set hcol [hcol0]
+
+   * Plot peaks
+   if [idpe] > 0 then
+      plci0 = $GRAFINFO('?plci')
+      call peaks([idpe],[npeaks])
+      set plci [plci0]
+   endif
+   
+   *mess $HTITLE([idrest])
+RETURN
+
+*                                      @METAGS fig
+*--------------- fig ---------------
+*
+MACRO fig id idrest k1=8 k2=300 idpe=0 npeaks=7
+if [id]='' then
+   mess Usage:    [0]//' id idrest=1000+[id] k1=8 k2=300'
+   stopm
+endif
+
+opt nsta
+set pass 5
+set hwid 2
+set bwid 2
+set xwid 2
+set ywid 2
+win 12 9
+
+mtyp0 = $GRAFINFO('?mtyp')
+set mtyp 20
+h/pl [id]([k1]:[k2]) p0
+set mtyp [mtyp0]
+
+if [idrest] = '' then; idrest = 1000+[id]; endif
+hcol0 = $GRAFINFO('?hcol')
+set hcol 1
+h/pl [idrest]([k1]:[k2]) s
+set hcol [hcol0]
+
+if [idpe] > 0 then
+   plci0 = $GRAFINFO('?plci')
+   set lwid 2
+   call peaks([idpe],[npeaks])
+   set plci [plci0]
+endif
+
+mess $HTITLE([idrest])
+RETURN
+
+*                                      @METAGS fig3
+*--------------- fig3 ---------------
+*
+MACRO fig3 id idrest k1=8 k2=300 idpe=0 npeaks=7
+if [id]='' then
+   mess Usage:    [0]//' id idrest=1000+[id] k1=8 k2=300'
+   stopm
+endif
+
+g/imp npe,xi2
+prec = .06*[npe]
+
+idplot=-1
+if $HEXIST([idplot]) then; h/de [idplot]; endif
+tit = Npe = $FORMAT([npe],F0.2) "a# $FORMAT([prec],F0.2)
+h/cop [id] [idplot] [tit]
+
+opt nsta
+*set pass 5
+*set hwid 2
+*set bwid 2
+*set xwid 2
+*set ywid 2
+
+exec win 0 0
+xsiz0 = $WORD([@],1,1)
+ysiz0 = $WORD([@],2,1)
+exec win 12 9
+
+mtyp0 = $GRAFINFO('?mtyp')
+hcol0 = $GRAFINFO('?hcol')
+
+set hcol 1
+*set mtyp 1
+
+set mtyp 24
+set mscf .75
+
+*h/pl [idplot]([k1]:[k2]) e0
+h/pl [idplot]([k1]:[k2]) p0
+*set mtyp [mtyp0]
+
+if [idrest] = '' then; idrest = 1000+[id]; endif
+
+hwid0 = $GRAFINFO('?hwid')
+set hwid 2
+
+*mess Before h/pl idrest lwid=$GRAFINFO('?lwid')---
+*wait
+
+h/pl [idrest]([k1]:[k2]) s
+
+*mess After  h/pl idrest lwid=$GRAFINFO('?lwid')---
+*wait
+
+set hcol [hcol0]
+set hwid [hwid0]
+
+if [idpe] > 0 then
+   plci0 = $GRAFINFO('?plci')
+   lwid0 = $GRAFINFO('?lwid')
+   ltyp0 = $GRAFINFO('?ltyp')
+
+   *set lwid 2
+   set lwid 1
+   *set ltyp 2
+   set ltyp 1
+   call peaksm([idpe],[npeaks])
+   set lwid [lwid0]
+   set ltyp [ltyp0]
+   set plci [plci0]
+endif
+
+**  1     2      3         4         5       6      7         8         9
+*s=[NT0] [xmin] [NT1xmin] [NT1xlen] [xscal] [ymin] [NT1ymin] [NT1ylen] [yscal]
+
+exec NT1PAR
+NT0 = $WORD([@],1,1)
+NT1xmin = $WORD([@],3,1)
+NT1xlen = $WORD([@],4,1)
+NT1ymin = $WORD([@],7,1)
+NT1ylen = $WORD([@],8,1)
+
+xsizbox = 2.6
+ysizbox = 1.8
+x1box = [NT1xmin] + ([NT1xlen]-[xsizbox])
+x2box = [NT1xmin] + [NT1xlen]
+y1box = [NT1ymin] + ([NT1ylen]-[ysizbox])
+y2box = [NT1ymin] + [NT1ylen]
+
+SELNT 1
+set lwid 1
+box [x1box] [x2box] [y1box] [y2box]
+x = [x1box] + .2
+y = [y2box]
+y = [y] - .5
+text [x] [y] 'FEU-85' .28
+
+y = [y] - .5
+text [x] [y] 'Source ^90!Sr' .28
+
+*y = [y] - .5
+*str = Npe = $FORMAT([npe],F0.2) "a# $FORMAT([prec],F0.2)
+*text [x] [y] [str] .28
+
+y = [y] - .5
+*str = [v]^2! = $FORMAT([xi2],F0.2)
+str = $FORMAT([xi2],F0.2)
+text [x] [y] '[v]^2! = '//[str] .28
+SELNT [NT0]
+
+mess $HTITLE([idrest])
+exec win [xsiz0] [ysiz0]
+RETURN
+*                                      @METAGS fig3r
+*--------------- fig3r ---------------
+*
+MACRO fig3r id idrest k1=8 k2=300 idpe=0 npeaks=7
+if [id]='' then
+   mess Usage:    [0]//' id idrest=1000+[id] k1=8 k2=300'
+   stopm
+endif
+
+g/imp npe,xi2
+prec = .06*[npe]
+
+idplot=-1
+if $HEXIST([idplot]) then; h/de [idplot]; endif
+tit = Nф.э. = $FORMAT([npe],F0.2) "a# $FORMAT([prec],F0.2)
+*tit = Число ф.э. = $FORMAT([npe],F0.2) "a# $FORMAT([prec],F0.2)
+h/cop [id] [idplot] [tit]
+
+opt nsta
+*set pass 5
+*set hwid 2
+*set bwid 2
+*set xwid 2
+*set ywid 2
+
+exec win 0 0
+xsiz0 = $WORD([@],1,1)
+ysiz0 = $WORD([@],2,1)
+exec win 12 9
+
+mtyp0 = $GRAFINFO('?mtyp')
+hcol0 = $GRAFINFO('?hcol')
+
+set hcol 1
+*set mtyp 1
+
+set mtyp 24
+set mscf .75
+
+h/pl [idplot]([k1]:[k2]) p0
+xlab0 = $GRAFINFO('?xlab')
+ylab0 = $GRAFINFO('?ylab')
+set xlab 1.0
+set ylab .5
+atitle 'каналы' 'отсчеты'
+*atitle '^channels!' '?counts!'
+set xlab [xlab0]
+set ylab [ylab0]
+
+if [idrest] = '' then; idrest = 1000+[id]; endif
+
+hwid0 = $GRAFINFO('?hwid')
+set hwid 2
+
+*mess Before h/pl idrest lwid=$GRAFINFO('?lwid')---
+*wait
+
+h/pl [idrest]([k1]:[k2]) s
+
+*mess After  h/pl idrest lwid=$GRAFINFO('?lwid')---
+*wait
+
+set hcol [hcol0]
+set hwid [hwid0]
+
+if [idpe] > 0 then
+   plci0 = $GRAFINFO('?plci')
+   lwid0 = $GRAFINFO('?lwid')
+   ltyp0 = $GRAFINFO('?ltyp')
+
+   *set lwid 2
+   set lwid 1
+   *set ltyp 2
+   set ltyp 1
+   call peaksm([idpe],[npeaks])
+   set lwid [lwid0]
+   set ltyp [ltyp0]
+   set plci [plci0]
+endif
+
+**  1     2      3         4         5       6      7         8         9
+*s=[NT0] [xmin] [NT1xmin] [NT1xlen] [xscal] [ymin] [NT1ymin] [NT1ylen] [yscal]
+
+exec NT1PAR
+NT0 = $WORD([@],1,1)
+NT1xmin = $WORD([@],3,1)
+NT1xlen = $WORD([@],4,1)
+NT1ymin = $WORD([@],7,1)
+NT1ylen = $WORD([@],8,1)
+
+xsizbox = 2.6
+ysizbox = 1.8
+x1box = [NT1xmin] + ([NT1xlen]-[xsizbox])
+x2box = [NT1xmin] + [NT1xlen]
+y1box = [NT1ymin] + ([NT1ylen]-[ysizbox])
+y2box = [NT1ymin] + [NT1ylen]
+
+SELNT 1
+set lwid 1
+box [x1box] [x2box] [y1box] [y2box]
+x = [x1box] + .2
+y = [y2box]
+y = [y] - .5
+text [x] [y] 'ФЭУ-85' .28
+
+y = [y] - .5
+*text [x] [y] 'Source ^90!Sr' .28
+text [x] [y] 'Ист. ^90!Sr' .28
+
+*y = [y] - .5
+*str = Npe = $FORMAT([npe],F0.2) "a# $FORMAT([prec],F0.2)
+*text [x] [y] [str] .28
+
+y = [y] - .5
+*str = [v]^2! = $FORMAT([xi2],F0.2)
+str = $FORMAT([xi2],F0.2)
+text [x] [y] '[v]^2! = '//[str] .28
+SELNT [NT0]
+
+mess $HTITLE([idrest])
+exec win [xsiz0] [ysiz0]
+RETURN
+
+*                                         @METAGS Win
+*--------------- Win ---------------
+*
+MACRO Win xs=0 ys=0 xmgr=0 ymgl=0 box=NBOX
+if $UPPER([1])='HELP' then
+   mess Usage:    [0] xs ys xmgr=0 ymgl=0 box=NBOX
+   mess Example:  [0] 16 16
+   stopm
+endif
+
+*opt zfl1
+if [xs] > 0 then; set xsiz [xs]; endif
+if [ys] > 0 then; set ysiz [ys]; endif
+if [xs] > 0 .OR. [ys] > 0 then
+   set xmgr [xmgr]
+   set ymgl [ymgl]
+   opt [box]
+endif
+RETURN $GRAFINFO('?xsiz') $GRAFINFO('?ysiz')
+
+*                                         @METAGS NT1PAR
+*--------------- NT1PAR ---------------
+*
+MACRO NT1PAR print
+NT1xmin=0
+NT1xlen=0
+xscal=1
+NT0 = $GRAFINFO('NT')
+nt = [NT0]/10
+xzones = $GRAFINFO('XZONES')
+yzones = $GRAFINFO('YZONES')
+* row of current window (start from 0)
+row = INT( ([nt]-1)/[xzones] )
+* column of current window (start from 1)
+col = [nt] - [xzones]*[row]
+* x-parameters
+xsiz = $GRAFINFO('?xsiz')
+xmgl = $GRAFINFO('?xmgl')
+xmgr = $GRAFINFO('?xmgr')
+xwin = $GRAFINFO('?xwin')
+xmin = $GRAFINFO('WNXMIN')
+xmax = $GRAFINFO('WNXMAX')
+NT1xlen = ([xsiz]-[xmgl]-[xmgr] - ([xzones]-1)*[xwin]) / [xzones]
+xscal = [NT1xlen]/([xmax]-[xmin])
+NT1xmin = [xmgl] + ([col]-1)*([NT1xlen]+[xwin])
+* y-parameters
+ysiz = $GRAFINFO('?ysiz')
+ymgu = $GRAFINFO('?ymgu')
+ymgl = $GRAFINFO('?ymgl')
+ywin = $GRAFINFO('?ywin')
+ymin = $GRAFINFO('WNYMIN')
+ymax = $GRAFINFO('WNYMAX')
+NT1ylen = ([ysiz]-[ymgu]-[ymgl] - ([yzones]-1)*[ywin]) / [yzones]
+yscal = [NT1ylen]/([ymax]-[ymin])
+ytop = [ysiz] - [ymgu] - [row]*([NT1ylen]+[ywin])
+NT1ymin = [ytop] - [NT1ylen]
+*  1     2      3         4         5       6      7         8         9
+s=[NT0] [xmin] [NT1xmin] [NT1xlen] [xscal] [ymin] [NT1ymin] [NT1ylen] [yscal]
+
+if [print]<>'' then
+mess *  1     2      3         4         5       6      7         8         9
+mess 's=[NT0] [xmin] [NT1xmin] [NT1xlen] [xscal] [ymin] [NT1ymin] [NT1ylen] [yscal]'
+mess [s]
+endif
+RETURN [s]
+
+*                                      @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR
+*--- COMMON PMPAR
+COMMON_PMPAR=''; g/imp COMMON_PMPAR
+DECLARE_PMPAR:
+IF [COMMON_PMPAR] = '' THEN
+   APPL COMIS EXIT
+*                                         @METAGS COMMON_PMPAR
+*                                         05-04-98 06:41pm
+*--------------- COMMON_declaration ---------------
+*
+      real posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      COMMON /PMPAR/ posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      END
+   EXIT
+   g/cr COMMON_PMPAR [0]
+   mess [0]: COMMON /PMPAR/ is declared
+ENDIF
+*---
+
+*--- COMMON PMFIT
+COMMON_PMFIT=''; g/imp COMMON_PMFIT
+DECLARE_PMFIT:
+IF [COMMON_PMFIT] = '' THEN
+   APPL COMIS EXIT
+*                                         @METAGS COMMON_PMFIT
+*                                         05-04-98 06:41pm
+*--------------- COMMON_declaration ---------------
+*
+      real fposp,fsigp,fpos1,fsig1, feposp,fesigp,fepos1,fesig1
+      COMMON /PMFIT/ fposp,fsigp,fpos1,fsig1,feposp,fesigp,fepos1,fesig1
+      END
+   EXIT
+   g/cr COMMON_PMFIT [0]
+   mess [0]: COMMON /PMFIT/ is declared
+ENDIF
+*---
+
+   APPL COMIS EXIT
+*                                         @METAGS READPM
+*                                         05-04-98 06:59pm
+*--------------- READPM ---------------
+*
+      SUBROUTINE READPM(inifil)
+*      real posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      character match, line*78, inifil*12
+      data match/''''/
+*
+      open (UNIT=1, FILE=inifil, STATUS='OLD', ERR=99999)
+99900 read (1,10, END=99990) line
+      if (line(1:1).EQ.match) goto 99900
+
+*      backspace 1   ! Don't work correctly in F2C!
+      read (line,*, ERR=99990) anorm
+      read (1,*, ERR=99990) posp, eposp
+      read (1,*, ERR=99990) sigp, esigp
+      read (1,*, ERR=99990) pos1, epos1
+      read (1,*, ERR=99990) sig1, esig1
+99990 close (UNIT=1)
+      print*, '--- Data from ini-file ---'
+      print*, anorm, '                anorm'
+      print*, posp, eposp,   '  posp, eposp'
+      print*, sigp, esigp,   '  sigp, esigp'
+      print*, pos1, epos1,   '  pos1, epos1'
+      print*, sig1, esig1,   '  sig1, esig1'
+      return
+99999 call WAIT('.. Ini file not found ..')
+      return
+    1 FORMAT(I3)
+   10 FORMAT(A)
+      END
+
+*                                         @METAGS PRINTPM
+*                                         05-04-98 06:59pm
+*--------------- PRINTPM ---------------
+*
+      SUBROUTINE PRINTPM()
+*      real posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      print*, '--- Data from COMMON /PMPAR/ ---'
+      print*, posp, eposp,   '  posp, eposp'
+      print*, sigp, esigp,   '  sigp, esigp'
+      print*, pos1, epos1,   '  pos1, epos1'
+      print*, sig1, esig1,   '  sig1, esig1'
+      END
+
+*                                         @METAGS PRINTfit
+*                                         05-04-98 06:59pm
+*--------------- PRINTfit ---------------
+*
+      SUBROUTINE PRINTfit()
+*      real fposp,fsigp,fpos1,fsig1, feposp,fesigp,fepos1,fesig1
+*      COMMON /PMFIT/ fposp,fsigp,fpos1,fsig1,feposp,fesigp,fepos1,fesig1
+      use PMFIT
+      print*, '--- Data from COMMON /PMFIT/ ---'
+      print*, fposp, feposp,   '  fposp, feposp'
+      print*, fsigp, fesigp,   '  fsigp, fesigp'
+      print*, fpos1, fepos1,   '  fpos1, fepos1'
+      print*, fsig1, fesig1,   '  fsig1, fesig1'
+      END
+
+*                                         @METAGS SetPMPAR
+*                                         05-04-98 06:59pm
+*--------------- SetPMPAR ---------------
+*
+      SUBROUTINE SetPMPAR(pp,sp,p1,s1, epp,esp,ep1,es1)
+*      real posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      if (pp.NE.0.) posp  = pp
+      if (sp.NE.0.) sigp  = sp
+      if (p1.NE.0.) pos1  = p1
+      if (s1.NE.0.) sig1  = s1
+      if (epp.NE.0.) eposp = epp
+      if (ep1.NE.0.) epos1 = ep1
+      if (esp.NE.0.) esigp = esp
+      if (es1.NE.0.) esig1 = es1
+      END
+
+*                                         @METAGS SetPMFIT
+*                                         05-04-98 06:59pm
+*--------------- SetPMFIT ---------------
+*
+      SUBROUTINE SetPMFIT(posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1)
+*      real fposp,fsigp,fpos1,fsig1, feposp,fesigp,fepos1,fesig1
+*      COMMON /PMFIT/ fposp,fsigp,fpos1,fsig1,feposp,fesigp,fepos1,fesig1
+      use PMFIT
+      if (posp.NE.0.) fposp  = posp
+      if (sigp.NE.0.) fsigp  = sigp
+      if (pos1.NE.0.) fpos1  = pos1
+      if (sig1.NE.0.) fsig1  = sig1
+      if (eposp.NE.0.) feposp = eposp
+      if (epos1.NE.0.) fepos1 = epos1
+      if (esigp.NE.0.) fesigp = esigp
+      if (esig1.NE.0.) fesig1 = esig1
+      END
+
+*                                         @METAGS PAR2FIT
+*                                         05-04-98 06:59pm
+*--------------- PAR2FIT ---------------
+*
+      SUBROUTINE PAR2FIT()
+*      real fposp,fsigp,fpos1,fsig1, feposp,fesigp,fepos1,fesig1
+*      COMMON /PMFIT/ fposp,fsigp,fpos1,fsig1,feposp,fesigp,fepos1,fesig1
+*      real fposp,fsigp,fpos1,fsig1, feposp,fesigp,fepos1,fesig1
+*      COMMON /PMFIT/ fposp,fsigp,fpos1,fsig1,feposp,fesigp,fepos1,fesig1
+      use PMPAR,PMFIT
+      fposp  = posp
+      fsigp  = sigp
+      fpos1  = pos1
+      fsig1  = sig1
+      feposp = eposp
+      fepos1 = epos1
+      fesigp = esigp
+      fesig1 = esig1
+      END
+
+*                                         @METAGS FIT2PAR
+*                                         05-04-98 06:59pm
+*--------------- FIT2PAR ---------------
+*
+      SUBROUTINE FIT2PAR()
+*      real fposp,fsigp,fpos1,fsig1, feposp,fesigp,fepos1,fesig1
+*      COMMON /PMFIT/ fposp,fsigp,fpos1,fsig1,feposp,fesigp,fepos1,fesig1
+*      real fposp,fsigp,fpos1,fsig1, feposp,fesigp,fepos1,fesig1
+*      COMMON /PMFIT/ fposp,fsigp,fpos1,fsig1,feposp,fesigp,fepos1,fesig1
+      use PMPAR,PMFIT
+      posp  = fposp
+      sigp  = fsigp
+      pos1  = fpos1
+      sig1  = fsig1
+      eposp = feposp
+      epos1 = fepos1
+      esigp = fesigp
+      esig1 = fesig1
+      END
+
+*                                         @METAGS ESTPE
+*                                         05-04-98 07:02pm
+*--------------- ESTPE ---------------
+*
+      real function ESTPE(idam,idpe,maxped)
+      integer idam,idpe,maxped
+*      real anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      parameter (MAXDIM=1024, MAXNPE=256)
+      real ped,pe(MAXNPE), ape(MAXNPE)
+      real xpe(MAXNPE+1)
+      equivalence (ped,xpe), (pe,xpe(2))
+
+      character*80 amtit,petit, str
+      real X(MAXDIM),count(MAXDIM),dX(MAXDIM),dY(MAXDIM)
+      logical HEXIST
+
+      if (pos1.EQ.0.) then
+         print*, 'Empty PM data'
+         STOP
+      endif
+
+      delta = pos1 - posp
+      
+*     .. total clearing because COMIS save all variables
+      ped = 0.
+      do npe=1,MAXNPE
+         ape(npe) = 0.
+          pe(npe) = 0.
+      enddo
+
+*     .. get amplitude spectrum title amtit and the number of channels NX
+      call HGIVE (idam,amtit,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      maxc = NX
+*     .. get amplplitude spectrum counts count
+      call HREBIN(idam,X,count,dX,dY,maxc,1,NX)
+
+*     .. pedestal
+      kmin = posp - 5.*sigp
+      if (kmin.LT.1) kmin=1
+*     .. high pedestal edge is equal 5 sigp
+      kmax = .5 + posp + 5.*sigp
+      if (kmax.GT.maxped) kmax=maxped
+
+      do k=kmin, kmax
+         ped = ped + count(k)
+      enddo
+
+*
+*     Estimate pe amplitude ape in form ape*exp(-.5*((x-pos)/2.*sig)**2)
+*     as average counts +/- sig near the pe peak position
+*
+      do npe=1, MAXNPE
+         maxpe = npe
+         
+         sig = sqrt(REAL(npe))*sig1
+         pos = pos1 + (npe-1)*delta
+
+         range = 1.*sig
+*         range = 1.*delta
+         kmin = pos - range
+         if (kmin.LE.maxped) kmin=maxped
+
+         kmax = .5 + pos + range
+         if (kmax.GT.maxc) kmax=maxc
+
+         nk=0
+         do k=kmin, kmax
+            nk = nk+1
+            ape(npe) = ape(npe) + count(k)
+         enddo
+         if (nk.GT.0) ape(npe) = ape(npe)/nk
+*        .. if assigned the last channel
+         if (k.EQ.maxc) goto 100
+      enddo
+  100 continue
+
+*
+*     Assign the counts with respect to estimated pe amplitudes ape
+*
+
+      pi = ACOS(-1.)
+      sqrt2 = sqrt(2.)
+      sqrtpi2 = sqrt(pi/2.)
+
+      kmin = maxped+1
+      do npe=1, maxpe-1
+*        .. current peak parameters
+         pos = pos1 + (npe-1)*delta
+         sig = sig1*sqrt(REAL(npe))
+         a   = ape(npe)
+         bmin = pos-5.*sig
+         bmax = pos+5.*sig
+         if (bmin.LT.posp) then
+*           .. transfer counts under the pedestal to spectrum
+            erf1 = erf( (bmin-pos)  / (sig*sqrt2))
+            erfp = erf( (posp-pos)  / (sig*sqrt2))
+            erf2 = erf((bmax+1.-pos) / (sig*sqrt2))
+            a = a*(erf2-erf1)/(erf2-erfp)
+         endif
+*        .. next peak parameters
+         posn = pos+delta
+         sign = sig1*sqrt(REAL(npe+1))
+         an   = ape(npe+1)
+         bmin = posn-5.*sign
+         bmax = posn+5.*sign
+         if (bmin.LT.posp) then
+*           .. transfer counts under the pedestal to spectrum
+            erf1 = erf( (bmin-posn)  / (sign*sqrt2))
+            erfp = erf( (posp-posn)  / (sign*sqrt2))
+            erf2 = erf((bmax+1.-posn) / (sign*sqrt2))
+            an = an*(erf2-erf1)/(erf2-erfp)
+         endif
+
+         kmin = bmin
+         if (kmin.LE.maxped) kmin=maxped+1
+*        .. range = 1.*sig
+         kmax = .5 + pos + 1.*sig
+         if (kmax.GT.maxc) kmax=maxc
+         do k=kmin,kmax
+*           .. current peak
+            erf1 = erf( (k-pos)  / (sig*sqrt2))
+            erf2 = erf((k+1-pos) / (sig*sqrt2))
+            acurr = a * sig*sqrtpi2*(erf2-erf1)
+*           .. next peak
+            erf1 = erf( (k-posn)  / (sign*sqrt2))
+            erf2 = erf((k+1-posn) / (sign*sqrt2))
+            acurr = an * sign*sqrtpi2*(erf2-erf1)
+            if (acurr.GT.anext) then
+               pe(npe) = pe(npe)+count(k)
+               kpro = k
+            else
+               goto 200
+            endif
+         enddo
+
+  200    continue
+         if (kpro.EQ.maxc) goto 300
+         kmin = kpro+1
+      enddo
+
+*     .. last peak
+      pos = pos1 + (maxpe-1)*delta
+      sig = sig1*sqrt(real(maxpe))
+      kmax = pos + 3.*sig
+      if (kmax.GT.maxc) kmax=maxc
+      do k=kmin,kmax
+         pe(maxpe) = pe(maxpe)+count(k)
+      enddo
+
+  300 continue
+*     .. maxpe and the number of photoelectrons
+      ctot  = ped
+      asum  = ped
+      amean = 0.
+      do npe=maxpe,1,-1
+         ctot = ctot+pe(npe)
+         if (ctot.EQ.ped) maxpe = maxpe-1
+         amean = amean + npe*pe(npe)
+         asum = asum+pe(npe)
+      enddo
+      amean = amean/asum
+      ESTPE = amean
+
+      str = ' '
+      write(str,1) amean
+    1 format (G10.4)
+      i1 = 1
+      do while (str(i1:i1).EQ.' ')
+         i1 = i1+1
+      enddo
+      i2 = LENOCC(str)
+
+      petit = ' '
+      write(petit,2) str(i1:i2),amtit
+    2 format ('ESTPE=', A, ' for ', A)
+
+      if (HEXIST(idpe)) call HDELET(idpe)
+      call HBOOK1(idpe,petit,maxpe+1,0.,REAL(maxpe+1),0.)
+      call HPAK(idpe,xpe)
+      END
+
+*                                         @METAGS CORRPE
+*                                         05-05-98 01:36pm
+*--------------- CORRPE ---------------
+*
+      real function CORRPE(idam,idpe,idcorr,maxped)
+      integer idam,idpe,idcorr,maxped
+*      real anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      parameter (MAXDIM=1024, MAXNPE=256)
+      real w(MAXNPE)
+      real xpe0(MAXNPE+1)
+      real ped0,pe0(MAXNPE)
+      equivalence (ped0,xpe0), (pe0,xpe0(2))
+      real xpe(MAXNPE+1)
+      real ped,pe(MAXNPE)
+      equivalence (ped,xpe), (pe,xpe(2))
+
+      character*80 amtit,petit, str
+      real X(MAXDIM),count(MAXDIM),dX(MAXDIM),dY(MAXDIM)
+      logical HEXIST
+
+      if (pos1.EQ.0.) then
+         print*, 'Empty PM data'
+         STOP
+      endif
+
+*     .. get amplitude spectrum title amtit and the number of channels NX
+      call HGIVE (idam,amtit,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      maxc = NX
+*     .. get amplitude spectrum counts count
+      call HREBIN(idam,X,count,dX,dY,NX,1,NX)
+
+*     .. get sample pe spectrum maxpe
+      call HGIVE (idpe,petit,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      maxpe = NX-1
+*     .. get sample pe spectrum xpe0: ped0 & pe0
+      call HREBIN(idpe,X,xpe0,dX,dY,NX,1,NX)
+
+      delta = pos1 - posp
+      sqrt2 = sqrt(2.)
+*
+      ped = ped0
+      do k=1, MAXNPE
+         pe(k) = 0.
+      enddo
+
+*     .. pedestal high edge maxped
+*      maxped = .5 + posp + 4.*sigp
+
+      do k=maxped+1, maxc
+*        .. distribute the channel content into new peaks pe
+*           using weights from the old peaks pe0
+         if (count(k).EQ.0.) goto 100
+         wsum = 0.
+         do npe=1,maxpe
+*           .. current peak parameters
+            sig = sqrt(REAL(npe))*sig1
+            pos = pos1 + (npe-1)*delta
+*           .. peak strength
+            sint = pe0(npe)
+            bmin = pos-5.*sig
+            bmax = pos+5.*sig
+            if (bmin.LT.posp) then
+*              .. transfer counts under the pedestal to spectrum
+               erf1 = erf( (bmin-pos)  / (sig*sqrt2))
+               erfp = erf( (posp-pos)  / (sig*sqrt2))
+               erf2 = erf((bmax+1.-pos) / (sig*sqrt2))
+               sint = sint*(erf2-erf1)/(erf2-erfp)
+            endif
+
+            erf1 = erf( (k -pos) / (sig*sqrt2))
+            erf2 = erf((k+1-pos) / (sig*sqrt2))
+*           .. current peak weight
+            w(npe) = sint*(erf2-erf1)/2.
+            wsum = wsum+w(npe)
+         enddo
+         if (wsum.EQ.0.) wsum=1.
+         do npe=1,maxpe
+            pe(npe) = pe(npe) + (w(npe)/wsum)*count(k)
+         enddo
+  100 enddo
+
+*     .. the number of photoelectrons
+      ctot  = ped
+      sum   = ped
+      amean = 0.
+      do npe=1,maxpe
+         ctot = ctot+pe(npe)
+         amean = amean + npe*pe(npe)
+         sum = sum+pe(npe)
+      enddo
+      amean = amean/sum
+      CORRPE = amean
+
+*      print*, 'CORRPE: ctot =', ctot
+
+      str = ' '
+      write(str,1) amean
+    1 format (G10.4)
+      i1 = 1
+      do while (str(i1:i1).EQ.' ')
+         i1 = i1+1
+      enddo
+      i2 = LENOCC(str)
+
+      petit = ' '
+      write(petit,2) str(i1:i2),amtit
+    2 format ('PE=', A, ' for ', A)
+
+      if (HEXIST(idcorr)) call HDELET(idcorr)
+      call HBOOK1(idcorr,petit,maxpe+1,0.,REAL(maxpe+1),0.)
+      call HPAK(idcorr,xpe)
+      END
+
+*                                         @METAGS pe2a
+*                                         05-04-98 09:40pm
+*--------------- pe2a ---------------
+*
+      SUBROUTINE pe2a(idpe,idre,maxped)
+      integer idpe,idrest
+      real sum
+*      real anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      parameter (MAXDIM=1024, MAXNPE=256)
+      real ped,pe(MAXNPE)
+      real xpe(MAXNPE+1)
+      equivalence (ped,xpe), (pe,xpe(2))
+
+      character*80 petit,retit, str
+      real X(MAXDIM),count(MAXDIM),dX(MAXDIM),dY(MAXDIM)
+      logical HEXIST
+
+      if (pos1.EQ.0.) then
+         print*, 'Empty PM data'
+         STOP
+      endif
+
+      delta = pos1-posp
+
+      pi = ACOS(-1.)
+      sqrt2 = sqrt(2.)
+      sqrt2pi = sqrt(2.*pi)
+
+      call HGIVE (idpe,petit,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      call HREBIN(idpe,X,xpe,dX,dY,NX,1,NX)
+*      maxpe = NX-1
+      do npe=NX-1,1,-1
+         if (pe(npe).GT.0.) goto 100
+      enddo
+  100 maxpe = npe
+
+      do k=1,MAXDIM
+         count(k) = 0.
+      enddo
+      sumtot = 0.
+
+*     .. pedestal ..
+      pos = posp
+      sig = sigp
+      sint = ped
+
+      kmin = posp - 4.*sigp
+      if (kmin.LT.1) kmin=1
+      kmax = .5 + posp + 4.*sigp
+      if (kmax.GT.maxped) kmax=maxped
+
+      do k=kmax,kmin,-1
+         erf1 = erf( (k -pos) / (sig*sqrt2))
+         erf2 = erf((k+1-pos) / (sig*sqrt2))
+         contr = (sint/2.)*(erf2-erf1)
+         count(k) = count(k) + contr
+         sumtot = sumtot+contr
+      enddo
+      
+*     .. photoel
+      do npe=1,maxpe
+*        .. current peak parameters
+         sig = sqrt(REAL(npe))*sig1
+         pos = pos1 + (npe-1)*delta
+         sint = pe(npe)
+
+         bmin = pos - 5.*sig
+         bmax = pos + 5.*sig
+         if (bmin.LT.posp) then
+*           .. transfer counts under the pedestal to spectrum
+            erf1 = erf( (bmin-pos)  / (sig*sqrt2))
+            erfp = erf( (posp-pos)  / (sig*sqrt2))
+            erf2 = erf((bmax+1.-pos) / (sig*sqrt2))
+            sint = sint*(erf2-erf1)/(erf2-erfp)
+         endif
+
+*        .. limits to fill up to 3 sig
+         range = 5.*sig
+         bmin = pos - range
+         bmax = pos + range
+
+         kmin = MAX(bmin, posp+.5)
+         if (kmin.LE.maxped) kmin=maxped+1
+         kmax = .5 + bmax
+         if (kmax.GE.MAXDIM) kmax=MAXDIM-1
+
+*         dsum = 0.
+         do k=kmin, kmax
+            erf1 = erf( (k -pos) / (sig*sqrt2))
+            erf2 = erf((k+1-pos) / (sig*sqrt2))
+            contr = (sint/2.)*(erf2-erf1)
+            count(k) = count(k) + contr
+*            dsum = dsum+contr
+            sumtot = sumtot+contr
+         enddo
+*         print*, 'pe2a: npe,kmin,kmax,dsum =', npe,kmin,kmax,dsum
+      enddo
+
+      maxc = 0
+      do k=MAXDIM,1,-1
+         count(k) = INT(.5+count(k))
+         if ((maxc.EQ.0) .AND. (count(k).GT.0.)) maxc=k
+      enddo
+*      do maxc=MAXDIM,1,-1
+*         if (count(maxc) .GT. 0.1) goto 200
+*      enddo
+*  200 continue
+
+*      print*, 'pe2a: sumtot =', sumtot
+
+      str = ' '
+      write(str,1) idpe
+    1 format (I10)
+      i1 = 1
+      do while (str(i1:i1).EQ.' ')
+         i1 = i1+1
+      enddo
+      i2 = LENOCC(str)
+
+      retit = ' '
+      write(retit,2) str(i1:i2),petit
+    2 format ('Restored ID=' ,A, '// ', A)
+      if (HEXIST(idre)) call HDELET(idre)
+      call HBOOK1(idre,retit,maxc,1.,REAL(maxc+1),0.)
+      call HPAK(idre,count)
+      END
+
+*                                         @METAGS xi2
+*                                         05-20-98 02:58pm
+*--------------- xi2 ---------------
+*
+      function xi2(idam,idre,maxped,maxc)
+      parameter (MAXDIM=1024)
+      character*80 tit,petit, str
+      real X(MAXDIM),dX(MAXDIM)
+      real Yam(MAXDIM),Yre(MAXDIM),dYam(MAXDIM),dYre(MAXDIM)
+      logical HEXIST
+      if (.NOT.HEXIST(idam)) then
+         print*, 'Histogram', idam, ' did not exist'
+         stop
+      endif
+      if (.NOT.HEXIST(idre)) then
+         print*, 'Histogram', idre, ' did not exist'
+         stop
+      endif
+*     .. get the number of channels NX1 of amplitude hist
+      call HGIVE (idam,tit,NX1,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+*     .. get amplitude spectrum counts count
+      call HREBIN(idam,X,Yam,dX,dYam,NX1,1,NX1)
+
+*     .. get the number of channels NX2 of restored hist
+      call HGIVE (idre,tit,NX2,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+*     .. get amplitude spectrum counts count
+      call HREBIN(idre,X,Yre,dX,dYre,NX2,1,NX2)
+*     .. the number of channels
+      if (maxc.EQ.0) maxc = MIN(NX1,NX2)
+      sum = 0.
+      do k=maxped+1, maxc
+         err = dYam(k)
+         if (err .LT. 1.) err=1.
+         sum = sum + ((Yam(k)-Yre(k))/err)**2
+      enddo
+      xi2 = sum/(maxc-maxped)
+      END
+
+*                                         @METAGS peaks
+*                                         05-04-98 09:40pm
+*--------------- peaks ---------------
+*
+      SUBROUTINE peaks(idpe,maxpe)
+      integer idpe
+      real sum
+*      real anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      parameter (MAXDIM=1024, MAXNPE=256)
+      real ped,pe(MAXNPE)
+      real xpe(MAXNPE+1)
+      equivalence (ped,xpe), (pe,xpe(2))
+
+      character*80 petit, command
+      real X(MAXDIM),chan(MAXDIM),count(MAXDIM),dX(MAXDIM),dY(MAXDIM)
+      logical HEXIST
+
+      if (pos1.EQ.0.) then
+         print*, 'Empty PM data'
+         STOP
+      endif
+
+      delta = pos1-posp
+
+      pi = ACOS(-1.)
+      sqrt2 = sqrt(2.)
+      sqrt2pi = sqrt(2.*pi)
+
+      call HGIVE (idpe,petit,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      call HREBIN(idpe,X,xpe,dX,dY,NX,1,NX)
+      if (maxpe .GT. NX-1) maxpe=NX-1
+
+      icolor = 0
+
+      goto 1000
+*     .. pedestal ..
+      pos = posp
+      sig = sigp
+      sint = ped
+
+      kmin = posp - 4.*sigp
+      if (kmin.LT.1) kmin=1
+      kmax = .5 + posp + 4.*sigp
+      if (kmax.GT.MAXDIM) kmax=MAXDIM
+
+      do k=1,MAXDIM
+         chan(k)  = 0.
+         count(k) = 0.
+      enddo
+      npoint = 0
+      do k=kmax,kmin,-1
+         erf1 = erf( (k -pos) / (sig*sqrt2))
+         erf2 = erf((k+1-pos) / (sig*sqrt2))
+         contr = (sint/2.)*(erf2-erf1)
+         npoint = npoint+1
+         chan(k)  = k
+         count(k) = contr
+      enddo
+*     .. drawing
+      icolor = icolor+1
+      if (icolor.GT.6) icolor=1
+      if (icolor.EQ.5) icolor=11
+      command = ' '
+      write(command,*) 'IGSET PLCI ', icolor
+      call KUEXEL(command)
+      call IPL(npoint,chan(kmin),count(kmin))
+      if (icolor.EQ.11) icolor=5
+      
+ 1000 continue
+*     .. photoel
+      do npe=1,maxpe
+*        .. current peak parameters
+         sig = sqrt(REAL(npe))*sig1
+         pos = pos1 + (npe-1)*delta
+         sint = pe(npe)
+
+         bmin = pos - 5.*sig
+         bmax = pos + 5.*sig
+         if (bmin.LT.posp) then
+*           .. transfer counts under the pedestal to spectrum
+            erf1 = erf( (bmin-pos)  / (sig*sqrt2))
+            erfp = erf( (posp-pos)  / (sig*sqrt2))
+            erf2 = erf((bmax+1.-pos) / (sig*sqrt2))
+            sint = sint*(erf2-erf1)/(erf2-erfp)
+         endif
+
+*        .. limits to fill up to 3 sig
+         range = 2.*sig
+         bmin = pos - range
+         bmax = pos + range
+
+         kmin = MAX(bmin, posp+.5)
+         if (kmin.LE.maxped) kmin=maxped+1
+         kmax = .5 + bmax
+         if (kmax.GE.MAXDIM) kmax=MAXDIM-1
+
+         do k=1,MAXDIM
+            chan(k)  = 0.
+            count(k) = 0.
+         enddo
+         npoint = 0
+         do k=kmin, kmax
+            erf1 = erf( (k -pos) / (sig*sqrt2))
+            erf2 = erf((k+1-pos) / (sig*sqrt2))
+            contr = (sint/2.)*(erf2-erf1)
+            npoint = npoint+1
+            chan(k)  = k
+            count(k) = contr
+         enddo
+*        .. drawing
+         icolor = icolor+1
+         if (icolor.GT.6) icolor=1
+         if (icolor.EQ.5) icolor=11
+         command = ' '
+         write(command,*) 'IGSET PLCI ', icolor
+         call KUEXEL(command)
+         call IPL(npoint,chan(kmin),count(kmin))
+         if (icolor.EQ.11) icolor=5
+      enddo
+      END
+
+*                                         @METAGS peaksm
+*                                         05-04-98 09:40pm
+*--------------- peaksm ---------------
+*
+      SUBROUTINE peaksm(idpe,maxpe)
+      integer idpe
+      real sum
+*      real anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+*      COMMON /PMPAR/ anorm, posp,sigp,pos1,sig1, eposp,esigp,epos1,esig1
+      use PMPAR
+      parameter (MAXDIM=1024, MAXNPE=256)
+      real ped,pe(MAXNPE)
+      real xpe(MAXNPE+1)
+      equivalence (ped,xpe), (pe,xpe(2))
+
+      character*80 petit, command
+      real X(MAXDIM),chan(MAXDIM),count(MAXDIM),dX(MAXDIM),dY(MAXDIM)
+      logical HEXIST
+
+      if (pos1.EQ.0.) then
+         print*, 'Empty PM data'
+         STOP
+      endif
+
+      delta = pos1-posp
+
+      pi = ACOS(-1.)
+      sqrt2 = sqrt(2.)
+      sqrt2pi = sqrt(2.*pi)
+
+      call HGIVE (idpe,petit,NX,XMI,XMA,NY,YMI,YMA,NWT,LOC)
+      call HREBIN(idpe,X,xpe,dX,dY,NX,1,NX)
+      if (maxpe .GT. NX-1) maxpe=NX-1
+
+      icolor = 0
+
+      goto 1000
+*     .. pedestal ..
+      pos = posp
+      sig = sigp
+      sint = ped
+
+      kmin = posp - 4.*sigp
+      if (kmin.LT.1) kmin=1
+      kmax = .5 + posp + 4.*sigp
+      if (kmax.GT.MAXDIM) kmax=MAXDIM
+
+      do k=1,MAXDIM
+         chan(k)  = 0.
+         count(k) = 0.
+      enddo
+      npoint = 0
+      do k=kmax,kmin,-1
+         erf1 = erf( (k -pos) / (sig*sqrt2))
+         erf2 = erf((k+1-pos) / (sig*sqrt2))
+         contr = (sint/2.)*(erf2-erf1)
+         npoint = npoint+1
+         chan(k)  = k
+         count(k) = contr
+      enddo
+*     .. drawing
+      icolor = icolor+1
+      if (icolor.GT.6) icolor=1
+      if (icolor.EQ.5) icolor=11
+      command = ' '
+*      write(command,*) 'IGSET PLCI ', icolor
+*      call KUEXEL(command)
+      call IPL(npoint,chan(kmin),count(kmin))
+      if (icolor.EQ.11) icolor=5
+      
+ 1000 continue
+*     .. photoel
+      do npe=1,maxpe
+*        .. current peak parameters
+         sig = sqrt(REAL(npe))*sig1
+         pos = pos1 + (npe-1)*delta
+         sint = pe(npe)
+
+         bmin = pos - 5.*sig
+         bmax = pos + 5.*sig
+         if (bmin.LT.posp) then
+*           .. transfer counts under the pedestal to spectrum
+            erf1 = erf( (bmin-pos)  / (sig*sqrt2))
+            erfp = erf( (posp-pos)  / (sig*sqrt2))
+            erf2 = erf((bmax+1.-pos) / (sig*sqrt2))
+            sint = sint*(erf2-erf1)/(erf2-erfp)
+         endif
+
+*        .. limits to fill up to 3 sig
+         range = 2.*sig
+         bmin = pos - range
+         bmax = pos + range
+
+         kmin = MAX(bmin, posp+.5)
+         if (kmin.LE.maxped) kmin=maxped+1
+         kmax = .5 + bmax
+         if (kmax.GE.MAXDIM) kmax=MAXDIM-1
+
+         do k=1,MAXDIM
+            chan(k)  = 0.
+            count(k) = 0.
+         enddo
+         npoint = 0
+         do k=kmin, kmax
+            erf1 = erf( (k -pos) / (sig*sqrt2))
+            erf2 = erf((k+1-pos) / (sig*sqrt2))
+            contr = (sint/2.)*(erf2-erf1)
+            npoint = npoint+1
+            chan(k)  = k
+            count(k) = contr
+         enddo
+*        .. drawing
+         icolor = icolor+1
+         if (icolor.GT.6) icolor=1
+         if (icolor.EQ.5) icolor=11
+         command = ' '
+*         write(command,*) 'IGSET PLCI ', icolor
+*         call KUEXEL(command)
+         call IPL(npoint,chan(kmin),count(kmin))
+         if (icolor.EQ.11) icolor=5
+      enddo
+      END
+
+*                                         @METAGS getnpe
+*                                         05-05-98 07:01pm
+*--------------- getnpe ---------------
+*
+      real function getnpe(id,idpe,idrest,maxped,eps,iter)
+      integer id,idpe,idrest,iter
+      real eps
+      parameter (MAXNPE=256)
+      real xpe0(MAXNPE+1), ped0,pe0(MAXNPE)
+      equivalence (ped0,xpe0), (pe0,xpe0(2))
+      real xpe(MAXNPE+1), ped,pe(MAXNPE)
+      equivalence (ped,xpe), (pe,xpe(2))
+
+      getnpe = 0.
+      pemean0 = ESTPE(id,idpe,maxped)
+*      print*, 'ESTPE: Npe =', pemean0
+      print*, 'Iter   Npe      prec'
+      print*, '--------------------'
+      do i=1,iter
+         pemean = CORRPE(id,idpe,idpe,maxped)
+         prec = eps*pemean0
+         print 1, i, pemean, prec
+    1    format (I3, T8, G9.4, T17, G9.4)
+         if (ABS(pemean-pemean0).LE.prec) then
+            goto 1000
+         else
+            pemean0 = pemean
+         endif
+      enddo
+      print*, 'GENTPE: Reach the iteration limit'
+
+ 1000 continue
+      call pe2a(idpe,idrest,maxped)
+
+*      goto 10000
+
+      print*, ' '
+      print*, ' Correction '
+      print*, ' ---------- '
+      call WAIT(' ')
+      do npe=1,MAXNPE+1
+         xpe0(npe) = 0.
+         xpe(npe)  = 0.
+      enddo
+      call HUNPAK(idpe,xpe0,' ',0)
+
+      pemean0 = ESTPE(idrest,idpe,maxped)
+      print*, 'ESTPE: Npe =', pemean0
+      print*, 'Iter   Npe      prec'
+      print*, '--------------------'
+      do i=1,iter
+         pemean = CORRPE(idrest,idpe,idpe,maxped)
+         prec = eps*pemean0
+         print 1, i, pemean, prec
+         if (ABS(pemean-pemean0).LE.prec) then
+            goto 2000
+         else
+            pemean0 = pemean
+         endif
+      enddo
+      print*, 'GENTPE: Reach the iteration limit'
+
+ 2000 continue
+      call HUNPAK(idpe,xpe,' ',0)
+      do npe=1,MAXNPE
+*         pe(npe) = pe(npe) + (pe(npe)-pe0(npe))
+         dpe = pe0(npe) - pe(npe)
+         pe0(npe) = pe0(npe)+dpe
+      enddo
+
+      call HPAK(idpe,xpe0)
+      call pe2a(idpe,idrest,maxped)
+
+*     .. the number of photoelectrons
+      ctot  = ped
+      sum   = ped
+      amean = 0.
+      do npe=1,MAXNPE
+         ctot = ctot+pe(npe)
+         amean = amean + npe*pe(npe)
+         sum = sum+pe(npe)
+      enddo
+      amean = amean/sum
+      pemean = amean
+      
+10000 continue
+      getnpe = pemean
+      END
+*                                         @METAGS .WAIT.COMIS
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS .MESS.COMIS
+*                                         01-22-98 02:11pm
+*--------------- MESS ---------------
+*
+      SUBROUTINE MESS(line)
+      character line*(*)
+      length = LENOCC(line)
+      if (length.GT.0) print 1, line(1:length)
+      RETURN
+    1 FORMAT(A)
+      END
+
+
+*                                         @METAGS .STOPCR.COMIS
+*                                         11-15-96 09:45pm
+*--------------- STOPCR ---------------
+*
+      SUBROUTINE STOPCR(mess)
+      character mess*(*), ch*1
+      length = LENOCC(mess)
+      if (length.GT.0) print 1, mess(1:length)
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      STOP
+      RETURN
+    1 FORMAT(A)
+      END
+EXIT
+RETURN

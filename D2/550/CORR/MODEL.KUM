@@ -1,0 +1,467 @@
+*                                         @METAGS MODEL
+*--------------- MODEL ---------------
+*
+MACRO MODEL
+set mtyp 24
+opt logy
+opt grid
+RETURN
+
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=SL
+graph $VLEN(energy) energy crosec [opt]
+RETURN
+
+*                                         @METAGS QFS
+*--------------- QFS ---------------
+*
+MACRO QFS file=qfsrad opt=awl
+v/cr energy(1000)
+v/cr crosec(1000)
+
+v/de eQFS,sQFS
+ve/re eQFS,sQFS [file].dat ! ! '-/''/'
+v/cop eQFS energy
+*v/cop $SIGMA(1e3*sQFS) crosec
+v/cop $SIGMA(sQFS) crosec
+
+exec PLOT [opt]
+RETURN
+
+*                                         @METAGS UNI
+*--------------- UNI ---------------
+*
+MACRO UNI E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=awl
+* Uniform cross section
+*if $VEXIST(energy)=0 then
+*   mess Vector ENERGY do not exist
+*   stopm
+*endif
+
+*sigma energy=array(281,140#420)
+*v/cop $SIGMA(array(NCO(energy),10e0#10e0)) crosec
+sigma energy=array(1000,140#420)
+sigma crosec=array(1000)*10.
+
+exec PLOT [E1] [E2] [opt]
+RETURN
+
+*                                         @METAGS DURAND
+*--------------- DURAND ---------------
+*
+*MACRO DURAND E1 TETA E2I E2F STEP opt=awl
+MACRO DURAND E1=670 TETA=143.5 E2I=140 E2F=420 STEP=1 opt=awl
+if [STEP]='' then
+   mess 'Usage:    DUR E1 TETA E2I E2F STEP [opt=AWP]'
+   stopm
+endif
+
+sigma E0=670.
+sigma THETA=143.5
+
+exec DURfor
+exec DUCALC [E1] [TETA] [E2I] [E2F] [STEP]
+sigma energy=array(1000)*0
+sigma crosec=array(1000)*0
+
+np = $VLEN(sduran)
+v/cop sduran(:[np]) crosec
+v/cop eduran(:[np]) energy
+exec PLOT [opt]
+RETURN
+*
+MACRO DUCALC E1 TETA E2I E2F STEP
+if [STEP]='' then
+   mess Usage:    DUR#CALC E1 TETA E2I E2F STEP
+   stopm
+endif
+E1   = $RSIGMA([E1])
+TETA = $RSIGMA([TETA])
+E2I  = $RSIGMA([E2I])
+E2F  = $RSIGMA([E2F])
+STEP = $RSIGMA([STEP])
+call dur([E1],[TETA],[E2I],[E2F],[STEP])
+RETURN
+*
+*                                         @METAGS DURfor
+*--------------- DURfor ---------------
+*
+MACRO DURfor
+APPL COMIS QUIT
+      subroutine dur(E1,TETA,E2I,E2F,STEP)
+C
+C   Programm calculation cross section for deutron,namely:
+C   cross section of delta exitation(in approximation free nucleons),
+C   cross section of quasielastic peak(Durand)
+C   and they sum.
+C     	    30-jun-89, A.Zatserkljanyi.
+C
+      vector eduran(1000),sduran(1000)
+      real E1,TETA
+      REAL MOTT,MATR,K,KMEV
+      REAL M,MD,MPION,KPION,KDELTA
+C
+      DATA PI/3.14159/
+      DATA M/.93828/,MD/1.87563/,MPION/.1396/,KPION/.150/
+C
+      npoint = 0
+
+*      PRINT *,'FIT TO D2'
+*      PRINT *,'ENERGY(MEV),TETA'
+*      READ *,E1,TETA
+C
+      WR=1.236 ! will be inputed in future,disarable
+      KDELTA=.345
+C
+*      PRINT *,'*******************************************'
+*      PRINT *,'E1=',E1,' MEV;     TETA=',TETA
+*      PRINT *,' '
+C
+*      PRINT *,'REGION E2, STEP(ALL IN MEV)'
+*      READ *,E2I,E2F,STEP
+C
+      TETA=TETA*PI/180.
+      E1=E1/1000.
+      E2I=E2I/1000.
+      E2F=E2F/1000.
+      STEP=STEP/1000.
+C
+      CALL ROS(E1,TETA, EH,ROSP,ROSN)
+C
+      SIN2=SIN(TETA/2.)**2
+      ETAH=1.+2.*E1*SIN2/M
+      ETAD=1.+2.*E1*SIN2/MD
+C      EH=E1/ETAH   ! Calculated by subroutine ROS
+      ED=E1/ETAD
+      EDELTA=(E1-KDELTA)/ETAH
+      EPION=(E1-KPION)/ETAH
+C
+*      ROSPN = ROSP+ROSN
+*      PRINT 1,EH*1000.,ED*1000.,EDELTA*1000.,EPION*1000.,ROSP,ROSPN
+*1     FORMAT(' EH=',F7.1,' MeV,  ED=',F7.1,
+*     +' MeV,  EDELTA=',F7.1,' MeV,  THpion=',F7.1,' MeV'/
+*     +' ROSEBLUTH: PROTON=',E12.4,'cm2/sr;   P+N=',E12.4,'cm2/sr'/)
+*      PRINT 2
+*2     FORMAT(3X,'E2',4X,'Eloss',5X,'Q2',5X,'q',6X,'K',6X,
+*     *'D2tot ',5X,'Durand',5X,'D2delt',5X,'D2res ',5X,'D2nonr',
+*     *5X,'Pdelta',5X,' Pres ',5X,' Pnonr'/)  
+C
+C   BIGINING OF CALCULATION
+C
+      E2=E2I
+1000  CONTINUE
+C
+      CALL DURAND(E1,E2,TETA, SDUR)
+c     .. Durand cross section in cm2/GeV/sr
+      SDUR=SDUR*(ROSP+ROSN)   ! cm2/GeV/sr
+      SDUR=SDUR*(E1/E2)       ! For omitting of recoil
+C
+      CALL DELTA(E1,E2,TETA,WR, K,PRES,PNONR,PDELTA)
+C
+C   We are assumed,that contributions in delta region
+C   of proton and neutron are equal.
+C
+      D2RES =2.*PRES
+      D2NONR=2.*PNONR
+      D2DELT=2.*PDELTA
+C
+      D2TOT=SDUR+D2DELT      
+C
+      QM2=4.*E1*E2*SIN2
+      Q=SQRT(QM2+(E1-E2)**2)
+      E2MEV=E2*1000.
+      ELOSS=(E1-E2)*1000. ! ELOSS in MeV !!!
+      KMEV=K*1000.
+C
+***      PRINT 3,E2MEV,ELOSS,QM2,Q,KMEV,D2TOT,
+***     +SDUR,D2DELT,D2RES,D2NONR,PDELTA,PRES,PNONR 
+***3     FORMAT(2F7.1,F8.4,F7.3,F7.1,8E11.3)
+*
+      npoint = npoint+1
+      eduran(npoint) = E2MEV
+      barn = D2TOT*1e24
+c     .. in terms of pbarn/(MeV*ster)
+      sduran(npoint) = barn*1e12 * 1e-3
+*
+C
+      IF(E2.GT.E2F) GOTO 10000
+      E2=E2+STEP
+      GOTO 1000
+C
+10000 CONTINUE
+*      PRINT 4
+*4     FORMAT(/' **************************'///)
+      STOP
+      END
+
+C
+C
+C
+      SUBROUTINE ROS(E1,TETA, EH,ROSP,ROSN)
+C
+C   This subroutine calculate Rosenbluth cross sections
+C   for proton and neutron in cm2/sr.
+C   Inputing parameters(all REAL*4):
+C       E1-energy of incidet electron,GeV;
+C       TETA-scatering angle,rad;
+C   Outputing parametres(all REAL*4):
+C       ROSP-Rosenbluth for proton
+C       ROSN-Rosenbluth for neutron
+C     			 30-jun-89, A.Zatserkljanyi
+C
+      REAL MOTT,M,MAGP2,MAGN2
+C
+      DATA M/.93828/,MAGP2/7.800/,MAGN2/3.658/,CONST/5.1818E-33/
+C
+      ROSP=0.
+      ROSN=0.
+C
+      SIN2=SIN(TETA/2.)**2
+      COS2=COS(TETA/2.)**2
+      TAN2=SIN2/COS2
+C
+      MOTT=CONST/(E1**2)*COS2/SIN2**2
+C
+      EH=E1/(1.+2.*E1*SIN2/M)
+      QM2=4.*E1*EH*SIN2
+      TAU=QM2/4./M**2
+      G2=(1./(1+QM2/0.71)**2)**2
+C
+      GPE2=G2
+      GPM2=MAGP2*G2
+      GNE2=0.
+      GNM2=MAGN2*G2
+C
+      SIGNS=MOTT*EH/E1
+      ROSP=SIGNS*((GPE2+TAU*GPM2)/(1.+TAU)+2.*TAU*GPM2*TAN2)
+      ROSN=SIGNS*((GNE2+TAU*GNM2)/(1.+TAU)+2.*TAU*GNM2*TAN2)
+C
+      RETURN
+      END
+
+C
+C
+C
+      SUBROUTINE DURAND(E1,E2,TETA, SDUR)
+C     
+C   This subroutine calculate factor SDUR for Durand cross section.
+C   Durand cross section=SDUR*(sum Rosenbluths for proton and neutron)       
+C   NB! In Rosenbluth recoiling factor E2/E1 must be omitted!
+C   (In general,in Durand recoiling factor E2/E1 is absent!)
+C   Inputting parameters(all REAL*4):
+C     E1-energy of incident electron,GeV;
+C     E2-energy of scattering electron,GeV;
+C     TETA-scattering angle,rad
+C   Outputting parameter(REAL*4) SDUR,1/GeV  
+C              30-jun-89, A.Zatserkljanyi
+C
+      REAL M,M2,N2,MATR
+C
+      DATA PI/3.14159/
+      DATA M/.9389/,EBIND/.002226/,A2/.0020905/,B2/.075116/,N2/.1533/ 
+C
+      SDUR=0.
+C
+      M2=M**2
+      QM2=4.*E1*E2*SIN(TETA/2.)**2
+      PCM2=M*(E1-E2-EBIND)-QM2/4.
+      IF(PCM2.LE.0.) GOTO 10000  ! Threshold of electrodesintegration
+      ECM2=PCM2+M2
+      QCM2=QM2+(QM2/4.-PCM2-A2)**2/ECM2
+C
+      X=(A2+PCM2+QM2/4.)/SQRT(PCM2*QCM2)
+      Y=(B2+PCM2+QM2/4.)/SQRT(PCM2*QCM2)
+      X2=X**2
+      Y2=Y**2
+C
+      MATR=N2/PCM2/QCM2*
+     &( 1./(X2-1.)+1./(Y2-1.)-ALOG((X+1.)/(X-1.)*(Y-1.)/(Y+1.))/(Y-X) ) 
+C
+      SDUR=M2/PI*SQRT(PCM2/ECM2)*MATR
+C
+10000 RETURN
+      END
+
+C
+C
+C
+      SUBROUTINE DELTA(E1,E2,TETA,WR,  K,PRES,PNONR,PDELTA)
+C
+C   This subroutine calculates cross section of
+C   delta excitation on proton.
+C   Inputting parameters(all REAL*4):
+C     E1-energy of incident electron,GeV;
+C     E2-energy of scattering electron,GeV;
+C     TETA-scattering angle,rad;
+C     WR-invariant mass of delta resonance,GeV.
+C   Outputting parameters(all REAL*4):
+C     K-energy of equivalence photon,GeV;
+C     PRES-resonance term,cm2/GeV/sr;
+C     PNONR-non-resonance term,cm2/GeV/sr;
+C     PDELTA-total cross section=PRES+PNONR,cm2/GeV/sr
+C     			30-jun-89, A.Zatserkljanyi
+C
+      REAL M,M2,MPION,MPION2,K
+C
+      DATA M/.9389/,MPION/.1396/
+      DATA CGAMMA/3.69688E-4/,CRES/.0917012/,ACONST/.128/
+      DATA A0/39./    ! in mkb/(MeV**(1/2.))
+      DATA A1/-0.13/  ! in mkb/(MeV**(3/2.))
+      A0=1.233E-27   !in cm2/(GeV**(1/2.)
+      A1=-4.111E-27  !in cm2/(GeV**(3/2.)
+C
+      PRES=0.
+      PNONR=0.
+C
+      SIN2=SIN(TETA/2.)**2
+      TAN2=SIN2/(1.-SIN2)
+C
+      M2=M**2
+      MPION2=MPION**2
+      ELOSS=E1-E2
+      QM2=4.*E1*E2*SIN2
+      Q2=QM2+ELOSS**2
+      W2=2.*M*ELOSS+M2-QM2
+      W=SQRT(W2)
+C
+      K=(W2-M2)/(2.*M)
+      WPION=M+MPION
+      IF(W.LT.WPION) GOTO 10000
+C
+      QCM2=((W2+MPION**2-M2)/(2.*W))**2-MPION2
+      QCM=SQRT(QCM2)
+C
+      EPS=1./(1.+2.*Q2/QM2*TAN2)
+      GAMMA=CGAMMA*(E2/E1)*(K/QM2)/(1.-EPS)
+C
+      C=0.85*QCM/MPION
+      GW=ACONST*(C**3)/(1.+C**2)
+      GW2=GW**2
+      SIND33=.25*GW2/((W-WR)**2+.25*GW2)
+C
+      G=3.02/(1.+QM2/.64)**2
+      G2=G**2
+C
+C  RESONANSES TERM
+C
+      PRES=GAMMA*CRES*Q2*SIND33*G2/(W*(W2-M2)*GW)
+      PRES=3.894E-28*PRES ! in cm2/GeV/sr
+C
+C  NONRESONANSES TERM
+C
+      DW=W-WPION
+      C=(1+QM2/.55)**2
+      C0=A0/C
+      C1=A1/C	
+C
+      PNONR=GAMMA*SQRT(DW)*(C0+C1*DW)
+C
+10000 PDELTA=PRES+PNONR
+      RETURN
+      END
+
+*
+*
+*
+      function fdur(E2)
+C
+C   Programm calculation cross section for deutron,namely:
+C   cross section of delta exitation(in approximation free nucleons),
+C   cross section of quasielastic peak(Durand)
+C   and they sum.
+C     	    30-jun-89, A.Zatserkljanyi.
+C
+      vector E0(1),THETA(1)
+      real E1,TETA
+      REAL MOTT,MATR,K,KMEV
+      REAL M,MD,MPION,KPION,KDELTA
+C
+      DATA PI/3.14159/
+      DATA M/.93828/,MD/1.87563/,MPION/.1396/,KPION/.150/
+C
+      fdur = 0.
+C
+      TETA=THETA(1)*PI/180.
+      E1=E0(1)/1000.
+      E2=E2/1000.
+C
+      CALL ROS(E1,TETA, EH,ROSP,ROSN)
+C
+      SIN2=SIN(TETA/2.)**2
+      ETAH=1.+2.*E1*SIN2/M
+      ETAD=1.+2.*E1*SIN2/MD
+C      EH=E1/ETAH   ! Calculated by subroutine ROS
+      ED=E1/ETAD
+      EDELTA=(E1-KDELTA)/ETAH
+      EPION=(E1-KPION)/ETAH
+C
+*      ROSPN = ROSP + ROSN
+*      PRINT 1,EH*1000.,ED*1000.,EDELTA*1000.,EPION*1000.,ROSP,ROSPN
+*1     FORMAT(' EH=',F7.1,' MeV,  ED=',F7.1,
+*     +' MeV,  EDELTA=',F7.1,' MeV,  THpion=',F7.1,' MeV'/
+*     +' ROSEBLUTH: PROTON=',E12.4,'cm2/sr;   P+N=',E12.4,'cm2/sr'/)
+*      PRINT 2
+*2     FORMAT(3X,'E2',4X,'Eloss',5X,'Q2',5X,'q',6X,'K',6X,
+*     *'D2tot ',5X,'Durand',5X,'D2delt',5X,'D2res ',5X,'D2nonr',
+*     *5X,'Pdelta',5X,' Pres ',5X,' Pnonr'/)  
+C
+C   BIGINING OF CALCULATION
+C
+      CALL DURAND(E1,E2,TETA, SDUR)
+c     .. Durand cross section in cm2/GeV/sr
+      SDUR=SDUR*(ROSP+ROSN)   ! cm2/GeV/sr
+      SDUR=SDUR*(E1/E2)       ! For omitting of recoil
+C
+      D2TOT=SDUR
+C
+*      QM2=4.*E1*E2*SIN2
+*      Q=SQRT(QM2+(E1-E2)**2)
+*      E2MEV=E2*1000.
+*      ELOSS=(E1-E2)*1000. ! ELOSS in MeV !!!
+*
+      barn = D2TOT*1e24
+c     .. in terms of pbarn/(MeV*ster)
+      fdur = barn*1e12 * 1e-3
+      END
+QUIT
+RETURN
+
+*                                         @METAGS PLOT
+*--------------- PLOT ---------------
+*
+MACRO PLOT opt
+graph $VLEN(energy) energy crosec [opt]
+atitle 'Energy, MeV' 'd^2![s]/dEd[w], pb '
+RETURN
+
+
+*                                         @METAGS SLOPE
+*--------------- SLOPE ---------------
+*
+MACRO SLOPE
+*
+*     Slope cross section
+*
+v/del qfsigma
+*sigma qfsigma=array(NCO(energy),1E-4#1E-0)    
+sigma qfsigma=array(NCO(energy),1E-20#1E-0)
+*
+v/del pbarn
+appl sigma exit
+  !print
+  npoint = nco(energy)
+  emin = vmin(energy)
+  emax = vmax(energy)
+  edelta = (emax-emin)/npoint
+  !noprint
+  pbarn=1.E3*qfsigma
+exit
+*
+*wait
+opt grid
+set mtyp 24
+graph npoint energy pbarn awp
+atitle 'Energy, MeV' 'd^2![s]/dEd[w], pb'
+RETURN

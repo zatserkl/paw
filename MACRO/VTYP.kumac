@@ -1,0 +1,12 @@
+*                                         @METAGS VTYP
+*--------------- VTYP ---------------
+*
+MACRO VTYP v format
+if ($UPPER([1])='HELP' .OR. [v]='') then
+   mess Usage:    [0] v format
+   mess Type vector to screen (omit trailing zeroes)
+   exitm
+endif
+v/wr [v](:$VLEN([v])) CON [format]
+RETURN
+

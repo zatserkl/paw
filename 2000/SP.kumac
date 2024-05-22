@@ -1,0 +1,125 @@
+*                                         @METAGS SP
+*--------------- SP ---------------
+*
+MACRO SP fname=' ' ID=1 PLOT=Y
+if ([1].eq.' ') then
+  mess 'Usage:   EXEC sp filename(default extension .dat) [ID=1] [PLOT=Y]'
+  mess 'Example: EXEC sp dl370 1'
+  mess 'Example: EXEC sp dl370'
+  exitm
+endif
+
+if $INDEX([fname],'.')=0 then
+   file = [fname].dat
+else
+   file = [fname]
+endif
+
+if $FEXIST([file]) = 0 then
+   shell echo on
+   mess file [file] not found
+   shell dir *.dat /P /W /O:N /L
+   
+   cansel = 'Quit'
+   fname = [cansel]
+   read fname 'Enter file name (default extension .dat): '
+   if ([fname].EQ.[cansel]) then
+      stopm
+   else
+      if $INDEX([fname],'.')=0 then
+         file = [fname].dat
+      else
+         file = [fname]
+      endif
+   endif
+endif
+
+if $FEXIST([file]) = 0 then
+   mess file [file] not found
+   stopm
+endif
+
+AGAIN:
+if $HEXIST([ID]) then
+   mess Histogram with ID = [id] already exist.
+   AGAIN1:
+   ans = O; read ans 'Enter new ID (O=Overwrite, L=List, Q=Quit) '
+   CASE $UPPER([ans]) IN
+      (O)   h/de [ID];
+      (L)   h/l; goto AGAIN1
+      (Q)   stopm
+      (*)   ID = [ans]
+   ENDCASE
+   if $HEXIST([ID]) goto AGAIN
+endif
+
+
+if $VEXIST(chan)  then; ve/de chan;  endif
+if $VEXIST(rdata) then; ve/de rdata; endif
+v/re chan,rdata [file] ! ! '-/''/'
+
+nchan = $SIGMA(VMAX(chan))
+if $VEXIST(data) then; v/de data; endif
+v/cr data([nchan])
+
+np = $VLEN(chan)
+do i=1,[np]
+   j = chan([i])
+   v/inp data([j]) rdata([i])
+enddo
+v/de chan,rdata
+
+low  = 1
+high = [nchan] + 1
+cr/1dhisto [ID] [fname] [nchan] [low] [high]
+put/con [ID] data
+
+opt fit
+set fit 111
+opt stat
+set mtyp 24
+
+* -- for fun/plot --
+*  set dmod 1  | line type for lines. IGSET LTYP cannot be used.
+  set fwid 2  | Double line width
+
+if $UPPER([PLOT])=Y then
+   hi/pl [ID]
+endif
+RETURN
+
+*                                         @METAGS SUM
+*--------------- SUM ---------------
+*
+MACRO SUM id1 id2 id3 title
+if [id3]='' then
+   mess 'Usage SP#SUM id1 id2 id3 [title = $HTITLE(id1) +++ $HTITLE(id2)]'
+   stopm
+endif
+
+v/cr buf1(1024); v/cr buf2(1024)
+get/con [id1] buf1
+get/con [id2] buf2
+vadd buf1 buf2 buf1
+nc = $VLEN(buf1)
+low  = 1
+high =  [nc] + 1
+if [title]='' then
+   title = $HTITLE([id1])"C#$HTITLE([id2])
+endif
+
+if $HEXIST([id3]) then
+   question = Histogram [id3] already exist. O=Overwrite, Q=Quit:
+   answer = O
+   read answer [question]
+   if $UPPER([answer])=O then
+      h/de [id3]
+   else
+      v/de buf1,buf2
+      stopm
+   endif
+endif
+cr/1dhisto [id3] [title] [nc] [low] [high]
+put/con [id3] buf1
+v/de buf1,buf2
+RETURN

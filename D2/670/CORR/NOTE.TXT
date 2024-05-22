@@ -1,0 +1,9 @@
+fitl 160 280, fitp 4
+REFF coefs. for 19.62, 21.38, 22.71 from fitl 300-420 eep 0. W/o eff.
+
+
+Fit to +
+--------
+D2+: 10.73, 13.89 and (21.38 D2 and 21.38 Al). Res. in file e.D2p
+Al+: 10.73 - 21.38 Al+. Res. in file e.ALp
+

@@ -1,0 +1,8 @@
+*                                         @METAGS SHOWr
+*--------------- SHOWr ---------------
+*
+MACRO SHOWr
+APPL COMIS QUIT
+!show routines
+QUIT
+RETURN

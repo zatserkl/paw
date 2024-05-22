@@ -1,0 +1,8 @@
+*                                         @METAGS INIcomis
+*--------------- INIcomis ---------------
+*
+MACRO INIcomis
+APPL COMIS QUIT
+!clear
+QUIT
+RETURN

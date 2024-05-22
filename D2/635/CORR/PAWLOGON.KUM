@@ -1,0 +1,28 @@
+*                                         @METAGS PAWLOGON
+*--------------- PAWLOGON ---------------
+*
+MACRO PAWLOGON
+exec $ENV(HOME)\pawlogon
+mess Local PAWLOGON
+LCDIR
+mess Hello, folks!
+
+EXEC $ENV(HOME)\pawlogon#BigWin
+EXEC $ENV(HOME)\pawlogon#xargs
+
+opt logy
+
+* Complete efficiencies
+g/cr eff 1 'Efficiency flag'
+
+g/cr valmin .1
+
+exec D2CORR 635 143.5
+
+x d2look
+command 'data $*'
+
+*hget 16.24 9000
+*
+*ehist 16.24 .4 82 9000 9001624 'H2 F=16.24 MBE=4e5 BIN=22+27 (37)'
+RETURN

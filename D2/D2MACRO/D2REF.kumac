@@ -1,0 +1,410 @@
+*                                         @METAGS D2REF
+*--------------- D2REF ---------------
+*
+MACRO D2REF ali=CREATE
+g/cr D2REF $WORD([0],1,1,#)
+D2FIT=''; g/imp D2FIT; if [D2FIT]='' then; exec D2FIT; endif
+exec for
+exec ALI [ali]
+RETURN
+
+*                                         @METAGS SIM
+*--------------- SIM ---------------
+*
+MACRO SIM E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt
+if $VEXIST(set)=0 then
+   mess ***** ERROR: No vector SET in memory!
+   if $VEXIST(idlist) then
+      mess 'Copy idlist --> set'
+      wait
+      v/cop idlist set
+   else
+      stopm
+   endif
+endif
+*
+if $VEXIST(w)=0 then
+   mess ***** No vector W in memory!
+   nfile = 1
+   ask = Enter w-matrix file number
+   read nfile [ask]
+   exec wmatr [nfile]
+
+   ask = Enter w-matrix coefficients file number
+   read nfile [ask]
+   wefffile = w[nfile]eff.dat
+   if $FEXIST([wefffile]) then
+      v/re weff [wefffile]
+   else
+      mess File [wefffile] did not found.
+      mess W-matrix coefficients are equal to 1.
+   endif
+endif
+
+ntot = $VLEN(set)
+if $VEXIST(et) then; v/de et; endif
+if $VEXIST(ct) then; v/de ct; endif
+if $VEXIST(em) then; v/de em; endif
+if $VEXIST(cm) then; v/de cm; endif
+if $VEXIST(ec) then; v/de ec; endif
+if $VEXIST(cc) then; v/de cc; endif
+v/cr et(96,[ntot])
+v/cr ct(96,[ntot])
+v/cr em(96,[ntot])
+v/cr cm(96,[ntot])
+v/cr cc(96,[ntot])
+
+v/cr ec(96,[ntot])
+*
+if $VEXIST(eff) = 0 then
+   mess '--- Efficiency coefficients are ZERO. Assume all equal to 1.     '
+   sigma eff=array(96,1.#1.)
+endif
+*
+if $VEXIST(weff) = 0 then
+   mess '--- W-matrix efficiency coefficients are ZERO. Assume all equal to 1.     '
+   sigma weff=array(96,1.#1.)
+endif
+*
+
+exec for
+
+g/imp D2FIT
+fun_par = $EXEC([D2FIT]#FitType DUMMY)
+*fun    = $WORD([fun_par], 1, 1)
+*vpar   = $WORD([fun_par], 2, 1)
+ nfun   = $WORD([fun_par], 3, 1)
+
+do n=1,[ntot]
+   *mess --- Before SIM. F = $EVAL(set([n])) ---; wait
+   call SIMfor($RSIGMA(17.61*set([n])),[nfun])
+   *mess --- After  SIM. F = $EVAL(set([n])) ---; wait
+   
+   v/cop efoc(1:96) et(1:96,[n])
+   v/cop cfoc(1:96) ct(1:96,[n])
+   v/cop echan(1:96) em(1:96,[n])
+   v/cop count(1:96) cm(1:96,[n])
+   v/cop corr(1:96) cc(1:96,[n])
+
+   v/cop ecalc(1:96) ec(1:96,[n])
+enddo
+*
+mess --- Before the PLOT ---; wait
+EXEC SIMplot [E1] [E2] [opt]
+RETURN
+*                             @METAGS SIMplot
+*----------- SIMplot -----------
+*
+MACRO SIMplot E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt
+ntot = $VLEN(set)
+nt = nsec
+*
+xmin = 0.95*$SIGMA(MIN(VMIN(et),VMIN(em)))
+xmax = 1.05*$SIGMA(MAX(VMAX(et),VMAX(em)))
+ymin = 0.95*$SIGMA(MIN(VMIN(ct),VMIN(cm)))
+ymax = 1.05*$SIGMA(MAX(VMAX(ct),VMAX(cm)))
+*mess xmin = [xmin]; wait
+
+if [E1] then
+   xmin = [E1]
+endif
+if [E2] then
+   xmax = [E2]
+endif
+
+if $INDEX($UPPER([opt]),S) = 0 then
+   null [xmin] [xmax] [ymin] [ymax]
+endif
+
+ci=1
+set pmci [ci]
+*
+mt = 24
+set mtyp [mt]
+mscf0 = $GRAFINFO('?mscf')
+igset mscf .3
+*set plci 5
+set plci 1
+
+do n=1,[ntot]
+   mty0 = $GRAFINFO('?mtyp')
+      set mtyp 1
+      graph 96 et(1:96,[n]) ct(1:96,[n]) sl
+
+   set mtyp [mty0]
+   graph 96 em(1:96,[n]) cm(1:96,[n]) sp
+*   graph 96 ec(:,[n]) cm(:,[n]) s*
+
+*  .. set next polymarker color index
+   ci = [ci]+1
+   if ([ci] .GT. 6) then
+      ci = 1
+   endif
+   set pmci [ci]
+   if ([ci].EQ.5) then
+      set pmci 11
+   endif
+*  .. set next polymarker type index
+   mt = [mt]+1
+   if ([mt] .GT. 30) then
+      mt = 24
+   endif
+   set mtyp [mt]
+enddo
+
+set plci 1
+set pmci 1
+igset mscf [mscf0]
+
+exec TEXT [ymax]
+RETURN
+*
+*
+*
+MACRO TEXT ymax
+   y1 = 1.02*[ymax]
+   y2 = 1.06*[ymax]
+*
+Emin=$GRAFINFO('WNXMIN')
+Emax=$GRAFINFO('WNXMAX')
+SELNT 1
+   y1 = 18.5
+   y2 = 19.0
+
+   ci = 1
+   set txci [ci]
+
+   sel = 0
+   do n=1,$VLEN(set)
+      E = set([n])
+      y = [y1]
+      if ([sel].EQ.0) then
+         y = [y2]
+         sel = 1
+      else
+         y = [y1]
+         sel = 0
+      endif
+      x = 2. + 16.*([E]-[Emin])/([Emax]-[Emin])
+      text [x] [y] [E] .3 ! C
+
+*     .. set next text color index
+      ci = [ci]+1
+      if ([ci] .GT. 6) then
+         ci = 1
+      endif
+      set txci [ci]
+      if ([ci].EQ.5) then
+         set txci 11
+      endif
+   enddo
+   set txci 1
+SELNT 10
+RETURN
+
+*                                         @METAGS SET
+*--------------- SET ---------------
+*
+MACRO SET name=high
+v/de set
+v/re set,buf [name].set ! ! '-/*/'
+v/de buf
+mess --- Current set:
+v/pr set
+RETURN
+
+*                                         @METAGS newset
+*--------------- newset ---------------
+*
+MACRO newset
+if [#] = 0 then
+   mess 'Usage:    SIM#newset F1 [F2 ...]'
+   stopm
+endif
+
+if $VEXIST(set) then; v/de set; endif
+tr on wait
+v/cr set($WORDS([*])) r $UNQUOTE([*])
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+if $VEXIST(NSEC)   = 0 then; vNSEC   = 'KILL'; endif
+if $VEXIST(SDELTA) = 0 then; vSDELTA = 'KILL'; endif
+if $VEXIST(W)      = 0 then; vW      = 'KILL'; endif
+if $VEXIST(echan)  = 0 then; vechan  = 'KILL'; endif
+if $VEXIST(count)  = 0 then; vcount  = 'KILL'; endif
+if $VEXIST(weff)   = 0 then; vweff   = 'KILL'; endif
+if $VEXIST(ecalc)  = 0 then; vecalc  = 'KILL'; endif
+if $VEXIST(efoc)   = 0 then; vefoc   = 'KILL'; endif
+if $VEXIST(cfoc)   = 0 then; vcfoc   = 'KILL'; endif
+if $VEXIST(corr)   = 0 then; vcorr   = 'KILL'; endif
+APPL COMIS QUIT
+*                                         @METAGS SIMfor
+*                                         01-20-97 08:33pm
+*--------------- SIMfor ---------------
+*
+      SUBROUTINE SIMfor(ECENTR,nfun)
+***      SUBROUTINE SIMfor(ns,sdelta,w,weff,Ech,nfun)
+      parameter (NCENTR=36)
+      vector nsec(1),sdelta(100),w(100,100)
+      real we(96)
+      vector echan(96), count(96), weff(96)
+      vector ecalc(96)
+      VECTOR efoc(100),cfoc(100)
+      vector corr(96)
+
+      ns = nsec(1)
+      if (ns.GT.96) then
+         call WAIT('Value of NSEC(1) must be LE 96')
+      endif
+
+*     .. liner fit to Dmm do not use
+*      Dmm = 18.26 - .5341e-3*ECENTR
+      Dmm=17.3
+      Dcm = Dmm/10.
+
+*     .. distance between wires, cm. Always 2 mm at any chamber angle.
+      d = 0.2
+      cwidth = d*(.01/Dcm) * ECENTR
+      swidth = .01*(sdelta(2)-sdelta(1)) * ECENTR
+
+      E96 = ECENTR*(1. - (96-NCENTR)*d*.01/Dcm)
+      E1  = ECENTR*(1. - ( 1-NCENTR)*d*.01/Dcm)
+*      print*, 'Ec  =', ECENTR, '  cwidth =', cwidth
+*      print*, 'E96 =', E96, '  E1 =', E1
+*      call WAIT(' ')
+*
+*     Factors for convert d2sigma/dEdomega --> rate
+*
+*     .. solid angle in mster
+      dOmega = 8.2
+*     .. Nnuclei in 10**23
+      target = 1.
+*     .. MBE constant in 10**(-10)
+      Qe = 1.
+*     .. electron charge in 10**(-19)
+      charge = 1.6
+*
+*     Monitor
+*     .. monitor counts in 10**6
+      QMBE = 10.
+
+*     .. number of electrons
+      elnum = (Qe/charge)*QMBE
+*     .. whole factor
+      sec2N = elnum*target*dOmega
+*     .. relative normalization
+      anorm = 1.
+      sec2N = anorm*sec2N
+*
+*     M E A S U R I N G
+*
+      sumfoc=0
+      sumcou=0
+      do k=1,96
+*        .. SP-02 dispersion slope
+         Dch = Dcm + 0.00320*(k-NCENTR)
+
+         echan(k) = ECENTR*(1. - (k-NCENTR)*d*.01/Dch)
+         efoc(k) = echan(k)
+         we(k) = 0.
+         ecalc(k) = 0.
+
+*        .. real chamber counts
+         count(k) = 0.
+         do j=1,ns
+            E = ECENTR + .01*sdelta(j) * ECENTR
+*           .. model cross section in pbarn
+            sec = FitVal(E,nfun)
+*           .. apply factors for convert d2sigma/dEdomega --> rate
+            rate = sec*sec2N
+*           .. number of particles in range swidth
+            partcl = rate*swidth
+*           .. the number of particles from current energy interval
+*              have hited current channel
+            part = partcl*w(k,j)
+*           .. accumulate
+            count(k) = count(k) + part
+*           .. calculated energy
+            ecalc(k) = ecalc(k) + E*w(k,j)
+            we(k) = we(k) + w(k,j)
+         enddo
+*        .. correction to w-matrix calculation
+         count(k) = weff(k)*count(k)
+
+*        .. restore cross section for current channel:
+*           divide by channel width & by stream sec2N
+         cwid = d*(.01/Dch) * ECENTR
+         count(k) = count(k)/cwid/sec2N
+
+*        .. normalizing of the calculated energy
+         if (we(k).GT.0.) then
+            ecalc(k) = ecalc(k)/we(k)
+         else
+            ecalc(k) = 0.
+         endif
+
+*        .. focal chamber counts
+         sec = FitVal(echan(k),nfun)
+         rate = sec*sec2N
+*        .. number of particles in the channel acceptance cwidth
+         partcl = rate*cwidth
+*        .. restore cross section
+         cfoc(k) = partcl/cwidth/sec2N
+
+*        .. resolution efficiency correction coefs.
+         if (count(k).GT.0.) then
+            corr(k) = cfoc(k)/count(k)
+         else
+            corr(k) = 1.
+         endif
+
+         sumcou = sumcou+count(k)
+         sumfoc = sumfoc+cfoc(k)
+      enddo
+      print*, 'sumfoc,sumcou:', sumfoc,sumcou
+      END
+*                                         @METAGS WAIT
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      print*, mess
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+QUIT
+if [vNSEC]   = 'KILL' then; v/de NSEC;   endif
+if [vSDELTA] = 'KILL' then; v/de SDELTA; endif
+if [vW]      = 'KILL' then; v/de W;      endif
+if [vechan]  = 'KILL' then; v/de echan;  endif
+if [vcount]  = 'KILL' then; v/de count;  endif
+if [vweff]   = 'KILL' then; v/de weff;   endif
+if [vecalc]  = 'KILL' then; v/de ecalc;  endif
+if [vefoc]   = 'KILL' then; v/de efoc;   endif
+if [vcfoc]   = 'KILL' then; v/de cfoc;   endif
+if [vcorr]   = 'KILL' then; v/de corr;   endif
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = '?' then
+   op = CREATE
+   ask = MACRO [0]: CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):     Aliases are created.
+
+ali/[op] -C SIM         'exec '//$WORD([0],1,1,#)#SIM
+ali/[op] -C SIMplot     'exec '//$WORD([0],1,1,#)#SIMplot
+RETURN

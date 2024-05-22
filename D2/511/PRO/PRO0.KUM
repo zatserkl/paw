@@ -1,0 +1,2358 @@
+*                                      @METAGS PRO0
+*--------------- PRO0 ---------------
+*
+MACRO PRO0
+mess Welcome to macro PRO0.
+mess Aliases is created.
+EXEC INI
+
+exec MODE PC
+opt logy
+RETURN
+
+*                                         @METAGS MODE
+*--------------- MODE ---------------
+*
+MACRO MODE amode
+g/imp mode
+if [amode] = '' then
+   mess Usage     PRO0#MODE mode
+   mess Possible modes: PC, TITOV
+   mess Current mode [mode]
+   stopm
+endif
+
+CASE $UPPER([amode]) IN
+   (PC)     g/cr mode PC
+   (TITOV)  mess Mode TITOV is non-available; stopm
+            g/cr mode TITOV
+   (*)      mess Unknown mode. Possible modes: PC, TITOV
+            stopm
+ENDCASE
+
+g/imp mode,nchan,minc,maxc,floc,lun,hfile
+
+if $UPPER([mode])=PC then
+   g/cr nchan 96
+   g/cr minc  7
+   g/cr maxc  93
+   g/cr floc  \D2\511\SPECTRA
+   g/cr lun 99
+   g/cr hfile h511.his
+   g/cr naver 8
+   g/cr npoint 11
+endif
+
+if $UPPER([mode])=TITOV then
+   g/cr nchan 11
+   g/cr minc  1
+   g/cr maxc  11
+   g/cr floc  \D2\670\TITOV
+   g/cr lun 98
+   g/cr hfile t670.his
+   g/cr naver 1
+   g/cr npoint 11
+endif
+
+g/imp XaxisMIN,XaxisMAX,YaxisMIN,YaxisMAX
+if [XaxisMIN]<>''.OR.[XaxisMAX]<>''.OR.[YaxisMIN]<>''.OR.[YaxisMAX]<>'' then
+   ans = Y
+   read ans 'Reset axis limits (Y/N)?'
+   if $UPPER([ans]) = Y then
+      XaxisMIN=''; XaxisMAX=''; YaxisMIN=''; YaxisMAX=''
+   endif
+endif
+
+close 0
+mess Current mode [mode]
+mess ------------------
+RETURN
+
+*                                         @METAGS TYPE
+*--------------- TYPE ---------------
+*
+MACRO TYPE atype
+g/imp type
+
+if [atype]='' then
+   mess Usage:    PRO0#TYPE atype
+   mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+   mess Current type [type]
+   stopm
+endif
+
+typ = 0
+CASE $UPPER([atype]) IN
+   (NUC)  typ = NUC
+   (D2)   typ = D2
+   (AL)   typ = AL
+   (D2+)  typ = D2P
+   (D2P)  typ = D2P
+   (AL+)  typ = ALP
+   (ALP)  typ = ALP
+ENDCASE
+if [typ]<>0 then
+   type = [typ]
+else
+   mess Unknown type [atype]
+   mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+   mess Current type [type]
+endif
+RETURN
+
+*                                         @METAGS DATADEL
+*--------------- DATADEL ---------------
+*
+MACRO DATADEL
+v/de E_*,S_*,D_*
+RETURN
+
+*                              @METAGS VIEW
+*---------- VIEW ----------
+*
+MACRO VIEW opt
+g/imp init
+if [init]<>1 then; EXEC INI; endif
+
+if $VEXIST(idlist)<>0 .AND. $UPPER([opt]) = ADD then
+   plotl
+   N = $VLEN(idlist)
+   goto ADD
+endif
+
+if $VEXIST(idlist) then
+   ans = N
+   read ans 'Create new histogram list (Y/N)? '
+   if $UPPER([ans]) = 'Y' then
+      sigma idlist = array(100,0#0)
+      sigma ntlist = array(100,0#0)
+   else
+      stopm
+   endif
+else
+   sigma idlist = array(100,0#0)
+   sigma ntlist = array(100,0#0)
+endif
+
+N = 0
+
+ADD:
+* initial values for D2 that corresponds to nt=1
+type = D2
+nt   = 1
+
+AGAIN:
+ntid = [type]
+read ntid 'Enter Type & F (0 - EXIT)'
+
+if [ntid] = [type] goto AGAIN
+if $WORDS([ntid]) = 1 then
+   id = [ntid]
+else
+   type = $UPPER($WORD([ntid],1))
+   CASE [type] IN
+      (D2)   nt=1; goto NEXT
+      (AL)   nt=2; goto NEXT
+      (D2+)  nt=3; type=D2P; goto NEXT
+      (D2P)  nt=3; goto NEXT
+      (AL+)  nt=4; type=ALP; goto NEXT
+      (ALP)  nt=4; goto NEXT
+      (NUC)  nt=5; goto NEXT
+   ENDCASE
+   mess Unknown type [type]
+   mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+   goto AGAIN
+   
+   NEXT:
+   id = $WORD([ntid],2,1)
+endif
+
+if [id] <> 0 then
+   vname = S_[type]_$EVAL([id]*100)
+   exec VGET [type] [id]
+   if $VEXIST([vname]) = 0 then
+      mess Invalid id
+      goto AGAIN
+   endif
+
+   N = [N] + 1
+   v/inp ntlist([N]) [nt]
+   v/inp idlist([N]) [id]
+   
+   EXEC PLOTL 1 [N]
+   goto AGAIN
+else
+   stopm
+endif
+RETURN
+
+*                                         @METAGS SAVEL
+*--------------- SAVEL ---------------
+*
+MACRO SAVEL fname
+if [fname] = '' then
+   mess Usage:    'PRO0#SAVEL fname[.set]'
+   stopm
+endif
+if $INDEX([fname],'.')=0 then; fname=[fname].set; endif
+N = $VLEN(idlist)
+v/cop idlist(1:[N]) idbuf
+v/cop ntlist(1:[N]) ntbuf
+v/wr idbuf,ntbuf [fname]
+v/de idbuf,ntbuf
+RETURN
+
+*                                         @METAGS READL
+*--------------- READL ---------------
+*
+MACRO READL fname
+if [fname] = '' then
+   mess Usage:    'PRO0#READL fname[.set]'
+   stopm
+endif
+
+if $INDEX([fname],'.')=0 then; fname=[fname].set; endif
+if $FEXIST([fname]) = 0 then
+   mess File [fname] did not found
+   stopm
+endif
+sigma idlist=array(100)*0
+sigma ntlist=array(100)*0
+v/re idlist,ntlist [fname]
+RETURN
+
+*                                         @METAGS DSLOPE
+*--------------- DSLOPE ---------------
+*
+MACRO DSLOPE S
+d = 2
+Nc = 36
+Dold=18.3
+Dnew=17.3
+do k=1,96
+   Dk = [Dnew] + 0.0320*([k]-[Nc])
+   Scorr = [S]([k])*[Dk]/[Dold]
+   v/inp [S]([k]) [Scorr]
+enddo
+RETURN
+
+
+*                                         @METAGS CORRECT
+*--------------- CORRECT ---------------
+*
+MACRO CORRECT S
+* correct for dispersion
+exec DSLOPE [S]
+
+** resolution correction
+*exec REFcorr [S]
+*
+** channel efficiencies
+*exec EFFcorr [S]
+
+** reject the constant fon
+*exec CONSTfon [S]
+RETURN
+
+*                             @METAGS PLOTL
+*---------- PLOTL ----------
+*
+MACRO PLOTL N1 N2 mark=0 mcol=0 del=1 opt
+if $UPPER([1]) = 'HELP' then
+   mess Usage:    CORR#PLOTL N1 N2 mark=0 mcol=0 del=1 opt
+   stopm
+endif
+
+if $VEXIST(idlist) = 0 then
+   mess No histogram list loaded
+   stopm
+endif
+
+if [N1] = '' then; N1 = 1; endif
+if [N2] = '' then; N2 = $VLEN(idlist); endif
+
+xmin = 1E10
+xmax = 0
+ymin = 1E10
+ymax = 0
+do i=[N1], [N2]
+   id = idlist([i])
+   nt = ntlist([i])
+   CASE [nt] IN
+      (1)   type=D2
+      (2)   type=AL
+      (3)   type=D2P
+      (4)   type=ALP
+      (5)   type=NUC
+   ENDCASE
+   vname = [type]_$EVAL([id]*100)
+
+   vec = E_[vname]
+   *if $VEXIST([vec]) = 0 then; exec VGET [type] [id]; endif
+   exec VGET [type] [id]
+
+   g/imp mode
+   if [mode]='PC' then
+      exec CORRECT S_[vname]
+   endif
+
+   g/imp naver
+   if [naver] = 1 then
+      g/imp minc,maxc
+      min = [minc]
+      max = [maxc]
+      np = [maxc]-[minc]+1
+   else
+      exec AVER [vname]
+      g/imp npoint
+      min = 1
+      max = [npoint]
+      np = [npoint]
+   endif
+
+   v/cop E_[vname]([min]:[max]) buf
+   sigma val = VMIN(buf)
+   if val < [xmin] then; xmin=0.95*val; endif
+   sigma val = VMAX(buf)
+   if val > [xmax] then; xmax=1.02*val; endif
+
+   v/cop S_[vname]([min]:[max]) buf
+   sigma val = VMIN(buf)
+   if val < [ymin] then; ymin=0.90*val; endif
+   sigma val = VMAX(buf)
+   if val > [ymax] then; ymax=1.10*val; endif
+   v/de buf,val
+enddo
+
+g/imp XaxisMIN,XaxisMAX,YaxisMIN,YaxisMAX
+if [XaxisMIN] <> '' then; xmin=[XaxisMIN]; endif
+if [XaxisMAX] <> '' then; xmax=[XaxisMAX]; endif
+if [YaxisMIN] <> '' then; ymin=[YaxisMIN]; endif
+if [YaxisMAX] <> '' then; ymax=[YaxisMAX]; endif
+if $INDEX($UPPER([opt]),S) = 0 then
+   null [xmin] [xmax] [ymin] [ymax]
+endif
+atitle 'E, MeV' 'd^2![s]/d[w]d[W], arb.units'
+
+mt0 = $GRAFINFO('?mtyp')
+mt = 24
+if [mark]<>0 then; mt=[mark]; endif
+set mtyp [mt]
+
+ci0 = $GRAFINFO('?plci')
+ci = 1
+if [mcol]<>0 then; ci=[mcol]; endif
+set pmci [ci]
+
+* marker/text initial position and step
+x  = 0.4
+dx = 1.8
+
+NT0 = $GRAFINFO('NT')
+y1 = 19/([NT0]/10)
+y2 = [y1] - .4
+do i=[N1], [N2]
+   id = idlist([i])
+   nt = ntlist([i])
+   CASE [nt] IN
+      (1)   type=D2 ; mtype=20
+      (2)   type=AL ; mtype=24
+      (3)   type=D2P; mtype=29
+      (4)   type=ALP; mtype=30
+      (5)   type=NUC; mtype=28
+   ENDCASE
+
+   if [ci] = 5 then
+      set pmci 11
+   endif
+   
+   vname = [type]_$EVAL([id]*100)
+   e = E_[vname]
+   s = S_[vname]
+   set mtyp [mt]
+   graph [np] [e]([min]:[max]) [s]([min]:[max]) sp
+
+   SELNT 1
+      mtkey = [mt]
+      if [mark]<>0 then; mtkey=[mtype]; endif
+      key [x] [y1] [mtkey]
+      idF52 = $FORMAT([id],F5.2)
+      itx ([x]+.3) [y1] [idF52]
+      itx ([x]+.3) [y2] [type]
+   SELNT [NT0]
+   
+   * set next marker/text position
+   x  = [x] + [dx]
+   * set next color index
+   ci = [ci]+1
+   if ([ci] .GT. 6) then
+      ci = 1
+   endif
+   set pmci [ci]
+   if ([ci].EQ.5) then
+      set pmci 11
+   endif
+   * set next polymarker type index
+   mt = [mt]+1
+   if ([mt] .GT. 30) then
+      mt = 24
+   endif
+   set mtyp [mt]
+enddo
+set mtyp [mt0]
+set pmci [ci0]
+if [del]=1 then; exec DATADEL; endif
+exec Eprocess
+RETURN
+
+*                                         @METAGS Eprocess
+*--------------- Eprocess ---------------
+*
+MACRO Eprocess E0=493 teta=143.5
+teta = $RSIGMA([teta]*pi/180)
+Mp = 938.27
+Md = 1874.0
+recp = $SIGMA( 1. + ([E0]/[Mp])*(1-cos([teta])) )
+recd = $SIGMA( 1. + ([E0]/[Md])*(1-cos([teta])) )
+Ep = $SIGMA( [E0] / [recp] )
+Ed = $SIGMA( [E0] / [recd] )
+k1922 = $SIGMA( (1922**2 - [Md]**2)/(2*[Md]) )
+E1922 = $SIGMA( ([E0]-[k1922])/[recd] )
+
+xmin = $GRAFINFO('WNXMIN')
+xmax = $GRAFINFO('WNXMAX')
+scal = 16/([xmax]-[xmin])
+
+NT0 = $GRAFINFO('NT')
+col0 = $GRAFINFO('?plci')
+SELNT 1
+   y1arr = 2
+   y2arr = 3
+   * EH
+   set plci 4
+   xarr = 2 + ([Ep]-[xmin])*[scal]
+   arrow [xarr] [xarr] [y2arr] [y1arr]
+   * Ed
+   set plci 2
+   xarr = 2 + ([Ed]-[xmin])*[scal]
+   arrow [xarr] [xarr] [y2arr] [y1arr]
+   * E1922
+   set plci 3
+   xarr = 2 + ([E1922]-[xmin])*[scal]
+   arrow [xarr] [xarr] [y2arr] [y1arr]
+
+   text = Arrows for E?0! = [E0] MeV
+   itx 2 .5 [text]
+SELNT [NT0]
+   set plci [col0]
+RETURN
+
+*                                         @METAGS FITL
+*--------------- FITL ---------------
+*
+MACRO FITL Emi Ema
+exec PLOTL del=0
+
+sigma Emin=0; sigma Emax=0
+if [Ema] <> '' then
+   v/inp Emin [Emi]; v/inp Emax [Ema]
+else
+   mess '--- Locate Emin. Click RIGHT mouse button (or press ESC) at the end. '
+   if $VEXIST(vlocX) then; v/de vlocX; endif
+   if $VEXIST(vlocY) then; v/de vlocY; endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   CUTval = vlocX([idim])
+   v/inp Emin [CUTval]
+   v/de vlocX
+   v/de vlocY
+
+   mess '--- Locate Emax. Click RIGHT mouse button (or press ESC) at the end. '
+   if $VEXIST(vlocX) then; v/de vlocX; endif
+   if $VEXIST(vlocY) then; v/de vlocY; endif
+   vlocate vlocX vlocY
+   idim = $VLEN(vlocX,1)
+   CUTval = vlocX([idim])
+   v/inp Emax [CUTval]
+   v/de vlocX
+   v/de vlocY
+   exec PLOTL del=0
+endif
+
+if Emin > Emax then
+   v/cop Emin buf
+   v/cop Emax Emin
+   v/cop buf Emax
+   v/de buf
+endif
+
+exec LimPlot
+
+N = $VLEN(idlist)
+sigma idfit=array(100)*0
+sigma ntfit=array(100)*0
+
+mess Including to fit. A - All. Q - Quit.
+mess
+mess
+
+all = 0
+ifit = 0
+do i=1, [N]
+   id = idlist([i])
+   nt = ntlist([i])
+   CASE [nt] IN
+      (1)   type=D2
+      (2)   type=AL
+      (3)   type=D2P
+      (4)   type=ALP
+      (5)   type=NUC
+   ENDCASE
+   vname = [type]_$EVAL([id]*100)
+   ask = [type] [id]
+   
+   include = Y
+   if [all] = 0 then
+      read include [ask]
+   endif
+   
+   if $UPPER([include]) = Q goto EXIT
+   if $UPPER([include]) = A then
+      include = Y
+      all=1
+   endif
+
+   if $UPPER([include]) = Y then
+      ifit = [ifit]+1
+      v/inp idfit([ifit]) [id]
+      v/inp ntfit([ifit]) [nt]
+   endif
+enddo
+
+EXIT:
+if [ifit] = 0 then; stopm; endif
+
+g/imp naver,npoint
+set = O
+if [naver] <> 1 then
+   SET:
+   read set 'Fit to Origin or currently Averaged data (O/A)?'
+   set = $UPPER([set])
+   if [set]<>O .AND. [set]<>A goto SET
+endif
+
+sigma xfit=array(10000)*0
+sigma yfit=array(10000)*0
+sigma dfit=array(10000)*0
+
+g/imp minc,maxc
+
+N = $VLEN(idfit)
+ifit = 0
+do i=1, [N]
+   id = idfit([i])
+   nt = ntfit([i])
+   CASE [nt] IN
+      (1)   type=D2
+      (2)   type=AL
+      (3)   type=D2P
+      (4)   type=ALP
+      (5)   type=NUC
+   ENDCASE
+   vname = [type]_$EVAL([id]*100)
+   
+   if [set] = O then
+      exec VGET [type] [id]
+
+      exec CORRECT S_[vname]
+   endif
+
+   vx = E_[vname]
+   vy = S_[vname]
+   vd = D_[vname]
+
+   if [set] = O then
+      k1 = [minc]
+      k2 = [maxc]
+   else
+      k1 = 1
+      k2 = [npoint]
+   endif
+   do k=[k1],[k2]
+      if ([vx]([k]) > Emin) .AND. ([vx]([k]) < Emax) then
+         ifit = [ifit]+1
+         v/inp xfit([ifit]) [vx]([k])
+         v/inp yfit([ifit]) [vy]([k])
+         v/inp dfit([ifit]) [vd]([k])
+      endif
+   enddo
+enddo
+
+if $VEXIST(xfitbuf) then; v/de xfitbuf; endif
+if $VEXIST(yfitbuf) then; v/de yfitbuf; endif
+if $VEXIST(dfitbuf) then; v/de dfitbuf; endif
+v/cop xfit(1:[ifit]) xfitbuf
+v/cop yfit(1:[ifit]) yfitbuf
+v/cop dfit(1:[ifit]) dfitbuf
+v/de xfit,yfit,dfit
+
+sigma xfit=order(xfitbuf,xfitbuf)
+sigma yfit=order(yfitbuf,xfitbuf)
+sigma dfit=order(dfitbuf,xfitbuf)
+v/de xfitbuf,yfitbuf,dfitbuf
+
+opt fit
+set fit 1111
+RETURN
+
+*                                         @METAGS LimPlot
+*--------------- LimPlot ---------------
+*
+MACRO LimPlot Emin Emax
+if [Emin] <> '' then; sigma Emin = [Emin]; endif
+if [Emax] <> '' then; sigma Emax = [Emax]; endif
+
+if $VEXIST(Emin)=0 then
+   Emin = $GRAFINFO('WNXMIN')
+   read Emin 'Enter Emin'
+   v/cr Emin(1) r [Emin]
+endif
+if $VEXIST(Emax)=0 then
+   Emax = $GRAFINFO('WNXMAX')
+   read Emax 'Enter Emax'
+   v/cr Emax(1) r [Emax]
+endif
+
+plci0 = $GRAFINFO('?plci')
+igset plci 2
+line Emin $GRAFINFO('WNYMIN') Emin $GRAFINFO('WNYMAX')
+line Emax $GRAFINFO('WNYMIN') Emax $GRAFINFO('WNYMAX')
+igset plci [plci0]
+RETURN
+
+*                                         @METAGS FITp
+*--------------- FITp ---------------
+*
+MACRO FITp power
+if [power] = '' then
+   mess 'Usage:    CORR#FITp power'
+   mess 'Example:  CORR#FITp 3'
+   stopm
+endif
+
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+g/cr power [power]
+dim = [power] + 1
+sigma ppar=array([dim])
+v/fit xfit yfit dfit p[power] qs 0 ppar
+g/cr fitfun p
+RETURN
+
+*                                         @METAGS FITe
+*--------------- FITe ---------------
+*
+MACRO FITe
+if [1] = '?' then
+   mess 'Usage:    CORR#FITe'
+   stopm
+endif
+
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+sigma epar=array(2)
+v/fit xfit yfit dfit e qs 0 epar
+g/cr fitfun e
+RETURN
+
+*                                         @METAGS FITep
+*--------------- FITep ---------------
+*
+MACRO FITep power
+if [power] = '' then
+   mess 'Usage:    CORR#FITep power'
+   mess 'Example:  CORR#FITep 3'
+   stopm
+endif
+
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+g/cr power [power]
+dim = 2 + [power] + 1
+sigma eppar=array([dim])
+*v/fit xfit yfit dfit p[power] q0 0 eppar(3:)
+v/fit xfit yfit dfit e q0 0 eppar(1:2)
+v/fit xfit yfit dfit e+p[power] qs [dim] eppar
+*bad v/fit xfit yfit dfit e+p[power] qs 0 eppar
+g/cr fitfun ep
+RETURN
+
+*                                         @METAGS FITee
+*--------------- FITee ---------------
+*
+MACRO FITee
+if [1] = '?' then
+   mess 'Usage:    CORR#FITee'
+   stopm
+endif
+
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+sigma eepar=array(4)
+v/fit xfit yfit dfit e q0 0 eepar
+v/cop eepar(1:2) eepar(3:4)
+v/fit xfit yfit dfit e+e qs 4 eepar
+g/cr fitfun ee
+RETURN
+
+*                                         @METAGS FITeep
+*--------------- FITeep ---------------
+*
+MACRO FITeep power
+if [power] = '' then
+   mess 'Usage:    CORR#FITeep power'
+   mess 'Example:  CORR#FITeep 0'
+   stopm
+endif
+
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+g/cr power [power]
+dim = 4 + [power] + 1
+sigma eeppar=array([dim])
+v/fit xfit yfit dfit e q0 0 eeppar
+v/inp eeppar(3) $EVAL(eeppar(1)/2.)
+v/inp eeppar(4) eeppar(2)
+v/fit xfit yfit dfit e+e q0 4 eeppar
+v/fit xfit yfit dfit e+e+p[power] qs [dim] eeppar
+g/cr fitfun eep
+RETURN
+
+*                                         @METAGS FITg
+*--------------- FITg ---------------
+*
+MACRO FITg
+if [1] = '?' then
+   mess 'Usage:    CORR#FITg'
+   stopm
+endif
+
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+sigma gpar=array(3)
+v/fit xfit yfit dfit g qs 0 gpar
+g/cr fitfun g
+RETURN
+
+*                                         @METAGS FITge
+*--------------- FITge ---------------
+*
+MACRO FITge
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+sigma gepar=array(5)
+v/fit xfit yfit dfit g q0 0 gepar
+v/fit xfit yfit dfit e q0 0 gepar(4:5)
+v/fit xfit yfit dfit g+e qs 5 gepar
+*bad   v/fit xfit yfit dfit g+e qs 0 gepar
+g/cr fitfun ge
+RETURN
+
+*                                         @METAGS FITgp
+*--------------- FITgp ---------------
+*
+MACRO FITgp power
+if [power] = '' then
+   mess 'Usage:    CORR#FITgp power'
+   mess 'Example:  CORR#FITgp 3'
+   stopm
+endif
+
+if $VEXIST(idfit) = 0 then
+   mess No fit list loaded
+   stopm
+endif
+if $VEXIST(Emin) = 0 then
+   mess Energy limit vector Emin does not exist
+   stopm
+endif
+if $VEXIST(Emax) = 0 then
+   mess Energy limit vector Emax does not exist
+   stopm
+endif
+
+mess 'Fitting.'
+g/cr power [power]
+dim = 3 + [power] + 1
+sigma gppar=array([dim])
+v/fit xfit yfit dfit g q0 0 gppar(1:3)
+v/fit xfit yfit dfit g+p[power] qs [dim] gppar
+g/cr fitfun gp
+RETURN
+
+*                                         @METAGS FITplot
+*--------------- FITplot ---------------
+*
+MACRO FITplot fun='DUMMY' E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX') opt=SL fill=0
+if $UPPER([1]) = 'HELP' then
+   mess Usage:    CORR#FITplot fun E1 E2 opt fill
+   mess
+   mess           fun      C  Fit function   D='DUMMY'
+   mess           E1       R  Low limit      D='$GRAFINFO('WNXMIN')'
+   mess           E2       R  Upper limit    D='$GRAFINFO('WNXMAX')'
+   mess           opt      C  Option         D=S
+   mess           fill     I  Fill flag      D=1
+   stopm
+endif
+
+exec FUNfor
+if [fill]=1 then; exec FITfill [fun] [E1] [E2]; endif
+
+npfun=''; g/imp npfun
+if [npfun]='' then
+   npfun = 20
+   read npfun 'Enter the number of point for function'
+   g/cr npfun [npfun] 'the number of point for function'
+endif
+sigma xbuf=array([npfun],[E1]#[E2])
+sigma ybuf=array([npfun])*0.
+do i=1,[npfun]
+   v/inp ybuf([i]) $EXEC(FITfun [fun] xbuf([i]))
+enddo
+graph $VLEN(xbuf) xbuf ybuf [opt]
+v/de xbuf,ybuf
+RETURN
+
+*                                         @METAGS FITfill
+*--------------- FITfill ---------------
+*
+MACRO FITfill fun='DUMMY' E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX')
+if $UPPER([fun])='HELP' then
+   mess 'Usage: CORR#FITfill fun=DUMMY E1=$GRAFINFO('WNXMIN') E2=$GRAFINFO('WNXMAX')'
+   stopm
+endif
+
+sigma energy=array(1000)*0.
+sigma crosec=array(1000)*0.
+
+anorm=1./55.
+step = 1.| MeV
+n = ([E2]-[E1])/[step] + 1
+
+E = [E1]
+do i=1,[n]
+   v/inp energy([i]) [E]
+   v = [anorm]*$EXEC(FITfun [fun] [E])
+   v/inp crosec([i]) [v]
+   E = [E]+[step]
+enddo
+RETURN
+
+*                                         @METAGS FitType
+*--------------- FitType ---------------
+*
+MACRO FitType fun
+if [fun] = 'DUMMY' then
+   fitfun=''
+   g/imp fitfun
+   if [fitfun] <> '' then
+      fun = [fitfun]
+   else
+      mess Fit was not performed
+      fun = '*'
+      stopm
+   endif
+endif
+
+vpar = [fun]par
+if $VEXIST([vpar])=0 then
+   mess There is no fit parameter vector [vpar] in memory
+   fun = '*'
+   stopm
+endif
+
+CASE $UPPER([fun]) IN
+   (P)   fun='POLI'
+   (E)   fun='EX' 
+   (EP)  fun='EP'
+   (EE)  fun='EE'
+   (EEP) fun='EEP'
+   (G)   fun='GAUSS'
+   (GE)  fun='GE'
+   (GP)  fun='GP'
+   (*)   fun='*'; mess Unknown function [fun]; stopm
+ENDCASE
+
+if $INDEX($UPPER([fun]),'P') then
+*  fit contains polinom
+   power=''
+   g/imp power
+   if [power]='' then
+      mess Polinom power is not defened
+      fun = *
+      stopm
+   endif
+endif
+RETURN [fun] [vpar]
+
+*                                         @METAGS FitSave
+*--------------- FitSave ---------------
+*
+MACRO FitSave fun='DUMMY' file comment
+if [file]='' then
+   mess Usage:    CORR#FitSave  fun='DUMMY' file comment
+   stopm
+endif
+
+if $INDEX([file],'.')=0 then; file=[file].fit; endif
+if $FEXIST([file]) then
+   mess File [file] already exist
+   wait
+endif
+
+fun_par = $EXEC(FitType [fun])
+fun  = $WORD([fun_par], 1, 1)
+vpar = $WORD([fun_par], 2, 1)
+
+if [fun] = 0 then
+   mess Unknown function
+   stopm
+endif
+
+polinom=  0
+if $INDEX($UPPER([fun]),'P') then
+   *  fit contains polinom
+   polinom = 1
+   g/imp power
+endif
+
+star = '?(1)' | would be written by FORMAT F1 as *
+
+* write comment
+match = COMM
+fmt = F1, $QUOTE([match]), T9, $QUOTE([comment])
+v/wr [star] [file] [fmt] 'O'
+
+* write function type
+match = TYPE
+text = ID OF FUNCTION "[fun]"
+CASE [fun] IN
+   (POLI)   v/inp ?(1) 1
+   (EX)     v/inp ?(1) 2
+   (EP)     v/inp ?(1) 3
+   (EE)     v/inp ?(1) 4
+   (EEP)    v/inp ?(1) 5
+   (GAUSS)  v/inp ?(1) 6
+   (GE)     v/inp ?(1) 7
+   (GP)     v/inp ?(1) 8
+ENDCASE
+fmt = F1, $QUOTE([match]), T9, F2, T17, $QUOTE([text])
+v/wr [star],?(1) [file] [fmt] ' '
+
+if [polinom] then
+   * write polinom power if fit contains polinom
+   match = POWER
+   text  = POLINOM POWER
+   v/inp ?(1) [power]
+   fmt = F1, $QUOTE([match]), T9, F2, T17, $QUOTE([text])
+   v/wr [star],?(1) [file] [fmt] ' '
+endif
+
+* write coefs.
+v/wr [vpar] [file] 'G15.7' 'C'
+RETURN
+
+*                                         @METAGS FitRead
+*--------------- FitRead ---------------
+*
+MACRO FitRead file
+if [file]='' then
+   mess Usage:    CORR#FitRead file
+   stopm
+endif
+
+if $INDEX([file],'.')=0 then; file=[file].fit; endif
+if $FEXIST([file]) = 0 then
+   mess File [file] did not found
+   stopm
+endif
+
+* read function type
+g/cr fitfun
+polinom = 0
+v/re ?(1) [file] '8X, F2.0' ! /*TYPE/
+id = ?(1)
+CASE [id] IN
+   (1)   fun = POLI  ; fitfun=P  ; vpar=Ppar  ; idim=0; polinom=1
+   (2)   fun = EX    ; fitfun=E  ; vpar=Epar  ; idim=2
+   (3)   fun = EP    ; fitfun=EP ; vpar=EPpar ; idim=2; polinom=1
+   (4)   fun = EE    ; fitfun=EE ; vpar=EEpar ; idim=4
+   (5)   fun = EEP   ; fitfun=EEP; vpar=EEPpar; idim=4; polinom=1
+   (6)   fun = GAUSS ; fitfun=G  ; vpar=Gpar  ; idim=3
+   (7)   fun = GE    ; fitfun=GE ; vpar=GEpar ; idim=5
+   (8)   fun = GP    ; fitfun=GP ; vpar=GPpar ; idim=3; polinom=1
+ENDCASE
+
+if [polinom] then
+   *  fit contains polinom
+   v/re ?(1) [file] '8X, F2.0' ! /*POWER/
+   g/cr power $EVAL(?(1))
+   idim = [idim] + [power] + 1
+endif
+
+* read coefs.
+sigma [vpar] = array([idim])*0
+v/re [vpar] [file] 'G15.7' ! -/*/
+RETURN
+
+*                                         @METAGS FITfun
+*--------------- FITfun ---------------
+*
+MACRO FITfun fun='DUMMY' x
+if [fun] = 'DUMMY' then
+   fitfun=''
+   g/imp fitfun
+   if [fitfun] <> '' then
+      fun = [fitfun]
+   else
+      mess Fit was not performed
+      stopm
+   endif
+endif
+
+vpar = [fun]par
+if $VEXIST([vpar])=0 then
+   mess There is no fit parameter vector [vpar] in memory
+   stopm
+endif
+if $UPPER([fun]) = 'P' then; fun='POLI' ; endif
+if $UPPER([fun]) = 'E' then; fun='EX'   ; endif
+if $UPPER([fun]) = 'G' then; fun='GAUSS'; endif
+
+power=''
+g/imp power
+if $INDEX($UPPER([fun]),'P') then
+*  fit contains polinom
+   if [power]='' then
+      mess Polinom power is not defened
+      stopm
+   endif
+endif
+
+if [power] <> '' then
+   polarg=[power]
+else
+   polarg=0.
+endif
+
+str = [fun]($RSIGMA([x]),$RSIGMA([polarg]))
+val = $CALL([str])
+RETURN [val]
+
+*                                         @METAGS FUNfor.COMIS
+*--------------- FUNfor ---------------
+*
+MACRO FUNfor
+* create templates because polinom fit vectors defened like ppar(*)
+if $VEXIST(ppar)   = 0 then; v/cr ppar  ; p=1  ; endif
+if $VEXIST(eppar)  = 0 then; v/cr eppar ; ep=1 ; endif
+if $VEXIST(eeppar) = 0 then; v/cr eeppar; eep=1; endif
+if $VEXIST(gppar)  = 0 then; v/cr gppar ; gp=1 ; endif
+
+* prevent creating of zero vectors after execution FUNfor
+if $VEXIST(epar)   = 0 then; e=1  ; endif
+if $VEXIST(eepar)  = 0 then; ee=1 ; endif
+if $VEXIST(gpar)   = 0 then; g=1  ; endif
+if $VEXIST(gepar)  = 0 then; ge=1 ; endif
+
+APPL COMIS QUIT
+*--------------------------------@METAGS poli.for
+      function poli(x,power)
+      vector ppar(*)
+      poli = 0.
+      p=0.
+      do n=1,INT(power+1.)
+         p = p + ppar(n)*x**(n-1)
+      enddo
+      poli = p
+      end
+*--------------------------------@METAGS ex.for
+      function ex(x,dummy)
+      vector epar(2)
+      ex = exp(epar(1) + x*epar(2))
+      end
+*--------------------------------@METAGS ep.for
+      function ep(x,power)
+      vector eppar(*)
+      ep = 0.
+      e = exp(eppar(1) + x*eppar(2))
+*     .. the last non-polinom parameter
+      last = 2
+      p=0.
+      do n=1,INT(power+1.)
+         p = p + eppar(last+n)*x**(n-1)
+      enddo
+      ep = e+p
+      end
+*--------------------------------@METAGS ee.for
+      function ee(x,dummy)
+      vector eepar(4)
+      ee = exp(eepar(1) + x*eepar(2)) + exp(eepar(3) + x*eepar(4))
+      end
+*--------------------------------@METAGS eep.for
+      function eep(x,power)
+      vector eeppar(*)
+      eep = 0.
+      e1 = exp(eeppar(1) + x*eeppar(2))
+      e2 = exp(eeppar(3) + x*eeppar(4))
+*     .. the last non-polinom parameter
+      last = 4
+      p=0.
+      do n=1,INT(power+1.)
+         p = p + eeppar(last+n)*x**(n-1)
+      enddo
+      eep = e1+e2+p
+      end
+*--------------------------------@METAGS gauss.for
+      function gauss(x,dummy)
+      vector gpar(3)
+      gauss=gpar(1)*exp(-0.5*((x-gpar(2))/gpar(3))**2)
+      end
+*--------------------------------@METAGS ge.for
+      function ge(x,dummy)
+      vector gepar(5)
+      g = gepar(1)*exp(-0.5*((x-gepar(2))/gepar(3))**2)
+      e = exp(gepar(4) + x*gepar(5))
+      ge = g+e
+      end
+*--------------------------------@METAGS gp.for
+      function gp(x,power)
+      vector gppar(*)
+      gp = 0.
+      g = gppar(1)*exp(-0.5*((x-gppar(2))/gppar(3))**2)
+*     .. the last non-polinom parameter
+      last = 3
+      p=0.
+      do n=1,INT(power+1.)
+         p = p + gppar(last+n)*x**(n-1)
+      enddo
+      gp = g+p
+      end
+QUIT
+* delete vector templates
+if [p]   = 1 then; v/de ppar  ; endif
+if [ep]  = 1 then; v/de eppar ; endif
+if [eep] = 1 then; v/de eeppar; endif
+if [gp]  = 1 then; v/de gppar ; endif
+* delete zero vectors
+if [e]   = 1 then; v/de epar  ; endif
+if [ee]  = 1 then; v/de eepar ; endif
+if [g]   = 1 then; v/de gpar  ; endif
+if [ge]  = 1 then; v/de gepar ; endif
+RETURN
+
+*                                         @METAGS MINMAX
+*--------------- MINMAX ---------------
+*
+MACRO MINMAX min max
+g/imp minc,maxc,nchan
+if [min] = '' then
+   mess Usage:    PRO0#MINMAX min max
+   mess Now minc = [minc], maxc = [maxc]
+   stopm
+endif
+
+if [min]<>'' then; minc=[min]; endif
+if [max]<>'' then; maxc=[max]; endif
+mess Now minc = [minc], maxc = [maxc]
+RETURN
+
+*                             @METAGS PLOT
+*---------- PLOT ----------
+*
+MACRO PLOT atype id min max
+if [id] = '' then
+   mess 'Usage:    PRO0#PLOT atype id [min] [max]'
+   stopm
+endif
+
+CASE $UPPER([atype]) IN
+   (D2)   goto NEXT
+   (AL)   goto NEXT
+   (D2+)  goto NEXT
+   (D2P)  goto NEXT
+   (AL+)  goto NEXT
+   (ALP)  goto NEXT
+   (NUC)  goto NEXT
+ENDCASE
+mess Unknown type [atype]
+mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP), NUC .
+mess Use PRO0#TYPE
+stopm
+
+NEXT:
+
+g/imp minc,maxc
+if [min] <> '' then; minc=[min]; endif
+if [min] <> '' then; maxc=[max]; endif
+
+vname = [atype]_//$EVAL([id]*100)
+npoint = [maxc]-[minc]+1
+*h/err           e[vname]([minc]:[maxc])  s[vname]([minc]:[maxc])_
+*               de([minc]:[maxc])        d[vname]([minc]:[maxc]) [npoint]_
+*               ! ! awp
+exec ERRDAT [vname]
+RETURN
+
+*                             @METAGS PLOTS
+*---------- PLOTS ----------
+*
+MACRO PLOTS atype id ci mt
+if [id] = '' then
+   mess 'Usage:    PRO0#PLOTS atype id [ci] [mt]'
+   stopm
+endif
+cicur = $GRAFINFO('?pmci')
+mtcur = $GRAFINFO('?mtyp')
+
+CASE $UPPER([atype]) IN
+   (D2)   goto NEXT
+   (AL)   goto NEXT
+   (D2+)  goto NEXT
+   (D2P)  goto NEXT
+   (AL+)  goto NEXT
+   (ALP)  goto NEXT
+   (NUC)  goto NEXT
+ENDCASE
+mess Unknown type [atype]
+mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+mess Use PRO0#TYPE
+stopm
+
+NEXT:
+
+if [ci] <> '' then
+   igset pmci [ci]
+endif
+if [mt] <> '' then
+   set mtyp [mt]
+endif
+
+g/imp naver
+vname = [atype]_$EVAL([id]*100)
+if $VEXIST(a[naver]_e_[vname]) = 0 then
+   exec AVER [vname]
+endif
+
+if [naver] = 1 then
+   g/imp minc,maxc
+   min = minc
+   max = maxc
+else
+   g/imp npoint
+   min = 1
+   max = [npoint]
+endif
+
+e = a[naver]_e_[vname])
+s = a[naver]_s_[vname])
+d = a[naver]_d_[vname])
+graph [npoint] [e]([min]:[max]) [s]([min]:[max]) sp
+*exec GRADAT [vname]
+
+igset pmci [cicur]
+set mtyp [mtcur]
+RETURN
+
+*                                         @METAGS GRADAT
+*--------------- GRADAT ---------------
+*
+MACRO GRADAT vname
+g/imp naver
+
+if [naver] = 1 then
+   g/imp minc,maxc
+   npoint = [maxc]-[minc]+1
+   graph [npoint]  e_[vname]([minc]:[maxc])  s_[vname]([minc]:[maxc]) sp
+else
+   g/imp npoint
+   graph [npoint]  e_[vname] s_[vname] sp
+endif
+RETURN
+
+*                                         @METAGS ERRDAT
+*--------------- ERRDAT ---------------
+*
+MACRO ERRDAT vname
+g/imp naver
+
+if [naver] = 1 then
+   g/imp minc,maxc
+   npoint = [maxc]-[minc]+1
+   h/err  e_[vname]([minc]:[maxc])  s_[vname]([minc]:[maxc])_
+         de_([minc]:[maxc])        d_[vname]([minc]:[maxc]) [npoint]_
+         ! ! awp
+else
+   g/imp npoint,nchan
+   v/cr de([nchan])
+   h/err  e_[vname]  s_[vname]
+         de_        d_[vname] [npoint]_
+         ! ! awp
+   v/de de
+endif
+RETURN
+
+*                                      @METAGS HSCAL
+*--------------- HSCAL ---------------
+*
+MACRO HSCAL id1 id2 scal tit
+if [scal] = '' then
+   mess 'Usage:    PRO0#HSCAL id1 id2 scal [tit]'
+   stopm
+endif
+
+if [tit]='' then
+   tit = Scale [id1] to [id2] with factor [scal]
+   mess Default title: [tit]
+   read tit1 'Title:'
+   if [tit1] <> '' then; tit=[tit1]; endif
+endif
+
+g/imp nchan
+v/cr factor(1) r [scal]
+v/cr buf([nchan])
+get/con [id1] buf
+
+sigma buf=INT(.5+buf*factor(1))
+exec HCRE [id2] [tit]
+put/con [id2] buf
+v/de buf,factor
+exec HINFO [id2]
+RETURN
+
+*                                         @METAGS ASCAL
+*--------------- ASCAL ---------------
+*
+MACRO ASCAL dir type scal
+if [scal] = '' then
+   mess Usage:    exec ASCAL dir type scal
+   stopm
+endif
+
+g/imp idD2,idAL,idD2p,idALp,idD2scal,idALscal,idD2Pscal,idALPscal,idNUC
+typ = $UPPER([type])
+CASE [typ] IN
+   (D2)  id1=[idD2];  id2=[idD2scal];  type=D2
+   (AL)  id1=[idAL];  id2=[idALscal];  type=Al
+   (D2+) id1=[idD2p]; id2=[idD2Pscal]; type=D2+
+   (D2P) id1=[idD2p]; id2=[idD2Pscal]; type=D2+
+   (AL+) id1=[idALp]; id2=[idALPscal]; type=Al+
+   (ALP) id1=[idALp]; id2=[idALPscal]; type=Al+
+   (*)   mess Unknown type [atype]
+         mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP).
+         stopm                                                                         
+ENDCASE                                                              
+     
+g/imp mode,hfile,lun
+
+exec HGET [dir] [id1]
+if $HEXIST([id1]) = 0 then
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   mess No histogram [id1] in dir [dir]
+   stopm
+endif
+
+tit = [mode] [dir] [type] scal [scal]
+exec HSCAL [id1] [id2] [scal] [tit]
+
+exec HPUT [dir] [id2]
+exec FPUR [dir] N
+h/de [id1],[id2]
+RETURN
+
+*                                         @METAGS TabScal
+*--------------- TabScal ---------------
+*
+MACRO TabScal dir type file=FMBE.dat
+if [type] = '' then
+   mess Usage:    exec PRO0#TabScal dir type file=FMBE.dat
+   stopm
+endif
+
+g/imp idD2,idAL,idD2p,idALp,idD2scal,idALscal,idD2Pscal,idALPscal,idNUC
+typ = $UPPER([type])
+CASE [typ] IN
+   (D2)  id1=[idD2];  id2=[idD2scal];  type=D2
+   (AL)  id1=[idAL];  id2=[idALscal];  type=Al
+   (D2+) id1=[idD2p]; id2=[idD2Pscal]; type=D2+
+   (D2P) id1=[idD2p]; id2=[idD2Pscal]; type=D2+
+   (AL+) id1=[idALp]; id2=[idALPscal]; type=Al+
+   (ALP) id1=[idALp]; id2=[idALPscal]; type=Al+
+   (*)   mess Unknown type [atype]
+         mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP).
+         stopm                                                                         
+ENDCASE                                                              
+     
+g/imp mode,hfile,lun
+
+exec HGET [dir] [id1] ! Y
+if $HEXIST([id1]) = 0 then
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   mess No histogram [id1] in dir [dir]
+   stopm
+endif
+
+* Scale factor as 18.3/(.02*17.61) * (1/F) * (1e6/MBE) = 51.959/F/MBE
+sigma QM1000=0
+sigma QM2000=0
+sigma QM3000=0
+sigma QM4000=0
+v/re QM1000,QM2000,QM3000,QM4000 [file] '8X,4F8.0' ! /[dir]/
+MBE = $RSIGMA(QM[id1])
+v/de QM1000,QM2000,QM3000,QM4000
+scal = $RSIGMA(51.959/[dir]/[MBE])
+
+tit = [mode] [dir] [type] scal [scal]
+read tit 'Enter title'
+exec HSCAL [id1] [id2] [scal] [tit]
+
+exec HPUT [dir] [id2]
+*exec FPUR [dir] N
+h/de [id1],[id2]
+RETURN
+
+*                                         @METAGS HCRE
+*--------------- HCRE ---------------
+*
+MACRO HCRE id tit
+g/imp nchan
+1dh [id] [tit] [nchan] 0.5 [nchan].5
+RETURN
+
+*                                      @METAGS TIT
+*--------------- TIT ---------------
+*
+MACRO TIT id tit
+if [id] = '' then
+   mess 'Usage:    PRO0#TIT id title'
+   stopm
+endif
+if $HEXIST([id])=0 then
+   mess Histogram [id] do not exist.
+   stopm
+endif
+
+mess Old: $HTITLE([id])
+if [tit]='' then
+   read tit 'New:'
+endif
+
+mess New: [tit]
+ans = N
+read ans 'Replace (Y/N)?'
+if $UPPER([ans]) = 'N' then; stopm; endif
+
+if $HEXIST(123456) then
+   mess Histogram 123456 will be used as buffer!
+   wait
+   h/de 123456
+endif
+
+h/cop [id] 123456
+h/de [id]
+h/cop 123456 [id] [tit]
+h/de 123456
+RETURN
+
+*                                         @METAGS FTIT
+*--------------- FTIT ---------------
+*
+MACRO FTIT dir id tit
+if [id] = '' then
+   mess 'Usage:    PRO0#FTIT dir id title'
+   stopm
+endif
+
+exec HGET [dir] [id]
+if $HEXIST([id])=0 then
+   mess Histogram [id] in the dir [dir] do not exist.
+   stopm
+endif
+
+exec TIT [id] [tit]
+ans = N
+read ans 'Write to file (Y/N)?'
+if $UPPER([ans]) = 'Y' then
+   exec HPUT [dir] [id]
+endif
+RETURN
+
+*                             @METAGS HINFO
+*---------- HINFO ----------
+*
+MACRO HINFO id inquiry=ENTRIES
+if [id] = '' then
+   mess 'Usage:    PRO0#HINFO id [INQUIRY=ENTRIES]'
+   stopm
+endif
+mess [id]: $HTITLE([id])
+mess [inquiry] = $HINFO([id],[inquiry])
+RETURN
+
+*                                      @METAGS FHINFO
+*--------------- FHINFO ---------------
+*
+MACRO FHINFO dir id inquiry=ENTRIES
+if (([dir]='').OR.([id]='')) then
+   mess 'Usage:    PRO0#FHINFO dir id [INQUIRY=ENTRIES]'
+   stopm
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! ' '
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   
+if $HEXIST([id]) then
+   if $HEXIST(123456) then
+      mess Histogram 123456 will be used as buffer!
+      wait
+      h/de 123456
+   endif
+   h/cop [id] 123456
+   hrin [id]
+   close [lun]
+   EXEC HINFO [id] [inquiry]
+   h/de [id]
+   h/cop 123456 [id]
+   h/de 123456
+   exitm
+endif
+
+hrin [id]
+close [lun]
+EXEC HINFO [id] [inquiry]
+h/de [id]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS FOPEN
+*--------------- FOPEN ---------------
+*
+MACRO FOPEN
+g/imp hfile,lun
+h/file [lun] [hfile] ! U
+RETURN
+
+*                                      @METAGS FCLOSE
+*--------------- FCLOSE ---------------
+*
+MACRO FCLOSE
+g/imp lun
+close [lun]
+RETURN
+
+*                                      @METAGS FDIR
+*--------------- FDIR ---------------
+*
+MACRO FDIR dir
+g/imp hfile,lun,mode
+if [dir]='' then
+   dir = \\
+   read dir 'Directory?'
+endif
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   ld
+   close [lun]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS FHLIST
+*--------------- FHLIST ---------------
+*
+MACRO FHLIST dir
+g/imp hfile,lun,mode
+if [dir]='' then
+   dir = \\
+   read dir 'Directory?'
+endif
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   mess Current mode [mode]. --- File [hfile], lun [lun] ---
+   h/l
+   close [lun]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS FGOTO
+*--------------- FGOTO ---------------
+*
+MACRO FGOTO dir 
+g/imp hfile,lun
+if [dir]='' then
+   mess Usage: PRO0#FGOTO dir
+   stopm
+endif
+
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   ld
+   mess Current directory now [dir]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS FPUR
+*--------------- FPUR ---------------
+*
+MACRO FPUR dir show=Y
+g/imp hfile,lun
+if [dir] = '' then
+   mess Usage:    PRO0#FPUR dir show=Y
+   stopm
+endif
+
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   purge
+
+   if $UPPER([show])=Y then
+      ld
+   endif
+close [lun]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS HPUT
+*--------------- HPUT ---------------
+*
+MACRO HPUT dir id
+if [dir]='' .OR. [id]='' then
+   mess Usage:    PRO0#HPUT dir id
+   stopm
+endif
+
+g/imp hfile,lun,mode
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+   
+   ans = Y
+   str = --- Mode [mode].  File [hfile], lun [lun].  Write (Y/N)?
+   read ans [str]
+   if $UPPER([ans]) <> Y then
+      close [lun]
+      stopm
+   endif
+
+   hrout  [id]
+close [lun]
+exitm
+
+NODIR:
+mess Current mode [mode]. --- File [hfile], lun [lun] ---
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS HGET
+*--------------- HGET ---------------
+*
+MACRO HGET dir id prompt=Y delete=N
+if [dir]='' .OR. [id]='' then
+   mess Usage:    PRO0#HGET dir id prompt=Y delete=N
+   stopm
+endif
+
+if $HEXIST([id]) then
+   ans = 'Y'
+   if $UPPER([delete])='N' then
+      read ans 'Histogram '//[id]//' in memory will be deleted!  Delete(Y/N)?'
+   endif
+   if $UPPER([ans]) = 'Y' then
+      h/de [id]
+   else
+      mess Cansel.
+      stopm
+   endif
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! ' '
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+
+   hrin  [id]
+   if $UPPER([prompt])=Y then; exec HINFO [id]; endif
+close [lun]
+
+if $HEXIST([id]) = 0 then
+   mess There is no histogram [id] in the file.
+endif
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                         @METAGS FHCOP
+*--------------- FHCOP ---------------
+*
+MACRO FHCOP dir id idout dirout
+if [idout]='' then
+   mess 'Usage:    PRO0#FHCOP dir id idout [dirout=dir]'
+   stopm
+endif
+
+if [dirout]='' then; dirout=[dir]; endif
+exec HGET [dir] [id]
+
+tit = $HTITLE([id])
+ans = A
+ACT:
+read ans 'New title Old, New or Add to old (O/N/A)?:'
+CASE $UPPER([ans]) IN
+   (O)      titout=[tit]
+   (N)      read titout 'New title:'
+   (A)      read titadd 'Add to title:'
+            space = ' '
+            titout = [tit]//[space]//[titadd]
+   (*)      goto ACT
+ENDCASE
+mess New title: [titout]
+
+h/cop [id] [idout] [titout]
+HPUT [dirout] [idout]
+RETURN
+
+*                                         @METAGS AVER
+*--------------- AVER ---------------
+*
+MACRO AVER vname
+g/imp minc,maxc,naver,npoint
+npoint = ([maxc]-[minc]+1)/[naver]
+
+np = $FORMAT([npoint],I2)
+if [npoint] > [np] then
+   npoint = [npoint]+1
+   npoint = $FORMAT([npoint],I2)
+   npoint = 1*[npoint]
+endif
+
+v/cr ebuf([npoint])
+v/cr sbuf([npoint])
+v/cr dbuf([npoint])
+e = e_[vname]
+s = s_[vname]
+d = d_[vname]
+
+call AVER([minc],[maxc],[naver],[npoint],[e],[s],[d],ebuf,sbuf,dbuf)
+
+v/de e_[vname],s_[vname],d_[vname]
+v/cop ebuf e_[vname]
+v/cop sbuf s_[vname]
+v/cop dbuf d_[vname]
+v/de ebuf,sbuf,dbuf
+RETURN
+
+*                                         @METAGS AVERAGE
+*--------------- AVERAGE ---------------
+*
+MACRO AVERAGE naverage
+g/imp naver
+if [naverage] = '' then
+   mess Usage:    PRO0#AVERAGE naverage
+   mess Note:     if naverage = ALL then summing all channels from minc to maxc
+   mess Current naverage = [naver]
+   stopm
+endif
+
+if $UPPER([naverage]) = ALL then
+   g/imp minc,maxc
+   naver = [maxc] - [minc] + 1
+else
+   naver = [naverage]
+endif
+mess naver = [naver] channels
+RETURN
+
+*                                         @METAGS VGET
+*--------------- VGET ---------------
+*
+MACRO VGET atype id
+if [id]='' then
+   mess Usage:    PRO0#VGET atype id
+   mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+   stopm
+endif
+
+g/imp idD2,idAL,idD2p,idALp,idD2scal,idALscal,idD2Pscal,idALPscal,idNUC
+idh = ''
+typ = $UPPER([atype])
+CASE [typ] IN
+   (D2)   idh=[idD2scal];            goto NEXT
+   (AL)   idh=[idALscal];            goto NEXT
+   (D2+)  idh=[idD2Pscal]; typ=D2P;  goto NEXT
+   (D2P)  idh=[idD2Pscal];           goto NEXT
+   (AL+)  idh=[idALPscal]; typ=ALP;  goto NEXT
+   (ALP)  idh=[idALPscal];           goto NEXT
+   (NUC)  idh=[idNUC];               goto NEXT
+ENDCASE
+mess VGET: Unknown type [atype]
+mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+stopm
+
+NEXT:
+
+* add ending 0 if e.g. id = 8.80
+id = $FORMAT([id],F4.2)
+
+g/imp lun,hfile
+h/file [lun] [hfile]
+cd \\[id]
+
+if $IQUEST(1) = 0 then
+   fname = $EVAL([id]*100)
+   vname = [typ]_[fname]
+   e=e_[vname]
+   s=s_[vname]
+   d=d_[vname]
+
+   g/imp nchan
+   if $VEXIST([e]) then; v/de [e]; endif;    v/cr [e]([nchan])
+   if $VEXIST([s]) then; v/de [s]; endif;    v/cr [s]([nchan])
+   if $VEXIST([d]) then; v/de [d]; endif;    v/cr [d]([nchan])
+
+   * PAW rule (see PAW Tutorial 7.2.2, p.253, second example):
+   * We wont perform, to say, get/con from hist. ID in the file
+   * and assume we have histograms ID in the file and in memory.
+   * If hist in memory is not changed, data is taken from disk
+   * histogram (same if hist in memory is absent).
+   * If hist in memory CHANGED, data is taken from the memory histogram.
+   * Therefore
+   if $HEXIST([idh]) then; h/de [idh]; endif
+
+   get/con [idh] s_[vname]
+   get/err [idh] d_[vname]
+
+   g/imp floc
+   v/re [e] [floc]\[fname].e
+else
+   mess No such directory!
+endif
+close [lun]
+RETURN
+
+*                                      @METAGS FPLOT
+*--------------- FPLOT ---------------
+*
+MACRO FPLOT dir id
+if [dir]='' .OR. [id]='' then
+   mess Usage:    PRO0#FPLOT dir id
+   stopm
+endif
+
+if $HEXIST([id]) then
+   ans = 'Y'
+   read ans 'Histogram '//[id]//' in memory will be deleted!  Delete(Y/N)?'
+   if $UPPER([ans]) = 'Y' then
+      h/de [id]
+   else
+      mess Cansel.
+      stopm
+   endif
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! ' '
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+
+   hrin  [id]
+close [lun]
+
+if $HEXIST([id]) = 0 then
+   mess There is no histogram [id] in the file.
+else
+   *exec PLOT [id]
+   h/pl [id] p
+endif
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS FHDEL
+*--------------- FHDEL ---------------
+*
+MACRO FHDEL dir id
+if (([dir]='').OR.([id]='')) then
+   mess Usage:    PRO0#FHDEL dir id
+   stopm
+endif
+
+g/imp hfile,lun
+h/file [lun] [hfile] ! U
+   cd \\[dir]
+   if $IQUEST(1) <> 0 goto NODIR
+
+   if (([id].EQ.0).OR.([id].EQ.'*')) then
+      mess All bins in the directory [dir] will be deleted!
+      ans = N
+      read ans 'Delete (Y/N)?'
+      if $UPPER([ans])=N then
+         close [lun]
+         exitm
+      endif
+   endif
+
+   hscratch  [id]
+close [lun]
+exitm
+
+NODIR:
+mess No such directory!
+close [lun]
+RETURN
+
+*                                      @METAGS HIS2ALP
+*--------------- HIS2ALP ---------------
+*
+MACRO HIS2ALP hisfil alpfil lunit
+g/imp lun
+if [hisfil]='' .OR. [alpfil]='' then
+   mess Usage:    exec HIS2ALP hisfil alpfil lunit=[lun]
+   stopm
+endif
+
+if [lunit]='' then; lunit=[lun]; endif
+
+if $FEXIST([hisfil])=0 then
+   mess Histogram file [hisfil] did not found.
+   stopm
+endif
+
+if $FEXIST([alpfil])<>0 then
+   mess Alphanumeric file [alpfil] already exist.
+   stopm
+endif
+
+h/file [lunit] [hisfil]
+toalp [alpfil]
+close [lunit]
+RETURN
+
+*                                      @METAGS ALP2HIS
+*--------------- ALP2HIS ---------------
+*
+MACRO ALP2HIS alpfil hisfil lunit
+g/imp lun,hfile
+if [alpfil]='' .OR. [hisfil]='' then
+   mess Usage:    exec ALP2HIS alpfil hisfil lunit=[lun]
+   stopm
+endif
+
+if $FEXIST([alpfil])=0 then
+   mess Alphanumeric file [alpfil] did not found.
+   stopm
+endif
+
+if $FEXIST([hisfil])<>0 then
+   mess Histogram file [hisfil] already exist.
+   stopm
+endif
+
+if [lunit]='' then; lunit=[lun]; endif
+
+h/file [lunit] [hisfil] ! n
+fralp [alpfil]
+ld
+close [lunit]
+
+ans = Y
+str = Set [hisfil] as a current histogram file (Y/N)?
+mess '                                                              '
+read ans [str]
+if $UPPER([ans])=Y then; hfile=[hisfile]; endif
+
+ans = Y
+str = Set [lunit] as a current logical unit of histogram file (Y/N)?
+mess '                                                              '
+read ans [str]
+if $UPPER([ans])=Y then; lun=[lunit]; endif
+RETURN
+
+*                             @METAGS INI
+*---------- INI ----------
+*
+MACRO INI
+*v/de *
+*h/de *
+
+opt stat
+set stat 0011
+opt grid
+set mtyp 24
+
+* Globals
+g/cr macro PRO0
+g/cr init 1
+g/cr type D2
+g/cr XaxisMIN
+g/cr XaxisMAX
+g/cr YaxisMIN
+g/cr YaxisMAX
+
+g/cr idCOUNT   11000
+g/cr idDELAY   21000
+g/cr idD2      1000
+g/cr idAL      2000
+g/cr idD2p     3000
+g/cr idALp     4000
+g/cr idD2scal  5000
+g/cr idALscal  6000
+g/cr idD2Pscal 7000
+g/cr idALPscal 8000
+g/cr idNUC     1
+
+close 0
+exec ALI CREATE
+exec FBLOCK
+RETURN
+
+*                                      @METAGS HZERO
+*--------------- HZERO ---------------
+*
+MACRO HZERO id=9999 tit='Zero histogram'
+* Zero histogram
+g/imp nchan
+1dh [id] [tit] [nchan] 0.5 [nchan].5
+RETURN
+
+*                                         @METAGS REJECT
+*--------------- REJECT ---------------
+*
+MACRO REJECT F idout
+if [idout]='' then
+   mess Usage:    REJECT F idout
+   stopm
+endif
+
+g/imp idD2scal
+
+exec VGET D2 [F]
+if $HEXIST([idD2scal])=0 then
+   mess Histogram with raw data did not found .
+   stopm
+endif
+
+g/imp nchan
+*tr on wait
+fname = $EVAL([F]*100)
+vname = D2_[fname]
+v/cop E_[vname] E
+v/cop S_[vname] S
+v/cr Snuc([nchan])
+
+zero=0
+do i=1,[nchan]
+   Ech = E([i])
+   fon = $EXEC(PCfon [Ech])
+   Sch = S([i]) - [fon]
+   v/inp Snuc([i]) [Sch]
+
+   if Snuc([i]) < 0 then
+      v/inp Snuc([i]) 0
+      if [zero]=0 then
+         zero=[i]
+      else
+         zero=[zero],[i]
+      endif
+   endif
+enddo
+if [zero] <> 0 then
+   mess Zero negative channels: [zero]
+endif
+
+tit = F = [F] Deutron
+exec HCRE [idout] [tit]
+put/con [idout] Snuc
+v/de E,S,Snuc
+RETURN
+
+*                                         @METAGS AREJECT
+*--------------- AREJECT ---------------
+*
+MACRO AREJECT F idout=1
+if [F]='' then
+   mess 'Usage:    AREJECT F [idout=1]'
+   stopm
+endif
+
+exec REJECT [F] [idout]
+exec HPUT [F] [idout]
+RETURN
+
+*                                         @METAGS FBLOCK
+*
+*--------------- FBLOCK ---------------
+*
+MACRO FBLOCK
+APPL COMIS QUIT
+*                                         @METAGS AVER.COMIS
+*                                         07-12-96 10:05am
+*--------------- AVER ---------------
+*
+      SUBROUTINE AVER(minc,maxc,naver,npoint,e0,s0,d0,e,s,d)
+      integer minc,maxc,naver,npoint
+      real e0(96),s0(96),d0(96),e(npoint),s(npoint),d(npoint)
+*
+      ncur=minc-1
+      do i=1,npoint-1
+         e(i)=0.
+         s(i)=0.
+         d(i)=0.
+         do n=1,naver
+            ncur = ncur+1
+            e(i) = e(i) + e0(ncur)
+            s(i) = s(i) + s0(ncur)
+            d(i) = d(i) + d0(ncur)**2
+         enddo
+         e(i) = e(i)/naver
+         s(i) = s(i)/naver
+         d(i) = sqrt(d(i))/naver
+      enddo
+
+      krest=MOD(maxc-minc+1,naver)
+      if (krest.eq.0) then
+         last = naver
+      else
+         last = krest
+      endif
+
+      e(npoint)=0.
+      s(npoint)=0.
+      d(npoint)=0.
+      do n=1,last
+         ncur = ncur+1
+         e(npoint) = e(npoint) + e0(ncur)
+         s(npoint) = s(npoint) + s0(ncur)
+         d(npoint) = d(npoint) + d0(ncur)**2
+      enddo
+      e(npoint) = e(npoint)/last
+      s(npoint) = s(npoint)/last
+      d(npoint) = sqrt(d(npoint))/last
+      END
+QUIT
+RETURN
+
+*                             @METAGS PAN
+*---------- PAN ----------
+*
+MACRO PAN
+mess Panels from macro PRO0
+init=0
+g/imp init
+if [init] = 0 then; exec INI; endif
+
+EXEC ALI DELETE
+EXEC ALI CREATE
+panel 0
+panel 1  'VIEW' 'BIN-' 'ZOOM-' 'MINUS-' 'PLUS-' 'CandD' 'PLOTL' 'PLOT-'_
+         'HINFO-' 'SetID' 'BGET' 'BPUT'
+panel 2  'opt-' 'h/pl-' 'h/l' 'v/l' 'v/de *' 'h/de *' 'v/pr-' 'g/l-' 'mess [$]'
+panel 3  'pan' 'p/cr' 'p/pr-' 'Clear' 'Notes' 'edit-' 'shell' 'x-' '$' 'me'
+style gp ! ! .12
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op
+if [op] = '' then
+   op = CREATE
+   read op 'MACRO PRO0#ALI: CReate or DElete aliases? '
+endif
+ali/[op] -C Notes       'edit Notes.txt'
+ali/[op] -C XL          'exec PRO0#XL'
+ali/[op] -C TYPE        'exec PRO0#TYPE' 
+ali/[op] -C INI         'exec PRO0#INI' 
+ali/[op] -C ALI         'exec PRO0#ALI' 
+ali/[op] -C MODE        'exec PRO0#MODE' 
+ali/[op] -C AVER        'exec PRO0#AVER' 
+ali/[op] -C AVERAGE     'exec PRO0#AVERAGE' 
+ali/[op] -C PAN         'exec PRO0#PAN' 
+ali/[op] -C HZERO       'exec PRO0#HZERO' 
+ali/[op] -C DATADEL     'exec PRO0#DATADEL'
+ali/[op] -C VIEW        'exec PRO0#VIEW'
+ali/[op] -C PLOTL       'exec PRO0#PLOTL'
+ali/[op] -C Eprocess    'exec PRO0#Eprocess'
+ali/[op] -C SAVEL       'exec PRO0#SAVEL'
+ali/[op] -C READL       'exec PRO0#READL'
+ali/[op] -C FITL        'exec PRO0#FITL'
+ali/[op] -C LimPlot     'exec PRO0#LimPlot'
+ali/[op] -C FITp        'exec PRO0#FITp'
+ali/[op] -C FITe        'exec PRO0#FITe'
+ali/[op] -C FITep       'exec PRO0#FITep'
+ali/[op] -C FITee       'exec PRO0#FITee'
+ali/[op] -C FITeep      'exec PRO0#FITeep'
+ali/[op] -C FITg        'exec PRO0#FITg'
+ali/[op] -C FITge       'exec PRO0#FITge'
+ali/[op] -C FITgp       'exec PRO0#FITgp'
+ali/[op] -C FITplot     'exec PRO0#FITplot'
+ali/[op] -C FITfill     'exec PRO0#FITfill'
+ali/[op] -C FITsave     'exec PRO0#FITsave'
+ali/[op] -C FITread     'exec PRO0#FITread'
+ali/[op] -C READ        'exec PRO0#READ'
+ali/[op] -C MINMAX      'exec PRO0#MINMAX'
+ali/[op] -C PLOT        'exec PRO0#PLOT'
+ali/[op] -C PLOTS       'exec PRO0#PLOTS'
+ali/[op] -C HSCAL       'exec PRO0#HSCAL'
+ali/[op] -C ASCAL       'exec PRO0#ASCAL'
+ali/[op] -C TabScal     'exec PRO0#TabScal'
+ali/[op] -C TIT         'exec PRO0#TIT'
+ali/[op] -C FTIT        'exec PRO0#FTIT'
+ali/[op] -C HINFO       'exec PRO0#HINFO'
+ali/[op] -C FHINFO      'exec PRO0#FHINFO'
+ali/[op] -C FOPEN       'exec PRO0#FOPEN'
+ali/[op] -C FCLOSE      'exec PRO0#FCLOSE'
+ali/[op] -C FDIR        'exec PRO0#FDIR'
+ali/[op] -C FHLIST      'exec PRO0#FHLIST'
+ali/[op] -C FGOTO       'exec PRO0#FGOTO'
+ali/[op] -C FPUR        'exec PRO0#FPUR'
+ali/[op] -C HPUT        'exec PRO0#HPUT'
+ali/[op] -C HGET        'exec PRO0#HGET'
+ali/[op] -C FHCOP       'exec PRO0#FHCOP'
+ali/[op] -C VGET        'exec PRO0#VGET'
+ali/[op] -C FPLOT       'exec PRO0#FPLOT'
+ali/[op] -C FHDEL       'exec PRO0#FHDEL'
+ali/[op] -C HIS2ALP     'exec PRO0#HIS2ALP'
+ali/[op] -C ALP2HIS     'exec PRO0#ALP2HIS'
+ali/[op] -C REJECT      'exec PRO0#REJECT'
+ali/[op] -C AREJECT     'exec PRO0#AREJECT'
+RETURN
+
+*                             @METAGS XL
+*---------- XL ----------
+*
+MACRO XL
+last 2
+x last
+ans = Y
+read ans 'Return to panels (Y/N)?'
+if $UPPER([ans]) = Y then
+   XP
+endif
+RETURN

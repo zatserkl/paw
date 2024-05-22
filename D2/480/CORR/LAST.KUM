@@ -1,0 +1,89 @@
+*** Begin of history file: Fri Jan 29 15:38:36 1999
+sh
+pl el
+pl h2
+lin
+av 1
+pl h2
+zon 1 2; pl el; pl h2; zon
+pl el
+av 2
+pl
+lc
+E0fromD2
+E0fromED
+E0fromED
+E0fromED
+E0fromED
+pl
+E0fromED
+pl
+zon 1 2; pl el; pl h2; zon
+E0fromEH
+zon 1 2; pl el; pl h2; zon
+me
+sh sol
+me
+pl h2
+E0fromEH
+me
+pl
+E0fromEH
+me
+pl
+E0fromEH
+tr off
+me
+mess $FORMAT(248.9,F0.1)
+me
+pl
+E0fromEH
+mess $FORMAT(248.972,F0.1)
+me
+pl
+E0fromEH
+zon 1 2; pl el; pl h2; zon
+me
+pl h2
+E0fromEH
+zon 1 2; pl el; pl h2; zon
+pl h2
+me
+pl h2
+E0fromEH
+zon 1 2; pl el; pl h2; zon
+fl \
+effgloread \ 1
+zon 1 2; pl el; pl h2; zon
+pl el
+eff=0
+pl
+E0fromED
+zon 1 2; pl el; pl h2; zon
+Eprocess 474 143.5
+pl
+zon 1 2; pl el; pl h2; zon
+eff=2
+zon 1 2; pl el; pl h2; zon
+ed pawlogon
+zon 1 2; pl el; pl h2; zon
+pl el
+av 4
+pl
+av 1
+pl
+ed el.hli
+pl elpeak
+g/l eff
+eff=0
+pl
+eff=2
+pl
+pl el
+fitl
+fitl al
+fitp 0
+fitl d
+fitp 0
+qu
+*** End   of history file: Fri Jan 29 17:37:20 1999

@@ -1,0 +1,6 @@
+v/de x,y,px,py
+sigma !print
+v/cr x(6) r 100 200 300 200 300 400
+v/cr y(6) r 101 201 301 202 302 402
+sigma px=order(x,x)
+sigma py=order(y,x)

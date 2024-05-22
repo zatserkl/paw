@@ -1,0 +1,10 @@
+*                                         @METAGS NtNcNd
+*--------------- NtNcNd ---------------
+*
+MACRO NtNcNd legend=1
+zon 1 3
+exec d2look#NtNS 42 2 45 [legend]
+exec d2look#NcNS 42 2 45 [legend]
+exec d2look#NdNS 42 2 45 [legend]
+zon
+RETURN

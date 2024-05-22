@@ -1,0 +1,9 @@
+*                                         @METAGS HX
+*--------------- HX ---------------
+*
+MACRO HX id x
+fun = HX([id],$RSIGMA([x]))
+val = $CALL([fun])
+mess [val]
+RETURN
+

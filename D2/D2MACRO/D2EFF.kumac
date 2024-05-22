@@ -1,0 +1,725 @@
+*                                         @METAGS D2EFF
+*--------------- D2EFF ---------------
+*
+MACRO D2EFF ali=CREATE
+g/cr D2EFF $WORD([0],1,1,#)
+D2FOR  =''; g/imp D2FOR  ; if [D2FOR]  ='' then; exec D2FOR  ; endif
+D2PLOTL=''; g/imp D2PLOTL; if [D2PLOTL]='' then; exec D2PLOTL; endif
+D2FIT  =''; g/imp D2FIT  ; if [D2FIT]  ='' then; exec D2FIT  ; endif
+exec FOR
+exec ALI [ali]
+RETURN
+
+
+
+*                                         @METAGS EFF
+*--------------- EFF ---------------
+*
+MACRO EFF list ideffglo fun=FitDef Emi Ema
+if $UPPER([1])='HELP' .OR. [ideffglo] = '' then
+   mess Usage:    $WORD([0],2,1,#) list ideffglo fun='DUMMY' Emi Ema
+   stopm
+endif
+
+g/imp D2FOR
+
+if $INDEX([fun],'.') = 0 then; fun=[fun].for; endif
+if $FEXIST([fun]) then
+   if $UPPER([fun]) <> 'fiteff.for' then
+      exec [D2FOR]#FunCop [fun] fiteff over=1
+   endif
+   dummy = $CALL('fiteff.for(0.)')
+else
+   mess Function [fun] does not found
+   stopm
+endif
+
+ldir = $HCDIR()
+WORKdir = //PAWC; g/imp WORKdir
+
+g/imp D2HIST
+if $EXEC([D2HIST]#HDIR [WORKdir] [ideffglo] verb=0) then
+   mess Histogram [ideffglo] already exist
+   read ideffglo 'Global efficiency ID'
+endif
+
+eff = 0
+g/imp eff
+if [eff] <> 0 then
+   eff = 0
+   read eff 'Flag of old efficiencies:'
+else
+   g/cr eff 0 'Channel efficiency flag'
+endif
+
+g/imp D2PLOTL
+g/imp D2FIT
+
+if $VEXIST([list]) = 0 then
+   header = 'Select expositions to compute efficiency set'
+   *exec [D2PLOTL]#Select [list] [Emi] [Ema] header=[header] fun=[TheFUN]
+   exec [D2PLOTL]#Select [list] [Emi] [Ema] header=[header] fun=fiteff
+endif
+nbin = $VLEN([list])
+if [nbin] = 0 then
+   v/de [list]
+   goto EXIT
+endif
+
+g/cr ideffglo [ideffglo] 'Global efficiency ID'
+
+g/imp minc,maxc
+kmin = 97-[maxc]
+kmax = 97-[minc]
+
+cd [WORKdir]
+
+* calculate coeffs.
+sigma eff=array(96)
+sigma fnorm=array(100)*0
+call AEFF([list],[minc],[maxc],Emin,Emax,eff,fnorm)
+
+* demo
+mtyp0 = $GRAFINFO('?mtyp')
+ltyp0 = $GRAFINFO('?ltyp')
+set mtyp 24
+do n=1,[nbin]
+   id = [list]([n])
+   h/pl [id]([kmin]:[kmax]) PE0
+*   exec [D2FIT]#FitPlot [fun]
+   exec [D2FIT]#FitPlot fiteff
+   
+   factor = fnorm([n])
+   set ltyp 2
+   fu/pl [factor]*fiteff $GRAFINFO('WNXMIN') $GRAFINFO('WNXMAX') S
+   set ltyp [ltyp0]
+
+   exec [D2PLOTL]#LimPlot
+   exec [D2PLOTL]#Eprocess
+
+   ans = 'C'
+   str = Look. Function factor=[factor]   C=Continue, Q=Quit looking
+   read ans [str]
+   if $UPPER([ans]) = 'Q' goto NEXT
+enddo
+
+NEXT:
+v/de fnorm
+
+set mtyp [mtyp0]
+
+wait 'Look at coefs.'
+
+if $HEXIST([ideffglo]) then; h/de [ideffglo]; endif
+v/dr eff [ideffglo]
+put/err [ideffglo] $SIGMA(array(96)*0)
+v/de eff
+
+g/imp D2HIST
+exec [D2HIST]#TIT [ideffglo] 'Global efficiency' quiet=1
+
+cd [ldir]
+
+if [eff] < 3 then
+   eff = 2
+endif
+
+mess Current efficiency flag eff = [eff]
+
+EXIT:
+RETURN
+
+*                                         @METAGS EFF0
+*--------------- EFF0 ---------------
+*
+MACRO EFF0 list ideffglo fun=FitDef Emi Ema
+if $UPPER([1])='HELP' .OR. [ideffglo] = '' then
+   mess Usage:    $WORD([0],2,1,#) list ideffglo fun='DUMMY' Emi Ema
+   stopm
+endif
+
+g/imp D2FOR
+
+if $INDEX([fun],'.') = 0 then; fun=[fun].for; endif
+if $FEXIST([fun]) then
+   if $UPPER([fun]) <> 'fiteff.for' then
+      exec [D2FOR]#FunCop [fun] fiteff over=1
+   endif
+   dummy = $CALL('fiteff.for(0.)')
+else
+   mess Function [fun] does not found
+   stopm
+endif
+
+ldir = $HCDIR()
+WORKdir = //PAWC; g/imp WORKdir
+
+g/imp D2HIST
+if $EXEC([D2HIST]#HDIR [WORKdir] [ideffglo] verb=0) then
+   mess Histogram [ideffglo] already exist
+   read ideffglo 'Global efficiency ID'
+endif
+
+eff = 0
+g/imp eff
+if [eff] <> 0 then
+   eff = 0
+   read eff 'Flag of old efficiencies:'
+else
+   g/cr eff 0 'Channel efficiency flag'
+endif
+
+g/imp D2PLOTL
+g/imp D2FIT
+
+if $VEXIST([list]) = 0 then
+   header = 'Select expositions to compute efficiency set'
+   *exec [D2PLOTL]#Select [list] [Emi] [Ema] header=[header] fun=[TheFUN]
+   exec [D2PLOTL]#Select [list] [Emi] [Ema] header=[header] fun=fiteff
+endif
+nbin = $VLEN([list])
+if [nbin] = 0 then
+   v/de [list]
+   goto EXIT
+endif
+
+g/cr ideffglo [ideffglo] 'Global efficiency ID'
+
+g/imp minc,maxc
+kmin = 97-[maxc]
+kmax = 97-[minc]
+
+cd [WORKdir]
+
+mtyp0 = $GRAFINFO('?mtyp')
+set mtyp 24
+do n=1,[nbin]
+   id = [list]([n])
+   h/pl [id]([kmin]:[kmax]) PE0
+   exec [D2FIT]#FitPlot
+   exec [D2PLOTL]#LimPlot
+   exec [D2PLOTL]#Eprocess
+
+   ans = 'C'
+   read ans 'Look. C=Continue, Q=Quit looking'
+   if $UPPER([ans]) = 'Q' goto NEXT
+enddo
+
+NEXT:
+set mtyp [mtyp0]
+sigma eff=array(96)
+
+call AEFF([list],[minc],[maxc],Emin,Emax,eff)
+
+wait 'Look at coefs.'
+
+if $HEXIST([ideffglo]) then; h/de [ideffglo]; endif
+v/dr eff [ideffglo]
+put/err [ideffglo] $SIGMA(array(96)*0)
+v/de eff
+
+g/imp D2HIST
+exec [D2HIST]#TIT [ideffglo] 'Global efficiency' quiet=1
+
+cd [ldir]
+
+if [eff] < 3 then
+   eff = 2
+endif
+
+mess Current efficiency flag eff = [eff]
+
+EXIT:
+RETURN
+
+*                                         @METAGS EFFapplist
+*--------------- EFFapplist ---------------
+*
+MACRO EFFapplist list ideff
+if $UPPER([1])='HELP' .OR. [list] = '' then
+   mess Usage:    $WORD([0],2,1,#) list ideff=(global variable ideffglo)
+   stopm
+endif
+
+g/imp D2PLOTL
+
+WORKdir = //PAWC; g/imp WORKdir
+
+if $LEN([list]) > 7 then
+   mess Vector name must be < 8 characters
+   stopm
+endif
+
+if [ideff] = '' then
+   * read global variable ideffglo
+   ideffglo = ''
+   g/imp ideffglo
+   if [ideffglo] = '' then
+      ideffglo = 0
+      read ideffglo 'Global efficiency histogram ID. 0=Quit'
+      if [ideffglo] = 0 then
+         STOPM
+      endif
+      g/cr ideffglo [ideffglo] 'Global efficiency ID'
+   endif
+
+   ideff = [ideffglo]
+endif
+
+if $VEXIST([list]) = 0 then
+   header = 'Select expositions to which applay global efficiency set'
+   exec [D2PLOTL]#Select [list] header=[header] set=0
+endif
+nbin = $VLEN([list])
+
+g/imp D2HIST
+if $EXEC([D2HIST]#HDIR [WORKdir] [ideff] verb=0) = 0 then
+   mess Global efficiency hist [ideff] did not found in [WORKdir]
+   mess Skip applaing.
+   stopm
+endif
+
+do i=1,[nbin]
+   id = [list]([i])
+   exec EFFappl [id] [ideff] [WORKdir]
+enddo
+RETURN
+
+*                                         @METAGS EFFappl
+*--------------- EFFappl ---------------
+*
+MACRO EFFappl id ideffglo dir=$HCDIR()
+if $UPPER([1])='HELP' .OR. [ideffglo] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id ideffglo dir=$HCDIR()'
+   mess Example:  $WORD([0],2,1,#) 5001481 1 work
+   mess Global --> local efficiency for hist id. Works in directory dir
+   stopm
+endif
+
+ldir = $HCDIR()
+cd [dir]
+
+if $HEXIST([id]) = 0 then
+   mess ERROR EFFappl: Histogram [id] did not found in $HCDIR()
+   cd [ldir]
+   exitm
+endif
+
+if $HEXIST([ideffglo]) = 0 then
+   mess ERROR EFFappl: Efficiency hist [ideffglo] did not found in $HCDIR()
+   cd [ldir]
+   exitm
+endif
+
+ideff = $SUBSTRING([id],1,1)1$SUBSTRING([id],3)
+fdir = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+*if $INDEX([fdir],'0') = 1 then; fdir = $SUBSTRING([fdir],2); endif
+if $INDEX([fdir],'0') = 1 then
+   fdir = $SUBSTRING([fdir],2)
+endif
+nt  = $SUBSTRING([id],1,1)
+CASE [nt] IN
+   (5)   type=D2
+   (6)   type=AL
+   (7)   type=D2P
+         if $SUBSTRING([id],3,1) = 1 then
+            * special case of D2p-ALp
+            type = D2p-ALp
+         endif
+   (8)   type=ALP
+   (9)   type=H2
+   (1)   type=NUC
+ENDCASE
+tit1 = Effs. for [type] F=[fdir] IDeff=[ideffglo]=
+titglo = $HTITLE([ideffglo])
+tit = [tit1]//[titglo]
+h/cop [ideffglo] [ideff] [tit]
+cd [ldir]
+RETURN
+
+*                                         @METAGS EFFsavelist
+*--------------- EFFsavelist ---------------
+*
+MACRO EFFsavelist list ask=Y
+if $UPPER([1])='HELP' .OR. [list] = '' then
+   mess Usage:    $WORD([0],2,1,#) list ask=Y
+   stopm
+endif
+
+g/imp D2PLOTL
+
+WORKdir = //PAWC; g/imp WORKdir
+
+if $LEN([list]) > 7 then
+   mess Vector name must be < 8 characters
+   stopm
+endif
+
+if $VEXIST([list]) = 0 then
+   header = 'Select expositions to which applay global efficiency set'
+   exec [D2PLOTL]#Select [list] header=[header] set=0
+endif
+nbin = $VLEN([list])
+
+do i=1,[nbin]
+   id = [list]([i])
+   exec EFFsave [id] [WORKdir] ask=[ask]
+enddo
+RETURN
+
+*                                         @METAGS EFFsave
+*--------------- EFFsave ---------------
+*
+MACRO EFFsave id dir=$HCDIR() ask=Y
+if $UPPER([1])='HELP' .OR. [id] = '' then
+   mess Usage:    $WORD([0],2,1,#)//' id dir=$HCDIR() ask=Y'
+   mess Example:  $WORD([0],2,1,#) 5001481 work
+   mess Save efficiency hist for histogram id. Works in directory dir
+   stopm
+endif
+
+ldir = $HCDIR()
+cd [dir]
+
+g/imp D2HFILE
+
+ideff = $SUBSTRING([id],1,1)1$SUBSTRING([id],3)
+fdir = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+if $INDEX([fdir],'0') = 1 then; fdir = $SUBSTRING([fdir],2); endif
+if $HEXIST([ideff]) = 0 then
+   mess ERROR EFFsave: Efficiency histogram [ideff] did not found in $HCDIR()
+   cd [ldir]
+   exitm
+endif
+exec [D2HFILE]#HPUT [fdir] [ideff] ask=[ask]
+cd [ldir]
+RETURN
+
+*                                         @METAGS EFFsave0
+*--------------- EFFsave0 ---------------
+*
+MACRO EFFsave0 type F
+if [F]='' then
+   mess Usage:    $WORD([0],2,1,#) type F
+   stopm
+endif
+
+g/imp D2HFILE
+
+CASE $UPPER([type]) IN
+   (D2)   idh=5100000+[F]*100; goto NEXT
+   (AL)   idh=6100000+[F]*100; goto NEXT
+   (D2+)  idh=7100000+[F]*100; goto NEXT
+   (D2P)  idh=7100000+[F]*100; goto NEXT
+   (AL+)  idh=8100000+[F]*100; goto NEXT
+   (ALP)  idh=8100000+[F]*100; goto NEXT
+   (NUC)  idh=1100000+[F]*100; goto NEXT
+ENDCASE
+mess Unknown type [type]
+mess Possible types: D2,   AL,   D2+ (or D2P),   AL+ (or ALP),  NUC .
+wait
+exitm
+
+NEXT:
+ldir = $HCDIR()
+WORKdir = //PAWC
+g/imp WORKdir
+cd [WORKdir]
+if $HEXIST([idh]) then
+   exec [D2HFILE]#HPUT [F] [idh] ask=N
+else
+   mess Efficiency hist [idh] did not found in $HCDIR(). Skip saving.
+   wait
+endif
+cd [ldir]
+RETURN
+
+*                                         @METAGS EFFread
+*--------------- EFFread ---------------
+*
+MACRO EFFread id dirto=$HCDIR()
+if $UPPER([1])='HELP' .OR. [id]='' then
+   mess Usage:    $WORD([0],2,1,#)//' id dirto=$HCDIR()'
+   stopm
+endif
+
+g/imp D2HFILE
+
+ideff = $SUBSTRING([id],1,1)1$SUBSTRING([id],3)
+fdir  = $SUBSTRING([id],-4,2).$SUBSTRING([id],-2)
+if $INDEX([fdir],'0') = 1 then; fdir = $SUBSTRING([fdir],2); endif
+
+exec [D2HFILE]#HGET [fdir] [ideff] [dirto]
+RETURN
+
+*                                         @METAGS EFFgloRead
+*--------------- EFFgloRead ---------------
+*
+MACRO EFFgloRead fdir ideffglo dirto=\WORK
+if $UPPER([1])='HELP' .OR. [ideffglo]='' then
+   mess Usage:    $WORD([0],2,1,#)//' fdir ideffglo dirto=\WORK'
+   stopm
+endif
+
+g/imp D2HFILE
+if $EXEC([D2HFILE]#HGET [fdir] [ideffglo] [dirto]) = 0 then
+   mess $WORD([0],2,1,#): No global efficiency hist [ideffglo] in [fdir]
+   mess Directory [fdir] list:
+   exec [D2HFILE]#fhlist [fdir]
+   STOPM
+endif
+g/cr ideffglo [ideffglo] 'Global efficiency ID'
+
+g/imp eff
+eff0 = [eff]
+eff  = 2
+read eff 'Set efficiency flag (0< = not changed)'
+if [eff] >= 0 then
+   g/cr eff [eff] 'Channel efficiency flag'
+else
+   g/cr eff [eff0] 'Channel efficiency flag'
+endif
+RETURN
+
+*                                         @METAGS HEFF
+*--------------- HEFF ---------------
+*
+MACRO HEFF ideff id1 id2 [tit]
+if $UPPER([1])='HELP' .OR. [id2] = '' then
+   mess Usage:    $WORD([0],2,1,#) ideff id1 id2 tit
+   stopm
+endif
+
+if [tit]='' then
+   tit = Hist. ID=[id1] with effs. ID=[ideff]
+   read tit 'Enter title'
+endif
+
+if $HEXIST([ideff]) = 0 then
+   mess Efficiency hist. [ideff] did not exist
+   stopm
+endif
+if $HEXIST([id1]) = 0 then
+   mess Hist. [id1] did not exist
+   stopm
+endif
+
+np = $HINFO([ideff],'XBINS')
+sigma bufe = array([np])*0
+sigma buf1 = array([np])*0
+sigma buf2 = array([np])*0
+get/con [ideff] bufe
+get/con [id1]   buf1
+get/err [id1]   buf2
+
+if [id2] <> [id1] then
+   h/cop [id1] [id2] [tit]
+else
+   exec TIT [id1] [tit]
+endif
+
+sigma bufe  = ORDER(bufe, array([np],[np]#1))
+
+sigma buf1 = buf1*bufe
+put/con [id2] buf1
+put/err [id2] buf2
+RETURN
+
+*                                         @METAGS FOR
+*--------------- FOR ---------------
+*
+MACRO FOR
+APPL COMIS QUIT
+*                                         @METAGS fiteffsh
+*                                         10-27-98 12:36pm
+*--------------- fiteffsh ---------------
+*
+      function fiteffsh(np,x,y,dy)
+      integer np
+      real x(np),y(np),dy(np)
+      fiteffsh = 0.
+
+      fydy = 0.
+      ffdy = 0.
+      do i=1,np
+         err = y(i)
+         if (err .LE. 0.) err=y(i)
+         if (err .NE. 0.) then
+            fydy = fydy + fiteff(x(i))*y(i)/err
+            ffdy = ffdy + fiteff(x(i))**2/err
+         else
+            fydy = fiteff(x(i))
+            ffdy = fiteff(x(i))
+         endif
+      enddo
+      if (ffdy .NE. 0.) then
+         anorm = fydy/ffdy
+      else
+         anorm = 0.
+      endif
+      fiteffsh = anorm
+      END
+
+*                                         @METAGS .CEFF
+*                                         10-07-97 04:59pm
+*--------------- CEFF ---------------
+*
+      SUBROUTINE CEFF(id,minc,maxc,Emin,Emax,eff,deff,fnorm)
+      real E(96),dE(96),S(96),dS(96),eff(96),deff(96)
+      parameter (errmax = 2.)
+
+      kmin = 97-maxc
+      kmax = 97-minc
+      call HREBIN(id,E,S,dE,dS,96,1,96)
+
+*     .. find boundary channels k1,k2
+      k1 = kmin
+      do k=kmin,kmax
+         if (E(k).LT.Emin) then
+            k1 = k+1
+            goto 100
+         endif
+         
+         if (E(k).GT.Emax) then
+            k2 = k-1
+            goto 200
+         endif
+         k2 = k
+  100 enddo
+  200 np = k2-k1+1
+
+*     .. find norm. factor for function
+      fydy = 0.
+      ffdy = 0.
+      do k=k1,k2
+         fval = fiteff(E(k))
+         if (abs(S(k)-fval) .LE. errmax*dS(k)) then
+            err = dS(k)
+            if (err .LE. 0.) err=S(k)
+            if (err .GT. 0.) then
+               fydy = fydy + fval*S(k)/err
+               ffdy = ffdy + fval**2  /err
+            endif
+         endif
+      enddo
+      if (ffdy .NE. 0.) then
+*        .. commonly ffdy > 0.
+         fnorm = fydy/ffdy
+      else
+         fnorm = 1.
+      endif
+      
+*      print*, 'For id =', id, ' fnorm =', fnorm
+*      call WAIT(' ')
+
+      sum  = 0.
+      sum2 = 0.
+      do k=k1,k2
+         fval = fnorm*fiteff(E(k))
+         if (S(k).GT.0.) then
+            eff(k)  = fval/S(k)
+*           .. dS always positive
+*            deff(k) = dS(k)/S(k)
+*           .. may be in this way?
+            deff(k) = (dS(k)/S(k))**2
+*?            deff(k) = 1./dS(k)**2
+         else
+            eff(k)  = 0.
+            deff(k) = 0.
+         endif
+         sum  = sum+eff(k)
+         sum2 = sum2+eff(k)**2
+      enddo
+
+      goto 10000
+*     .. normalizing
+      if (np.LE.1) RETURN
+      xmean = sum/np
+      x2mean = sum2/np
+      var = (x2mean - xmean**2) * (REAL(np)/REAL(np-1))
+      rms   = sqrt(var)
+      vmin = xmean - 3.*rms
+      vmax = xmean + 3.*rms
+      sum = 0.
+      sum2 = 0.
+      do k=k1,k2
+         if ((eff(k).GE.vmin).AND.(eff(k).LE.vmax)) then
+            sum = sum + eff(k)
+            sum2 = sum2 + eff(k)**2
+         endif
+      enddo
+      anorm = sum/sum2
+      do k=k1,k2
+         eff(k)  = anorm*eff(k)
+         deff(k) = anorm*deff(k)
+      enddo
+10000 continue
+      END
+
+*                                         @METAGS .AEFF
+*                                         10-10-97 05:37pm
+*--------------- AEFF ---------------
+*
+      SUBROUTINE AEFF(idlist,minc,maxc,Emin,Emax,eff,fnorm)
+      real idlist(100), eff(96)
+      real effn(96,100),deffn(96,100), w(96)
+      integer list(100)
+      real fnorm(100)
+
+      do i=1,100
+         if (idlist(i).EQ.0.) then
+            goto 1000
+         else
+            ntot = i
+            list(i) = idlist(i)
+         endif
+      enddo
+ 1000 continue
+
+      do n=1,ntot
+         id = list(n)
+         call CEFF(id,minc,maxc,Emin,Emax,effn(1,n),deffn(1,n),fnorm(n))
+      enddo
+
+      do k=1,96
+         w(k) = 0.
+         eff(k) = 0.
+         do nbin=1,ntot
+            if (effn(k,nbin).EQ.0.) goto 100
+            eff(k) = eff(k) + effn(k,nbin)/deffn(k,nbin)
+            w(k) = w(k) + 1./deffn(k,nbin)
+  100    enddo
+      enddo
+
+      do k=1,96
+         if (eff(k).GT.0.) then
+            eff(k) = eff(k)/w(k)
+         else
+            eff(k) = 1.
+         endif
+      enddo
+      END
+QUIT
+RETURN
+
+*                             @METAGS ALI
+*---------- ALI ----------
+*
+MACRO ALI op=CREATE
+if [op] = '?' then
+   op = CREATE
+   ask = MACRO $WORD([0],2,1,#): CReate or DElete aliases?
+   read op [ask]
+endif
+
+mess $WORD([0],1,1,#):     Aliases are created.
+
+ali/[op] -C EFF         'exec '//$WORD([0],1,1,#)#EFF
+ali/[op] -C EFFapplist  'exec '//$WORD([0],1,1,#)#EFFapplist
+ali/[op] -C EFFappl     'exec '//$WORD([0],1,1,#)#EFFappl
+ali/[op] -C EFFsavelist 'exec '//$WORD([0],1,1,#)#EFFsavelist
+ali/[op] -C EFFsave     'exec '//$WORD([0],1,1,#)#EFFsave
+ali/[op] -C EFFread     'exec '//$WORD([0],1,1,#)#EFFread
+ali/[op] -C EFFgloRead  'exec '//$WORD([0],1,1,#)#EFFgloRead
+ali/[op] -C HEFF        'exec '//$WORD([0],1,1,#)#HEFF
+RETURN

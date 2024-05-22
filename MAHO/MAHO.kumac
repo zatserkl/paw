@@ -1,0 +1,212 @@
+*                                         @METAGS MAHO
+*--------------- MAHO ---------------
+*
+MACRO MAHO file=maho.rep opt
+if [1]='' .OR. $UPPER([1])='HELP' then
+   mess Usage:    [0] file=maho.rep opt
+   stopm
+endif
+
+a/cr -C vec 'exec '//[0]//'#vec'
+
+if $VEXIST(tdelay) = 0 then
+   sigma tdelay=array(1)*10
+endif
+
+if $INDEX([file],'.') = 0 then
+   file = [file].rep
+endif
+
+opt grid
+
+v/de x,y,D,status
+v/re x,y,D,status [file] ! ! -/*/
+n = $VDIM(x)
+
+exec for
+*wait
+
+*type [file]
+*exec vec
+*wait
+
+if $INDEX($UPPER([opt]),'S')=0 then
+   add = 5.
+   xmin = $SIGMA(VMIN(x)) - [add]
+   xmax = $SIGMA(VMAX(x)) + [add]
+   dx = [xmax] - [xmin]
+   ymin = $SIGMA(VMIN(y)) - [add]
+   ymax = $SIGMA(VMAX(y)) + [add]
+   dy = [ymax] - [ymin]
+   d = $SIGMA(MAX([dx],[dy]))
+   xmax = [xmin] + [d]
+   ymax = [ymin] + [d]
+   null [xmin] [xmax] [ymin] [ymax]
+endif
+
+set plci 2
+
+pline [n] x y
+
+call cut([n],x,y,D,status)
+*exec cut
+RETURN
+
+macro vec
+   v/wr x1,y1,x2,y2,cutter
+return
+
+*                                         @METAGS cut
+*--------------- cut ---------------
+*
+MACRO cut
+mtyp0 = $GRAFINFO('?mtyp')
+pmci0 = $GRAFINFO('?pmci')
+mscf0 = $GRAFINFO('?mscf')
+xsiz  = $GRAFINFO('?xsiz')
+ysiz  = $GRAFINFO('?ysiz')
+
+set mtyp 20
+
+sigma xc=array(1)
+sigma yc=array(1)
+n = $VDIM(x)
+eps = 0.001
+do i=2,[n]
+   if (status([i]) .GT. 0.) then
+      set pmci 2
+      d = D([i])
+      max = $GRAFINFO('WNXMAX')
+      min = $GRAFINFO('WNXMIN')
+      dwin = [max]-[min]
+      mscf = ([d]/.3)*[xsiz]/[dwin]
+      *mess mscf=[mscf]; wait
+      set mscf [mscf]
+   else
+      set pmci 4
+      d = 1.5
+      max = $GRAFINFO('WNXMAX')
+      min = $GRAFINFO('WNXMIN')
+      dwin = [max]-[min]
+      mscf = ([d]/.3)*[xsiz]/[dwin]
+      set mscf [mscf]
+   endif
+   i1 = [i]-1
+   dx = x([i])-x([i1])
+   dy = y([i])-y([i1])
+   theta = $SIGMA(atan2([dy],[dx]))
+   *.. directrix cosines
+   cosx = $SIGMA(cos([theta]))
+   cosy = $SIGMA(sin([theta]))
+   *.. parameter
+   tmax = $SIGMA(sqrt([dx]**2 + [dy]**2))
+   if ($SIGMA(ABS([tmax]-[d])) .GT. [eps]) then
+      step=1.
+   else
+      step = .1
+   endif
+   t = 0.
+   *while([t].LE.[tmax]) do
+   while ([t] <= [tmax]) do
+      xc = x([i1]) + [cosx]*[t]
+      yc = y([i1]) + [cosy]*[t]
+      v/inp xc [xc]
+      v/inp yc [yc]
+      graph 1 xc yc sp
+      *call delay
+      t = [t]+[step]
+   endwhile
+enddo
+set mtyp [mtyp0]
+set pmci [pmci0]
+set mscf [mscf0]
+RETURN
+
+*                                         @METAGS for
+*--------------- for ---------------
+*
+MACRO for
+APPL COMIS QUIT
+*                                         @METAGS tmax
+*                                         11-16-99 09:00pm
+*--------------- tmax ---------------
+*
+      function tmax(x1,y1,x2,y2)
+      dx = x2(i)-x1(i)
+      dy = y2(i)-y1(i)
+      theta = 0.
+      if (ABS(dx).GT.eps) theta = atan2(dy,dx)
+*     .. directrix cosines
+      cosx = cos(theta)
+      cosy = sin(theta)
+*     .. parameter
+      tmax = sqrt(dx**2 + dy**2)
+      END
+
+*                                         @METAGS circle
+*                                         11-17-99 02:58pm
+*--------------- circle ---------------
+*
+      SUBROUTINE circle()
+      do i=1,1000
+         call IGARC(0.,0.,1.,1.,0.,0.)
+      enddo
+      END
+
+*                                         @METAGS cut
+*                                         10-29-99 11:30pm
+*--------------- cut ---------------
+*
+      SUBROUTINE cut(n,x,y,D,status)
+      integer n
+      real x(n),y(n),D(n),status(n)
+      parameter (eps=.001)
+      do i=2,n
+         if (D(i) .GT. 0.) then
+            call KUEXEL('set plci 2')
+            r = D(i)/2.
+         else
+            call KUEXEL('set plci 4')
+            r = .5
+         endif
+         dx = x(i)-x(i-1)
+         dy = y(i)-y(i-1)
+         theta = atan2(dy,dx)
+*        .. directrix cosines
+         cosx = cos(theta)
+         cosy = sin(theta)
+*        .. parameter
+         tmax = sqrt(dx**2 + dy**2)
+         if (ABS(tmax-r) .GT. eps) then
+            step=r
+         else
+            step = .1
+         endif
+         if (tmax .LE. 0.) then
+            print*, 'tmax,step:', tmax,step
+            print*, 'dx,dy:', dx,dy
+            call WAIT(' ')
+         endif
+         t = 0.
+         do while(t.LE.tmax)
+            xc = x(i-1) + cosx*t
+            yc = y(i-1) + cosy*t
+            call IGARC(xc,yc,r,r,0.,0.)
+            call delay
+            t = t+step
+         enddo
+      enddo
+      END
+*                                         @METAGS delay
+*                                         10-30-99 00:36am
+*--------------- delay ---------------
+*
+      SUBROUTINE delay()
+      vector tdelay(1)
+      sum = 0.
+      do i=1,INT(tdelay)
+         sum = sum+i
+      enddo
+      END
+QUIT
+RETURN

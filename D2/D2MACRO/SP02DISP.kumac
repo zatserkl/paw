@@ -1,0 +1,91 @@
+*                                         @METAGS sp02disp
+*--------------- sp02disp ---------------
+*
+MACRO sp02disp
+* old, used for 143.5 Dmm/% = 18.26 - .5341e-3*Emev
+* Dmm/% = 17.99 + .1230e-2*Emev - .2147e-5*Emev**2
+v/cr E(4)    r   100   450   760   850
+v/cr D1ex(1) r   18.46
+v/cr E1ex(1) r   450
+* change experimental value of D at 450 MeV from 18.46 to 18.08
+*v/cr D(4)    r   18.1  18.17 17.85 17.37
+v/cr D(4)    r   18.1  18.08 17.85 17.37
+v/cr eD(4)   r   .2    .29   .41   .43
+v/cr Rmm(4)  r   960.  1000. 1035. 980.
+v/cr eRmm(4) r   10.   10.   12.   20.
+v/cr amu(4)  r   30.   29.   25.   16.
+v/cr eamu(4) r   1.    2.    2.    3.
+zon 1 3
+exec Dplot
+exec Dfit
+exec Rplot
+exec Rfit
+exec Mplot
+exec Mfit
+zon
+RETURN
+*                                         @METAGS Dplot
+*--------------- Dplot ---------------
+*
+MACRO Dplot
+opt liny
+opt grid
+*h/err E D $SIGMA(0*E) eD $VLEN(E) 20 ! AW0
+null 62.5 887.5 16.9 19.0
+h/err E D $SIGMA(0*E) eD $VLEN(E) 20 ! 0
+h/err E1ex D1ex $SIGMA(0*E) eD(2) 1 24 ! 0
+atitle 'E, MeV' 'Dispersion D?n!, mm/"Y#'
+RETURN
+*                                         @METAGS Dfit
+*--------------- Dfit ---------------
+*
+MACRO Dfit
+opt fit
+*v/fit E(1:3) D eD p1 qs
+sigma Dfitpar=array(3)
+v/fit E D eD p2 qs 0 Dfitpar
+sigma EDmax=0
+sigma DDmax=0
+v/inp EDmax(1) $EVAL( Dfitpar(2)/(-2.*Dfitpar(3)) )
+v/inp DDmax(1) $EVAL( Dfitpar(1) + Dfitpar(2)*EDmax + Dfitpar(3)*EDmax*EDmax )
+*mess EDmax = $EVAL(EDmax) MeV, DDmax = $EVAL(DDmax) mm/%
+*str = EDmax = $FORMAT($EVAL(EDmax),F0.1) MeV, DDmax = $FORMAT($EVAL(DDmax),F0.2) mm/"Y#
+EDmax = $FORMAT($EVAL(EDmax),F0.1)
+DDmax = $FORMAT($EVAL(DDmax),F0.2)
+str = EDmax = [EDmax] MeV, DDmax = [DDmax] mm/"Y#
+text 100 18.6 [str] .4
+RETURN
+*                                         @METAGS Rplot
+*--------------- Rplot ---------------
+*
+MACRO Rplot
+opt liny
+opt grid
+h/err E Rmm $SIGMA(0*E) eRmm $VLEN(E) 20 ! AW0
+atitle 'E, MeV' 'Focal plane from the flange, mm'
+RETURN
+*                                         @METAGS Rfit
+*--------------- Rfit ---------------
+*
+MACRO Rfit
+opt fit
+*v/fit E(1:3) Rmm(1:3) eRmm(1:3) p1 qs
+v/fit E Rmm eRmm p2 qs
+RETURN
+*                                         @METAGS Mplot
+*--------------- Mplot ---------------
+*
+MACRO Mplot
+opt liny
+opt grid
+h/err E amu $SIGMA(0*E) eamu $VLEN(E) 20 ! AW0
+atitle 'E, MeV' 'Focal plane angle, degrees'
+RETURN
+*                                         @METAGS Mfit
+*--------------- Mfit ---------------
+*
+MACRO Mfit
+opt fit
+*v/fit E(1:3) amu(1:3) eamu(1:3) p2 qs
+v/fit E amu eamu p2 qs
+RETURN
