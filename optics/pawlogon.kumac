@@ -3,11 +3,12 @@
 *
 MACRO PAWLOGON
 exec $ENV(HOME)/paw/pawlogon
-mess Local PAWLOGON
+mess Local pawlogon
 LCDIR
 mess Hello, folks!
 
-exec $ENV(HOME)/paw/pawlogon#Win 24 24
+* exec $ENV(HOME)/paw/pawlogon#Win 24 24
+exec $ENV(HOME)/paw/pawlogon#Win 40 40
 exec $ENV(HOME)/paw/pawlogon#XARGS
 
 hname = half
