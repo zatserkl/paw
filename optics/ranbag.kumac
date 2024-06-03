@@ -1,0 +1,95 @@
+MACRO ranbag
+APPL COMIS QUIT
+***       SUBROUTINE ranset(iseed)
+***       call RDMIN(iseed)
+***       END
+*** 
+***       integer function ranget()
+*** *     .. NB empty parenthesis. Call it like that: i = ranget()
+*** *     .. declare the function in calling unit: integer ranget
+***       integer iseed
+***       call RDMOUT(iseed)
+*** *     print*, 'ranget: iseed = ', iseed
+***       ranget = iseed
+***       RETURN
+***       END
+*** 
+***       real function ranbag(idummy)
+***       ranbag = RNDM(1.*idummy)
+***       RETURN
+***       END
+*** 
+***       subroutine ranmain(idummy)
+***       real r
+***       integer iseed
+***       integer ranbag
+***       integer igrade
+***       integer ranget
+*** 
+***       r = ranbag(idummy)
+***       iseed = ranget()
+***       print*, 'iseed from ranget = ', iseed
+***       call RDMOUT(iseed)
+***       print*, 'random value = ', r, ' current iseed = ', iseed
+***       END
+
+*                                            May 31, 2024
+*     ranbag: a replacement for RANBAG w/o ENTRY statement
+*
+      REAL FUNCTION RANBAG(idummy)
+      RANBAG = RNDM(1.*idummy)
+      RETURN
+      END
+
+      REAL FUNCTION BAGINT(iseed)
+      call RDMIN(iseed)
+      BAGINT = 1.*iseed
+      RETURN
+      END
+
+      SUBROUTINE ranset(iseed)
+      call RDMIN(iseed)
+      END
+
+      INTEGER FUNCTION RANGET()
+*     .. NB empty parenthesis. Call it like that: i = ranget()
+*     .. declare the function in calling unit: integer ranget
+      INTEGER ISEED
+      call RDMOUT(iseed)
+*     print*, 'RANGET: iseed = ', iseed
+      RANGET = iseed
+      RETURN
+      END
+
+      subroutine ranmain(idummy)
+      real r
+      integer iseed
+      real RANBAG
+      real BAGINT
+      integer ranget
+
+      r = RANBAG(idummy)
+      iseed = RANGET()
+      print*, 'iseed from RANGET = ', iseed
+      call RDMOUT(iseed)
+      print*, 'random value = ', r, ' iseed from RDMOUT = ', iseed
+      END
+QUIT
+
+***  x ranbag       
+*** . call BAGINT(1) 
+*** . call ranmain(5)
+***  iseed from RANGET =      69069
+***  random value =  0.1603365E-04 iseed from RDMOUT =      69069
+*** . 
+*** . call ranmain(5)
+***  iseed from RANGET =  475559465
+***  random value =  0.1107248     iseed from RDMOUT =  475559465
+*** . 
+*** . call ranmain(5)
+***  iseed from RANGET = **********
+***  random value =  0.6523392     iseed from RDMOUT = **********
+*** . 
+*** . call ranmain(5)
+***  iseed from RANGET = 1790562961
+***  random value =  0.4168979     iseed from RDMOUT = 1790562961

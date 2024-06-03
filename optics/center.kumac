@@ -15,6 +15,7 @@ if [hname]='' then
 endif
 
 cut $1 ip=0
+*** a/cr -c al        'style AL'
 a/cr -c hplot     'exec '//$WORD([0],1,1,#)#hplot
 a/cr -c hcop      'exec '//$WORD([0],1,1,#)#hcop
 a/cr -c GNU       'exec '//$WORD([0],1,1,#)#GNU
@@ -49,7 +50,7 @@ panel 1 'ed center.f' 'setname-' 'fopen' 'fclose' 'hplot-' 'hcop-' 'pion [p]^"A#
 panel 2 'mir-' 'mir1-' 'mir0-' 'tst-' 'tst1-' 'tst0-' 'cap-' 'cap1-' 'cap0-'
 panel 3 'intref-' 'intref1-' 'intref0-' 'pmt-'
 panel 4 'edp' 'xp' 'p/pr-' 'opt grid' 'lastkey' 'win-' 'sh' 'edit-' 'x-' '$; wait' 'me'
-panel 5 'alp' 'set-' 'GNU-' 'RvsZ' 'RvsZpl'
+panel 5 'alp' 'set-' 'GNU-' 'RvsZ' 'RvsZpl' 'style ALP'
 *style gps ! ! .12
 *style gp ! ! .12
 *style gp ! ! 0.10
@@ -234,6 +235,8 @@ RETURN
 *--------------- for ---------------
 *
 MACRO for
+mess '--- MACRO center#for'
+
 APPL COMIS QUIT
 *                                         @METAGS GTITNT
 *                                         09-20-98 09:26pm
@@ -425,5 +428,633 @@ APPL COMIS QUIT
       raylab(3+i2) = x(i1)*frame(3) + x(i2)*frame(2) + frame(5)
       raylab(3+i3) = x(i3)
       END
+
+*--AZ *      program center
+*--AZ       subroutine center(iii)
+*--AZ *      IMPLICIT NONE
+*--AZ       PARAMETER (NWPAWC = 300000)
+*--AZ       PARAMETER (LRECL  = 1024)
+*--AZ       PARAMETER (id = 1)
+*--AZ       COMMON /PAWC/ IPAW(NWPAWC)
+*--AZ       
+*--AZ       real sysmir(5),syscol(5),syspmt(5),sysref(5),
+*--AZ      &     syscap(5), systst(5), systop(5)
+*--AZ       character*127 CHPATH
+*--AZ 
+*--AZ       character CHTOP*8, CHFILE*32
+*--AZ       character*80 chtitl, titbuf
+*--AZ       
+*--AZ       character c
+*--AZ *
+*--AZ *     Store in Ntuple:
+*--AZ *     iref     - flag hit to reflector
+*--AZ *     ireg     - flag hit to PM
+*--AZ *     part(6)  - vector of incident particle
+*--AZ *     ray0(6)  - vector of initial photon
+*--AZ *     ray(6)   - vector of photon after the reflector
+*--AZ *     xypmt(2) - x,y coordinates of intersection with PM in PM system
+*--AZ *
+*--AZ *                                   @METAGS NTcommon
+*--AZ       COMMON /OPTIC/ ireg,ip,npart,part(6),ray0(6),raycap(6),
+*--AZ      &               m,raymir(6),raytst(6),raytop(6),intref,raypmt(6)
+*--AZ       common /PARAM/ Dbox, Rbox, f, Rpmt, Dcol, Rcol2, dhcol,
+*--AZ      &               alpha, pere, perpi
+*--AZ 
+*--AZ       real raylab(6),rayloc(6),rayref(6)
+*--AZ 
+*--AZ       character*32 thisf,thisn,ifile,bfile,pfile, afile
+*--AZ       double precision betan
+*--AZ       logical pion
+*--AZ 
+*--AZ       print*, '-- before data statements'
+*--AZ 
+*--AZ *--AZ      data CHTOP /'NTDIR'/
+*--AZ *--AZ      data CHFILE/' '/
+*--AZ *--AZ      data afile /'unknown'/
+*--AZ 
+*--AZ       CHTOP = 'NTDIR'
+*--AZ       CHFILE = ' '
+*--AZ       afile = 'unknown'
+*--AZ 
+*--AZ       print*, '-- begin!'
+*--AZ 
+*--AZ *--AZ      call GETARG(0,thisf)
+*--AZ       thisf = 'center.x'
+*--AZ       call FPARSE(thisf,thisn,thisf,'x')
+*--AZ       lename = LENOCC(thisn)
+*--AZ       CHFILE = thisn(1:lename)//'.hbook'
+*--AZ       ifile  = thisn(1:lename)//'.f'
+*--AZ       bfile  = thisn(1:lename)//'_b.f'
+*--AZ       pfile  = thisn(1:lename)//'_p.for'
+*--AZ 
+*--AZ       print*, ' '
+*--AZ       print*, 'This file ', thisf
+*--AZ       print*, 'Ini file  ', ifile
+*--AZ       print*, 'HBOOK file with Ntuple id =', id, '   ', CHFILE
+*--AZ       print*, 'Batch file for stand alone usage ', bfile
+*--AZ       print*, 'Batch file for PAW usage         ', pfile
+*--AZ       print*, ' '
+*--AZ 
+*--AZ       lun = LUNFREE(1)
+*--AZ       open (lun, FILE=ifile, STATUS='OLD', ERR=10000)
+*--AZ       read (lun,*) c,nran
+*--AZ       read (lun,*) c,init
+*--AZ       read (lun,*) c,Dbox
+*--AZ       read (lun,*) c,Rbox
+*--AZ       read (lun,*) c,Rbeam
+*--AZ       read (lun,*) c,f
+*--AZ       read (lun,*) c,Rpmt
+*--AZ       read (lun,*) c,Dcol
+*--AZ       read (lun,*) c,Rcol2
+*--AZ       read (lun,*) c,dhcol
+*--AZ       read (lun,*) c,Rref
+*--AZ       read (lun,*) c,rindex
+*--AZ       read (lun,*) c,PMconst
+*--AZ       read (lun,*) c,PMconv
+*--AZ       read (lun,*) c,angmax
+*--AZ       read (lun,*) c,Ppi
+*--AZ       read (lun,*) c,iparax
+*--AZ 
+*--AZ       close(lun)
+*--AZ 
+*--AZ       print*, 'Ini file data:'
+*--AZ       print*, 'N randoms/bin =', nran
+*--AZ       print*, 'Dbox =', Dbox, ' cm'
+*--AZ       print*, 'Rbox  =', Rbox, ' cm'
+*--AZ       print*, 'Rbeam  =', Rbeam, ' cm'
+*--AZ       print*, 'f =', f, ' cm'
+*--AZ       print*, 'Rpmt =', Rpmt, ' cm'
+*--AZ       print*, 'Dcol =', Dcol, ' cm'
+*--AZ       print*, 'Rcol2  =', Rcol2, ' cm'
+*--AZ       print*, 'dhcol  =', dhcol, ' cm'
+*--AZ       print*, 'Rref =', Rref, ' cm'
+*--AZ       print*, 'rindex =', rindex, ' (n-1)*1e6'
+*--AZ       print*, 'PMconst =', PMconst, ' 1/cm'
+*--AZ       print*, 'PMconv =', PMconv
+*--AZ       print*, 'angmax  =', angmax, ' mrad'
+*--AZ       print*, 'Ppi  =', Ppi, ' GeV'
+*--AZ       print*, 'iparax  =', iparax, ' flag of paraxial photon rays'
+*--AZ       call WAIT(' ')
+*--AZ 
+*--AZ c     .. convert
+*--AZ       pi = ACOS(-1.)
+*--AZ       torad = pi/180.
+*--AZ       todeg = 180./pi
+*--AZ       
+*--AZ       angrad = angmax/1000.
+*--AZ       
+*--AZ *                                         @METAGS Geometry
+*--AZ *     Geometry
+*--AZ *
+*--AZ *     x|                dzpmt
+*--AZ *      |                 +-+
+*--AZ *      |                 | |
+*--AZ *      |                 | |
+*--AZ *      |  /              +-+ dxpmt
+*--AZ *      | /               
+*--AZ *      |/    
+*--AZ *      |                   /
+*--AZ *     0+------------------/----------
+*--AZ *     /|                 /dzref     z
+*--AZ *    / |\                   
+*--AZ *   /  | \    <---------*---
+*--AZ * y/   |  \  ray(1:3) ray(4:6)
+*--AZ *      
+*--AZ 
+*--AZ *     .. collector and PM angle, rad
+*--AZ       alpha = pi/2.
+*--AZ       print*, 'Collector/PM angle', todeg*alpha, ' degrees'
+*--AZ 
+*--AZ 
+*--AZ *     .. cap frame
+*--AZ       Rcap = 2.*Rbox
+*--AZ       iaxis = 3
+*--AZ       thcap = 0.
+*--AZ       zcap = 0.
+*--AZ       xcap = 0.
+*--AZ       call mkframe(iaxis,thcap,zcap,xcap, syscap)
+*--AZ 
+*--AZ *                                         @METAGS reflector_frame
+*--AZ *     .. Reflector
+*--AZ *     .. reflector frame
+*--AZ       iaxis = 3
+*--AZ       thref = 135.
+*--AZ       zref = Dcol
+*--AZ       xref = 0.
+*--AZ       call mkframe(iaxis,thref,zref,xref, sysref)
+*--AZ 
+*--AZ *                                         @METAGS tst_frame
+*--AZ *     .. test plane
+*--AZ       Rtst = 4.*Rbox
+*--AZ       if (Rtst.EQ.0.) Rtst=4.*30.
+*--AZ       iaxis = 3
+*--AZ       thtst = 180.
+*--AZ       ztst = zref
+*--AZ       xtst = xref
+*--AZ       call mkframe(iaxis,thtst,ztst,xtst, systst)
+*--AZ 
+*--AZ *                                         @METAGS collector_frame
+*--AZ *     .. collector
+*--AZ       Rcol1 = Rpmt
+*--AZ       call CONEpar(Rcol1,Rcol2,dhcol, tgcone,h1col,h2col)
+*--AZ *     .. collector frame
+*--AZ       iaxis = 3
+*--AZ       thcol = 180. + todeg*alpha
+*--AZ       zcol = Dcol
+*--AZ       xcol = Rbox + h2col
+*--AZ       call mkframe(iaxis,thcol,zcol,xcol, syscol)
+*--AZ 
+*--AZ *                                         @METAGS top_frame
+*--AZ *     .. top plane
+*--AZ       Rtop = 2.*Rbox
+*--AZ       iaxis = 3
+*--AZ       thtop = 180. + todeg*alpha
+*--AZ       ztop = zcol
+*--AZ       xtop = Rbox
+*--AZ       call mkframe(iaxis,thtop,ztop,xtop, systop)
+*--AZ 
+*--AZ *                                         @METAGS pmt_frame
+*--AZ *     .. PM
+*--AZ *     .. pmt frame
+*--AZ       iaxis = 3
+*--AZ       thpmt = 180. + todeg*alpha
+*--AZ       zpmt = zcol
+*--AZ       xpmt = Rbox + (h2col-h1col)
+*--AZ       call mkframe(iaxis,thpmt,zpmt,xpmt, syspmt)
+*--AZ       
+*--AZ *      print*, ' '
+*--AZ       print*, 'Distance to PM is', zpmt, ' cm from counter box back'
+*--AZ       print*, 'Distance to PM is', xpmt, ' cm from counter axis'
+*--AZ 
+*--AZ *                                         @METAGS mirror_frame
+*--AZ *     .. calculate optimum focus if need in
+*--AZ       if     (f .GT. 0.) then
+*--AZ *        .. explicit focus
+*--AZ       elseif (f .EQ. 0.) then
+*--AZ *        .. optimum focus for PM
+*--AZ          f = zpmt+xpmt
+*--AZ       elseif (f .LT. 0.) then
+*--AZ *        .. optimum focus for collector
+*--AZ          f = zcol+Rbox
+*--AZ       endif
+*--AZ 
+*--AZ *     .. mirror with Rmir = 2f
+*--AZ       Rmir = 2.*f
+*--AZ *     .. mirror frame
+*--AZ       iaxis = 3
+*--AZ       thmir = 0.
+*--AZ       zmir = 0.
+*--AZ       xmir = 0.
+*--AZ       call mkframe(iaxis,thmir,zmir,xmir, sysmir)
+*--AZ 
+*--AZ *--   .. electron
+*--AZ *     .. Cherenkov angle
+*--AZ       thetae = ACOS(1.D0/(1.D0 + rindex*1.D-6))
+*--AZ *     .. the number of photoelectrons
+*--AZ       pee = Dbox*PMconst*(SIN(thetae))**2
+*--AZ *     .. the number of photons
+*--AZ       phote = pee/PMconv
+*--AZ *     .. mean free path length between emitances
+*--AZ       alame = Dbox/phote
+*--AZ *--   .. pion
+*--AZ       betapi = 1.D0/(1.D0 + (0.140D0/Ppi)**2)
+*--AZ       betan = betapi*(1.D0 + rindex*1.D-6)
+*--AZ       if (betan .GT. 1.D0) then
+*--AZ          thetapi = ACOS(1.D0/(betan))
+*--AZ *        .. the number of photoelectrons
+*--AZ          pepi = Dbox*PMconst*(SIN(thetapi))**2
+*--AZ *        .. the number of photons
+*--AZ          photpi = pepi/PMconv
+*--AZ *        .. mean free path length between emitances
+*--AZ          alampi = Dbox/photpi
+*--AZ       else
+*--AZ          pepi = 0.
+*--AZ          photpi = 0.
+*--AZ          alampi = 2.*Dbox
+*--AZ       endif
+*--AZ       print*, ' '
+*--AZ       print*, 'electron Cherenkov angle', thetae, ' rad'
+*--AZ       print*, 'electron the average number of photoelectrons', pee
+*--AZ       print*, 'electron the average number of photons', phote
+*--AZ       print*, 'electron mean free path length', alame
+*--AZ       print*, 'pion     Cherenkov angle', thetapi, ' rad'
+*--AZ       print*, 'pion     the average number of photoelectrons', pepi
+*--AZ       print*, 'pion     the average number of photons', photpi
+*--AZ       print*, 'pion     mean free path length', alampi
+*--AZ 
+*--AZ       dummy = BAGINT(init)
+*--AZ 
+*--AZ *
+*--AZ *     Ntuple
+*--AZ *      
+*--AZ       write(chtitl,20) Rcol2,dhcol, f
+*--AZ    20 format ('Center mirror. Rcol2,dhcol=', 2F5.0, ' f=', F4.0, ' cm')
+*--AZ 
+*--AZ       if (iparax.NE.0) then
+*--AZ          print*, ' '
+*--AZ          print*, '*****************************************'
+*--AZ          print*, 'Test for paraxial photon rays!'
+*--AZ          print*, 'Photon angle with respect to particle = 0'
+*--AZ          print*, 'Particle angular spreading = 0'
+*--AZ          print*, '*****************************************'
+*--AZ          call WAIT(' ')
+*--AZ          thetae  = 0.
+*--AZ          thetapi = 0.
+*--AZ          angrad = 0.
+*--AZ          titbuf = chtitl
+*--AZ          len = LENOCC(titbuf)
+*--AZ          chtitl = titbuf(1:len)//'. Paraxial test for [Q]?[g]!=0'
+*--AZ       endif
+*--AZ 
+*--AZ       call MESS('Ntuple title:')
+*--AZ       call MESS(chtitl)
+*--AZ 
+*--AZ       print*, ' '
+*--AZ       call WAIT('Begin the calculation')
+*--AZ 
+*--AZ       CALL HLIMIT(NWPAWC)
+*--AZ       print*, '-- after call HLIMIT'
+*--AZ *     .. open a new RZ file
+*--AZ       ntlun = LUNFREE(1)
+*--AZ       CALL HROPEN(ntlun,CHTOP,CHFILE,'N',LRECL,ISTAT)
+*--AZ *     .. book Ntuple
+*--AZ       CALL HBNT(id,chtitl,' ')
+*--AZ *     .. define Ntuple
+*--AZ *                                         @METAGS HBNAME
+*--AZ       CALL HBNAME(id,'OPTIC', ireg,
+*--AZ      &            'ireg[0,1]:U, ip[0,1]:U, npart:U,
+*--AZ      '             part(6):R,ray0(6):R,raycap(6):R,m[0,1]:U,raymir(6):R,
+*--AZ      '             raytst(6):R,raytop(6):R,intref[0,10]:U,raypmt(6):R')
+*--AZ 
+*--AZ       call FILELUN(ntlun,afile)
+*--AZ       print*, 'With unit', ntlun, ' connected file ', afile
+*--AZ       print*, 'Running ..'
+*--AZ 
+*--AZ       tlim = 10000.
+*--AZ       call TIMEST(tlim)
+*--AZ       
+*--AZ *
+*--AZ *--   MAIN PART
+*--AZ *
+*--AZ       npart = 0
+*--AZ       nemite = 0
+*--AZ       nrege  = 0
+*--AZ       nemitpi = 0
+*--AZ       nregpi  = 0
+*--AZ       print*, 'Total particles', nran
+*--AZ 
+*--AZ       idummy = 0
+*--AZ *                                      @METAGS MAINloop
+*--AZ *------------------------------------- main loop begin
+*--AZ       DO np=1,nran
+*--AZ *     .. electron flag
+*--AZ       pion = .FALSE.
+*--AZ       ip = 0
+*--AZ       theta = thetae
+*--AZ       alam = alame
+*--AZ 
+*--AZ *     .. particle radiant in circle with radius Rbox
+*--AZ   100 continue
+*--AZ       idummy = idummy+1
+*--AZ       xp = Rbeam*2.*(.5 - RANBAG(idummy))
+*--AZ       idummy = idummy+1
+*--AZ       yp = Rbeam*2.*(.5 - RANBAG(idummy))
+*--AZ       if (xp**2 + yp**2 .GT. Rbeam**2) goto 100
+*--AZ       zp = Dbox
+*--AZ 
+*--AZ *     .. particle direction
+*--AZ       idummy = idummy+1
+*--AZ       thp = pi - angrad*RANBAG(idummy)
+*--AZ       idummy = idummy+1
+*--AZ       php = 2.*pi*RANBAG(idummy)
+*--AZ 
+*--AZ       part(4) = zp
+*--AZ       part(5) = xp
+*--AZ       part(6) = yp
+*--AZ       part(1) = cos(thp)
+*--AZ       part(2) = sin(thp)*cos(php)
+*--AZ       part(3) = sin(thp)*sin(php)
+*--AZ       npart = npart+1
+*--AZ 
+*--AZ *     .. consts for coordinates transformations
+*--AZ       sinthp = sin(thp)
+*--AZ       costhp = cos(thp)
+*--AZ       sinphp = sin(php)
+*--AZ       cosphp = cos(php)
+*--AZ       
+*--AZ  1001 continue
+*--AZ *     .. initialize particle current position
+*--AZ       z = zp
+*--AZ       x = xp
+*--AZ       y = yp
+*--AZ 
+*--AZ  1000 continue      
+*--AZ *     .. current range
+*--AZ       idummy = idummy+1
+*--AZ       range = -alam*LOG(RANBAG(idummy))
+*--AZ *     .. current position
+*--AZ       z = z + range*part(1)
+*--AZ       x = x + range*part(2)
+*--AZ       y = y + range*part(3)
+*--AZ       if (z.LE.0.) goto 1999
+*--AZ       
+*--AZ *     .. emit the photon in the particle frame
+*--AZ       if (pion) then
+*--AZ          nemitpi = nemitpi+1
+*--AZ       else
+*--AZ          nemite = nemite+1
+*--AZ       endif
+*--AZ *     .. clear reflector flag
+*--AZ       iref = 0      
+*--AZ 
+*--AZ *     .. photon radiant
+*--AZ       ray0(4) = z
+*--AZ       ray0(5) = x
+*--AZ       ray0(6) = y      
+*--AZ *     .. photon direction
+*--AZ       thg = theta
+*--AZ       idummy = idummy+1
+*--AZ       phg = 2.*pi*RANBAG(idummy)
+*--AZ 
+*--AZ *     .. photon dir.cosines in particle system
+*--AZ       cz = cos(thg)
+*--AZ       cx = sin(thg)*cos(phg)
+*--AZ       cy = sin(thg)*sin(phg)	  
+*--AZ *      print*, 'photon dir.cos. in particle sys.:', cz,cx,cy
+*--AZ 
+*--AZ *     .. convert photon dir.cosines to lab
+*--AZ *     	 step 1: rotate round y by thp
+*--AZ *     	 step 2: rotate round z by php
+*--AZ *     	 Result:
+*--AZ       ray0(1) = cz*costhp        - cx*sinthp
+*--AZ       ray0(2) = cz*sinthp*cosphp + cx*costhp*cosphp - cy*sinphp
+*--AZ       ray0(3) = cz*sinthp*sinphp + cx*costhp*sinphp + cy*cosphp
+*--AZ 
+*--AZ *                                         @METAGS RunRay
+*--AZ *     Ray runs
+*--AZ *
+*--AZ *     .. clear registration flag
+*--AZ       ireg = 0
+*--AZ *     .. clear reflection-from-mirror flag
+*--AZ       m = 0
+*--AZ *     .. clear the number of reflection in the collector
+*--AZ       intref = 0
+*--AZ *     .. clear arrays
+*--AZ       do i=1,6
+*--AZ          raytst(i) = 100.
+*--AZ          raypmt(i) = 100.
+*--AZ       enddo
+*--AZ *     .. clear error flag
+*--AZ       ierr = 0
+*--AZ 
+*--AZ *                                         @METAGS cap_ref
+*--AZ *     .. cap plane
+*--AZ       call toloc(syscap,ray0,rayloc)
+*--AZ *     .. use routine PMT for hit cap plane
+*--AZ       call PMT(Rcap,rayloc,rayref,iercap)
+*--AZ       call tolab(syscap,rayref,raycap)
+*--AZ       if (iercap.NE.0) then
+*--AZ *        .. lost ray
+*--AZ          print*, 'Error in hit of cap plane'
+*--AZ       endif
+*--AZ 
+*--AZ *                                         @METAGS mirror_ref
+*--AZ *     .. reflection from mirror
+*--AZ       call toloc(sysmir,ray0,rayloc)
+*--AZ       iermir = MISPH(Rmir,rayloc,rayref)
+*--AZ *     .. return to lab
+*--AZ       call tolab(sysmir,rayref,raylab)
+*--AZ       do i=1,6
+*--AZ          raymir(i) = raylab(i)
+*--AZ       enddo
+*--AZ       if (iermir.NE.0) then
+*--AZ *        .. absorbed at the mirror (iermir=1) or missed the mir. (iermir=-1)
+*--AZ          goto 2000
+*--AZ       endif
+*--AZ       if (raylab(5)**2+raylab(6)**2 .GT. Rbox**2) then
+*--AZ *        .. photon hit mirror out the box
+*--AZ          goto 2000
+*--AZ       endif
+*--AZ       m = 1
+*--AZ 
+*--AZ *                                         @METAGS tst_ref
+*--AZ *     .. look at test plane
+*--AZ       call toloc(systst,raylab,rayloc)
+*--AZ *     .. use routine PMT for hit test plane
+*--AZ       call PMT(Rtst,rayloc,raytst,iertst)
+*--AZ       if (iertst.NE.0) then
+*--AZ *        .. lost ray
+*--AZ          print*, 'Error in hit of test plane'
+*--AZ *         print*, 'iermir =', iermir
+*--AZ *         print*, 'raylab:'
+*--AZ *         print*, raylab
+*--AZ       endif
+*--AZ 
+*--AZ *                                         @METAGS reflector_ref
+*--AZ *     .. reflection from reflector
+*--AZ       call toloc(sysref,raylab,rayloc)
+*--AZ       ierref = MIRCIR(Rref,rayloc,rayref)
+*--AZ       if (ierref.NE.0) then
+*--AZ *        .. lost ray
+*--AZ          goto 2000
+*--AZ       endif
+*--AZ       call tolab(sysref,rayref,raylab)
+*--AZ 
+*--AZ *                                         @METAGS top_ref
+*--AZ *     .. look at top plane
+*--AZ       call toloc(systop,raylab,rayloc)
+*--AZ *     .. use routine PMT for hit top plane
+*--AZ       call PMT(Rtop,rayloc,raytop,iertop)
+*--AZ       if (iertop.NE.0) then
+*--AZ *        .. lost ray
+*--AZ          print*, 'Error in hit of top plane'
+*--AZ       endif
+*--AZ 
+*--AZ *                                         @METAGS collector_ref
+*--AZ *--   Reflection from collector
+*--AZ *     .. ray in collector local frame
+*--AZ ***      nray = 1
+*--AZ ***      call toloc(syscol,raylab,rayhis(1,nray))
+*--AZ       call toloc(syscol,raylab,rayloc)
+*--AZ ***      irest = MAXRAY-nray
+*--AZ ***      call CONE0(tgcone,h1col,h2col,irest,rayhis(1,nray),npro,iercol)
+*--AZ       call CONE(tgcone,h1col,h2col,rayloc,rayref,npro,iercol)
+*--AZ *     .. return to lab
+*--AZ       if (iercol.EQ.0) ncol=ncol+1
+*--AZ       intref = npro
+*--AZ ***      do i=nray,nray+npro
+*--AZ ***         call tolab(syscol,rayhis(1,i),rayhis(1,i))
+*--AZ ***      enddo
+*--AZ ***      nray = nray+npro
+*--AZ       call tolab(syscol,rayref,raylab)
+*--AZ       if (iercol.GT.0) then
+*--AZ *        .. absorbed at the collector. Next photon
+*--AZ          goto 2000
+*--AZ       endif
+*--AZ 
+*--AZ *                                         @METAGS pmt_ref
+*--AZ *--   Intersection with PM
+*--AZ *     .. ray in PM local frame
+*--AZ ***      call toloc(syspmt,rayhis(1,nray),rayloc)
+*--AZ       call toloc(syspmt,raylab,rayloc)
+*--AZ       call PMT(Rpmt,rayloc, raypmt,ierpmt)
+*--AZ       if (ierpmt.GE.0) then
+*--AZ          if (ierpmt.EQ.0) then
+*--AZ *           .. absorbed at the PMT.
+*--AZ             ireg = 1
+*--AZ             npmt = npmt+1
+*--AZ 
+*--AZ             if (pion) then
+*--AZ                nregpi = nregpi+1
+*--AZ             else
+*--AZ                nrege = nrege+1
+*--AZ             endif
+*--AZ           else
+*--AZ *     	    .. lost
+*--AZ              print*, 'Ray is absorbed at PM back'
+*--AZ          endif
+*--AZ       endif
+*--AZ 
+*--AZ *     .. goto store      
+*--AZ       goto 3000
+*--AZ       
+*--AZ  2000 continue
+*--AZ *      ireg = 0
+*--AZ *      do i=1,6
+*--AZ *          raypmt(i) = 100.
+*--AZ *      enddo
+*--AZ 
+*--AZ  3000 continue
+*--AZ *     .. store raw
+*--AZ       call HFNT(id)
+*--AZ       
+*--AZ *     .. for the next photon
+*--AZ       goto 1000
+*--AZ 
+*--AZ  1999 continue
+*--AZ       if ((.NOT.pion) .AND. (photpi .GT. 0.)) then
+*--AZ *        .. pion flag
+*--AZ          pion = .TRUE.
+*--AZ          ip = 1
+*--AZ          theta = thetapi
+*--AZ          alam = alampi
+*--AZ *        .. run pion by the same way
+*--AZ          goto 1001
+*--AZ       endif
+*--AZ       if (MOD(np,100).EQ.0) then
+*--AZ *AZ*          call IMESS('processed particles: ', np)
+*--AZ           print*, 'processed particles: ', np
+*--AZ       endif
+*--AZ       ENDDO
+*--AZ *------------------------------------- main loop end
+*--AZ *
+*--AZ *--   MAIN PART END
+*--AZ *
+*--AZ *     .. Store some parameters at block PARAM
+*--AZ       call HBNAME(id,'PARAM', Dbox,
+*--AZ      &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
+*--AZ      '            Dcol:R, Rcol2:R, dhcol:R,
+*--AZ      '            alpha:R, pere:R, perpi:R')
+*--AZ       call HFNTB(id,'PARAM')
+*--AZ 
+*--AZ       print*, ' '
+*--AZ       print*, '--- electrons:'
+*--AZ       print*, 'There are', nemite, ' photons were emitted'
+*--AZ       print*, 'There are', nrege, ' photons were registrated'
+*--AZ       phpart = REAL(nemite)/REAL(nran)
+*--AZ       print*, 'The average number of emitted photons/particle', phpart
+*--AZ       percent = 100.*REAL(nrege)/REAL(nemite)
+*--AZ       print*, 'Registration efficiency is', percent, '%'
+*--AZ       print*, '--- pions:'
+*--AZ       print*, 'There are', nemitpi, ' photons were emitted'
+*--AZ       print*, 'There are', nregpi, ' photons were registrated'
+*--AZ       phpart = REAL(nemitpi)/REAL(nran)
+*--AZ       print*, 'The average number of emitted photons/particle', phpart
+*--AZ       percent = 100.*REAL(nregpi)/REAL(nemitpi)
+*--AZ       print*, 'Registration efficiency is', percent, '%'
+*--AZ 
+*--AZ       dummy = BAGREP(iused)
+*--AZ       
+*--AZ       print*, ' '
+*--AZ       call TIMEX(time)
+*--AZ       print*,'Job time', time, ' seconds'
+*--AZ       call WAIT('End of calculation. Close files')
+*--AZ 
+*--AZ       CALL HPRNT(id)
+*--AZ *
+*--AZ *-- write batch version of analisys routine to file
+*--AZ *
+*--AZ       lunb = LUNFREE(1)
+*--AZ       open (lunb, FILE=bfile, STATUS='UNKNOWN')
+*--AZ       CALL HUWFUN(lunb, id, thisn(1:lename), 0, 'B')
+*--AZ       close(lunb)
+*--AZ *     .. paw routine
+*--AZ       lunp = LUNFREE(1)
+*--AZ       open (lunp, FILE=pfile, STATUS='UNKNOWN')
+*--AZ       CALL HUWFUN(lunp, id, thisn(1:lename), 0, 'P')
+*--AZ       close(lunp)
+*--AZ *
+*--AZ *-- write Ntuple buffer to disk and close RZ file
+*--AZ *
+*--AZ       CALL HROUT(0,ICYCLE,' ')
+*--AZ *      print*, 'After HROUT(0,ICYCLE,'' '') ICYCLE =', ICYCLE
+*--AZ 
+*--AZ       goto 99999
+*--AZ       CHPATH = ' '
+*--AZ       call HCDIR(CHPATH,'R')
+*--AZ       print*, ' '
+*--AZ       call HLDIR('//PAWC','T')
+*--AZ       print*, ' '
+*--AZ *--AZ      print '('' Current directory is '', A)', CHPATH(1:LENOCC(CHPATH))
+*--AZ *--AZ      print 'Current directory is ', CHPATH(1:LENOCC(CHPATH))
+*--AZ *--AZ      print 'Current directory is ', CHPATH
+*--AZ       call HLDIR(' ','T')
+*--AZ 
+*--AZ 99999 CALL HREND(CHTOP)
+*--AZ       STOP
+*--AZ *--AZ 10000 print*, 'Ini file ', ifile(1:LENOCC(ifile)), ' did not found'
+*--AZ 10000 print*, 'Ini file did not found: ', ifile
+*--AZ       END
+
 QUIT
 RETURN
