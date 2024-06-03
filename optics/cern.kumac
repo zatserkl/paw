@@ -1,0 +1,85 @@
+MACRO cern
+APPL COMIS QUIT
+*                                         @METAGS LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      logical used
+      lun = lunstart-1
+      if (lun.LT.0) lun=0
+  100 lun = lun+1
+      inquire (UNIT=lun, OPENED=used)
+      if (used) goto 100
+      LUNFREE = lun
+      END
+
+*                                         May 28, 2024
+*--------------- cernpop ---------------
+*
+      subroutine cernpop
+      integer category, flag, age, service, children, grade, step,
+     +        hrweek, cost
+      common /cern/ category, flag, age, service, children, grade,
+     +              step, hrweek, cost
+      character*4 division, nation
+      common /cernc/ division, nation
+
+      character*132 chform
+      dimension rdata(11)
+      character*4 divs(13), nats(15)
+      data divs /'AG', 'DD', 'DG', 'EF', 'EP', 'FI', 'LEP', 'PE',
+     +           'PS', 'SPS', 'ST', 'TH', 'TIS'/
+      data nats /'AT', 'BE', 'CH', 'DE', 'DK', 'ES', 'FR', 'GB',
+     +           'GR', 'IT', 'NL', 'NO', 'PT', 'SE', 'ZZ'/
+
+      character*8 chblock
+
+*     .. p.26 of HBOOK: "convenient to call HBNT immediately after HROPEN"
+
+*     p.27: read about CHBLOCK in the description of HBNAME, HBNAMC
+      chblock = 'CERN'
+
+      lun = LUNFREE(1)
+      call hropen(lun, chblock, 'cernpop.hbook', 'N', 1024, istat)
+
+      print*, 'after hropen istat = ', istat
+
+*     1) declare id and title
+
+      id = 11
+      call hbnt(id, 'CERN Population (CWN)', ' ')
+
+*     2) use hbname, hbnamc to describe the variables
+
+      chform = ' CATEGORY[100,600]:I, FLAG:U:6, AGE[1,100]:I,'//
+     +         ' SERVICE[0,60]:I, CHILDREN[0,10]:I, GRADE[3,14]:I,'//
+     +         ' STEP[0,15]:I, HRWEEK:I, COST:I'
+      call hbname(id, chblock, category, chform)
+
+      chform = 'DIVISION:C,           NATION:C'
+      call hbnamc(id, chblock, division, chform)
+
+      open(unit=41, file='aptuple.dat', status='old')
+
+   10 read(41, '(10F4.0, F7.0)', end=20) rdata
+      category = rdata(1)
+      division = divs(int(rdata(2)))
+      flag     = rdata(3)
+      age      = rdata(4)
+      service  = rdata(5)
+      children = rdata(6)
+      grade    = rdata(7)
+      step     = rdata(8)
+      nation   = nats(int(rdata(9)))
+      hrweek   = rdata(10)
+      cost     = rdata(11)
+      call hfnt(id)
+      goto 10
+
+   20 close(41)
+
+      call hrout(id, icycle, ' ')
+      call HREND(chblock)
+      end
+QUIT
