@@ -1,0 +1,2166 @@
+* 500   2000   3000   nran    *** WARNING: FIRSTS LINES USED AS INI DATA! 
+* 1      2       init INT
+* 500.   Dbox, cm
+* 30.    Rbox, cm
+* 15.    Rbeam
+* 0.      f, cm. f=0 means f=Dcol
+* 2.5    Rpmt, cm
+* 200.    75.    100    200.   Dcol, cm
+* 4.     6.    Rcol2, cm
+* .1     20.    dhcol, cm
+* 0.     Rref, cm
+* 34.9   rindex: index of refraction (n-1)*1e6
+* 90.    PMconst
+* 0.20   PMconv 
+* 15.    angmax, mrad
+* 25.    Ppi, GeV
+* 0      1   flag of paraxial photon rays (particle angular spreading=0 too)
+*
+
+APPL COMIS QUIT
+*                                         @METAGS LOOK
+*                                         03-26-98 01:30am
+*--------------- LOOK ---------------
+*
+      SUBROUTINE LOOK(id)
+      REAL F,E1,E2,THin,THout,Xin,Xout
+      INTEGER pdf,PChit,PCch,PCcl, Thit,Tch,Tcl, err
+*      CHARACTER distr*4
+      COMMON/NTDATA/ F,E1,E2,THin,THout,Xin,Xout,
+     &               pdf,PChit,PCch,PCcl,Thit,Tch,Tcl, err
+*      COMMON /NTDATAC/ distr
+
+ 1000 I = 1
+      print*, 'Enter a number of event to look (<CR>=Exit)'
+      read 1, I
+    1 format(I8)
+      if (I.EQ.0) goto 2000
+      CALL HGNT(id, I, IER)
+      IF (IER .NE. 0) THEN
+         PRINT *, 'Error reading row ', I
+      ENDIF
+      PRINT *,'Event',I,' E1,E2,PCch,pdf:',E1,E2,PCch,pdf
+      goto 1000
+ 2000 continue
+      END
+
+*                                         @METAGS mkray
+*                                         03/07/98 19:15
+*--------------- mkray ---------------
+*
+      SUBROUTINE mkray(z,x,y,dthmr,phrad,ray)
+      real z,x,y,dthmr,phrad,ray(6)
+      double precision pi,thr,phr
+      pi = ACOS(-1.d0)
+      thr = pi/2.d0 - .001*dthmr
+*      phr = pi      - .001*dphmr
+      phr = phrad
+*     .. spherical --> Cartesian
+      ray(1) = sin(thr)*cos(phr)
+      ray(2) = cos(thr)
+      ray(3) = sin(thr)*sin(phr)
+      ray(4) = z
+      ray(5) = x
+      ray(6) = y
+      END
+
+*                                         @METAGS mkframe
+*                                         03/07/98 10:11
+*--------------- mkframe ---------------
+*
+      SUBROUTINE mkframe(iaxis,thdeg,d1,d2,frame)
+      real thdeg,d1,d2,frame(5)
+      double precision pi,torad,thrad
+      pi = ACOS(-1.d0)
+      torad = pi/180.d0
+      thrad = thdeg*torad
+      frame(1) = iaxis
+      frame(2) = COS(thrad)
+      frame(3) = SIN(thrad)
+      frame(4) = d1
+      frame(5) = d2
+      END
+
+*                                         @METAGS toloc
+*                                         16/06/98 09:40
+*--------------- toloc ---------------
+*
+      SUBROUTINE toloc(frame,raylab, rayloc)
+*
+*     Rotate the right coord. system round the INT(axis3) axis.
+*     frame = (axis3,cosA,sinA,d1,d2)
+*     d1 - shift along the axis1
+*     d2 - shift along the axis2
+*
+      real frame(5),raylab(6),rayloc(6),c(6),x(6)
+      i3 = frame(1)
+      if (i3.EQ.3) then
+         i1 = 1
+         i2 = 2
+      elseif (i3.EQ.1) then
+         i1 = 2
+         i2 = 3
+      elseif (i3.EQ.2) then
+         i1 = 3
+         i2 = 1
+      else
+         print*, 'ERROR toloc: Wrong axis number in frame(1):', frame(1)
+         STOP
+      endif
+
+      do i=1,3
+         c(i) = raylab(i)
+         x(i) = raylab(3+i)
+      enddo
+*     .. directrix cosines
+      rayloc(i1) =  c(i1)*frame(2) + c(i2)*frame(3)
+      rayloc(i2) = -c(i1)*frame(3) + c(i2)*frame(2)
+      rayloc(i3) =  c(i3)
+*     .. point
+      rayloc(3+i1)=  (x(i1)-frame(4))*frame(2)+(x(i2)-frame(5))*frame(3)
+      rayloc(3+i2)= -(x(i1)-frame(4))*frame(3)+(x(i2)-frame(5))*frame(2)
+      rayloc(3+i3)=  x(i3)
+      END
+
+*                                         @METAGS tolab
+*                                         16/06/98 09:40
+*--------------- tolab ---------------
+*
+      SUBROUTINE tolab(frame,rayloc, raylab)
+*
+*     Rotate the right coord. system round the INT(axis3) axis.
+*     frame = (axis3,cosA,sinA,d1,d2)
+*     d1 - shift along the axis1
+*     d2 - shift along the axis2
+*
+      real frame(5),rayloc(6),raylab(6),c(6),x(6)
+      i3 = frame(1)
+      if (i3.EQ.3) then
+         i1 = 1
+         i2 = 2
+      elseif (i3.EQ.1) then
+         i1 = 2
+         i2 = 3
+      elseif (i3.EQ.2) then
+         i1 = 3
+         i2 = 1
+      else
+         print*, 'ERROR tolab: Wrong axis number in frame(1):', frame(1)
+         STOP
+      endif
+
+      do i=1,3
+         c(i) = rayloc(i)
+         x(i) = rayloc(3+i)
+      enddo
+*     .. directrix cosines
+      raylab(i1) = c(i1)*frame(2) - c(i2)*frame(3)
+      raylab(i2) = c(i1)*frame(3) + c(i2)*frame(2)
+      raylab(i3) = c(i3)
+*     .. point
+      raylab(3+i1) = x(i1)*frame(2) - x(i2)*frame(3) + frame(4)
+      raylab(3+i2) = x(i1)*frame(3) + x(i2)*frame(2) + frame(5)
+      raylab(3+i3) = x(i3)
+      END
+
+*                                         @METAGS raycop
+*                                         08/06/98 20:16
+*--------------- raycop ---------------
+*
+      SUBROUTINE raycop(ray1,ray2)
+      real ray1(6),ray2(6)
+      do i=1,6
+         ray2(i) = ray1(i)
+      enddo
+      END
+
+*                                         @METAGS DROOT
+*                                         06-02-98 03:47am
+*--------------- DROOT ---------------
+*
+      subroutine DROOT(a,b,c,x1,x2,ierr)
+*
+*     For square equation a*x**2 + b*x + c = 0
+*     calculates REAL roots.F
+*     For COMPLEX returns in x1 real part and in x2 imaginary part
+*     of root -b/(2*a) + i*sqrt(-D)/(2*a)
+*     To preserve computer accuracy use formula x1 = 2*c/(-b-sqrt(D))
+*     Error flags:
+*      0: normal
+*      1: any roots: a=b=c=0
+*      2: complex roots
+*     -1: no roots: a=b=0, c<>0
+*
+      double precision a,b,c,x1,x2
+      integer ierr
+      double precision D
+
+      x1 = 0.d0
+      x2 = 0.d0
+      ierr = 0
+
+*      print*, a,b,c
+*      call WAIT('DROOT: a,b,c')
+      if (a .EQ. 0d0) then
+         if (b.EQ.0d0) then
+            if (c.EQ.0.d0) then
+*               print*, 'DROOT: Any roots: a=b=c=0'
+               ierr = 1
+            else
+               print*, 'DROOT ERROR: No roots: a=b=0, c<>0'
+               ierr = -1
+            endif
+            RETURN
+         endif
+         x1 = -c/b
+         x2 = x1
+         RETURN
+      endif
+
+      D = b**2 - 4d0*a*c
+*      print*, 'D =', D
+*      call WAIT('DROOT: D')
+      if (D .LT. 0.d0) then
+*         print*, 'DROOT: Complex roots'
+         x1 = -b/(2.d0*a)
+         x2 = sqrt(-D)/(2.d0*a)
+         ierr = 2
+         RETURN
+      elseif (D .EQ. 0.d0) then
+         x1 = -b/(2.d0*a)
+         x2 = x1
+         RETURN
+      endif
+
+      if (b .GT. 0.d0) then
+*        .. compute "minus" root
+         x1 = 2.d0*c/(-b - sqrt(D))
+      else
+*        .. compute "plus" root
+         x1 = 2.d0*c/(-b + sqrt(D))
+      endif
+
+*     .. use Viete formulae for the other root
+      if (x1 .NE. 0.d0) then
+*        .. to preserve computer accuracy
+         x2 =  (c/a) / x1
+      else
+         x2 = -(b/a) - x1
+      endif
+      END
+
+*                                         @METAGS MISPH
+*                                         06-02-98 01:17pm
+*--------------- MISPH ---------------
+*
+      integer function MISPH(R,ray,ray1)
+*
+*     Minimized routine: only one reflection
+*
+*     Reflection from spherical mirror  x**2 + y**2 + (z-R)**2 = R**2
+*     Focus f=R/2
+*     To simplify calculation we use transfer to center of sphera system
+*
+*     Note: ray,ray1 in frame of spheroid
+*           (i.e. normal in sphera top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of spheroid x**2 + y**2 + (z-R)**2 = R**2
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of sphera
+*     -1: ray have missed the sphera
+*
+*              x|          "Mirror" system
+*               |      .   ---------------
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----*-----------------------
+*              /| |    |      R                     z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      real R,ray(6),ray1(6)
+      double precision R2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+
+      R2 = DBLE(R)**2
+
+*     .. cosines of incident ray
+      c1 = ray(1)
+      c2 = ray(2)
+      c3 = ray(3)
+*     .. radiant of incident ray in center of sphera system (shift for x1)
+      x1 = DBLE(ray(4)) - DBLE(R)
+      x2 = ray(5)
+      x3 = ray(6)
+*      print*, 'rayhis(4,nray) in "mirror" system =', rayhis(4,nray)
+*      print*, 'x1 in "sphera" system =', x1
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2 + y**2 + z**2 = R**2
+*--
+*     Perform the calculation in center of sphera system.
+*     Here x**2 + y**2 + z**2 = R**2
+*--
+*     .. coeffs. of square equation
+      a = c1**2 + c2**2 + c3**2
+      b = 2.*(c1*x1 + c2*x2 + c3*x3)
+      c = x1**2 + x2**2 + x3**2 - R2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'MISPH: idroot =', idroot
+*         call WAIT('MISPH: No roots of square equation')
+         goto 1001
+
+*         if (idroot.LT.0) call MESS('MISPH: No roots')
+*         if (idroot.EQ.1) call MESS('MISPH: Any roots')
+*         if (idroot.EQ.2) call MESS('MISPH: Complex roots')
+*         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+*      print*, 'MIN root = ', t
+*     .. test vector length before the sign: if t ~ 0 its may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+*     .. MINSPH reflects by its inner surface
+      if (x1 + t*c1 .GT. 0.D0) goto 100
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+*      print*, 'MAX root =', t
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+*     .. MINSPH reflects by its inner surface
+      if (x1 + t*c1 .GT. 0.D0) goto 1001
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+*     .. adjust point on spheroid
+      x2 = x2 + c2*t
+      x3 = x3 + c3*t
+      x1 = -1.d0*sqrt(R2 - x2**2 - x3**2)
+*      print*, 'z in "sphera" system =', z
+*     .. radiant of the output ray in mirror system (shift for z)
+      ray1(4) = x1 + R
+      ray1(5) = x2
+      ray1(6) = x3
+*
+*  Gets directrix cosines o of nornal to spheroid in the point ray1(4:6)
+*
+*  Rewrite spheroid equation x**2 + y**2 + z**2 = R**2 in form
+*  F(z,x,y)=0. Becouse spheroid reflect by its inner surface,
+*  F(z,x,y) = R**2 - z**2 + x**2 + y**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 = -x1
+      o2 = -x2
+      o3 = -x3
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+*     .. include factor 2 to oray
+      oray = 2.d0*(o1*c1 + o2*c2 + o3*c3)/oo
+*      print*, 'o:', o1,o2,o3
+      if (oray .GE. 0.d0) then
+*         print*, 'o:', o1,o2,o3
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      ray1(1) = c1 - oray*o1
+      ray1(2) = c2 - oray*o2
+      ray1(3) = c3 - oray*o3
+
+*     .. normal reflection
+      MISPH = 0
+      goto 1000
+*      RETURN
+
+ 1001 continue
+*     .. ray have missed the spheroid
+      MISPH = -1
+      goto 1000
+*      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of spheroid
+      MISPH = 1
+      goto 1000
+*      RETURN
+ 1000 continue
+*      print*, 'MISPH: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                         @METAGS MIRCIR
+*                                         07-08-98 09:40pm
+*--------------- MIRCIR ---------------
+*
+      integer function MIRCIR(R,ray,ray1)
+*
+*        x|
+*         |
+*         |R
+*         O-------
+*        /       z
+*      y/
+*
+      IMPLICIT NONE
+      real R,ray(6),ray1(6)
+      real t
+      integer i
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+*
+*     Intersection point of line and plane z=0
+*     Line: direcrix cosines ray(3) and point aray(3)
+*     Solve system of linear equations:
+*     Ray: dir.cosines=(cosz,cosx,cosy), point aray=(z0,x0,y0)
+*     eq.: (x-x0)/cosx = (y-y0)/cosy = (z-z0)/cosz
+*     Plane: z=0
+*
+      if (ray(1) .NE. 0.) then
+         t = -ray(4)/ray(1)
+      else
+*        .. ray is parallel to plane
+         goto 1001
+      endif
+*      print*, 'MIRCIR: t=', t
+      if (t .LT. 0.) then
+*        .. ray have missed the plane
+         goto 1001
+      endif
+
+*     .. intersection point ray1(3+i) = ray(3+i) + ray(i)*t
+      ray1(5) = ray(5) + ray(2)*t
+      ray1(6) = ray(6) + ray(3)*t
+*     .. z precisely on plane
+      ray1(4) = 0.
+
+*     .. test to hit
+      if (ray1(5)**2 + ray1(6)**2 .GT. R**2) then
+*        .. miss
+         goto 1001
+      endif
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*     In our frame o=(1,0,0) and (o*ray) = ray(1)
+*
+      if (ray(1) .GE. 0.) then
+*        .. (o*ray) > 0: ray hitted the back side of plane
+         goto 1002
+      endif
+*     .. to reflect enough invert z-component (already ray1(1:3)=ray(1:3))
+      ray1(1) = -ray(1) 
+
+*     .. normal reflection
+      MIRCIR = 0
+      goto 1000
+*      RETURN
+ 1001 continue
+*     .. ray have missed the plane
+      MIRCIR = -1
+      goto 1000
+*      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of plane
+      MIRCIR = 1
+      goto 1000
+*      RETURN
+ 1000 continue
+*      print*, 'MIRCIR: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+
+*                                         @METAGS PARABpar
+*                                         07-10-98 04:25pm
+*--------------- PARABpar ---------------
+*
+      SUBROUTINE PARABpar(Rfoc,Rmax, f,h)
+*     .. Rfoc - paraboloid radius in the focus
+      f = Rfoc/2.
+      h = Rmax**2/(4.*f)
+      END
+
+*                                         @METAGS PARAB
+*                                         06-02-98 01:17pm
+*--------------- PARAB ---------------
+*
+      SUBROUTINE PARAB(f,zmin,zmax,maxray,rayhis,nray,ierr)
+*
+*     Commonly, p = q = 2f
+*     Reflection from paraboloid mirror 2z = x**2/p + y**2/q
+*
+*     Note: ray,ray1 in frame of paraboloid
+*           (i.e. normal in paraboloid top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of paraboloid 2z = x**2/p + y**2/q
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of paraboloid
+*     -1: ray have missed the paraboloid
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |    |
+*            /  |  \   |           
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer maxray,nray,ierr
+      real f,zmin,zmax,rayhis(6,maxray+1)
+      double precision p,q,z1,z2
+      double precision c1,c2,c3,x1,x2,x3, z
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+
+      ierr = 0
+      nray = 1
+
+      do i=1,6
+         rayhis(i,nray+1) = rayhis(i,nray)
+      enddo
+
+      p = 2.d0*f
+      q = p
+*     .. paraboloid boundaries along the z
+      z1 = zmin
+      z2 = zmax
+      if (zmax.EQ.0.) z2=f
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nray)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation x**2/p + y**2/q - 2*z = 0
+*
+*     .. coeffs. of square equation
+      a = c2**2/p + c3**2/q
+      b = 2.*(c2*x2/p + c3*x3/q - c1)
+      c = x2**2/p + x3**2/q - 2.*x1
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'roots:', t1,t2
+      if (idroot.NE.0) then
+*         print*, 'PARAB: idroot =', idroot
+*         call WAIT('PARAB: No roots of square equation')
+*         goto 1001
+
+         if (idroot.LT.0) call MESS('PARAB: No roots')
+         if (idroot.EQ.1) call MESS('PARAB: Any roots')
+         if (idroot.EQ.2) call MESS('PARAB: Complex roots')
+         goto 1001
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MIN root = ', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of paraboloid. Change to MAX root ---'
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+*      print*, 'MAX root =', t, ', z =', z
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of paraboloid. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nray = nray+1
+
+*     .. adjust point on paraboloid
+      x2 = x2 + c2*t
+      x3 = x3 + c3*t
+      x1 = (x2**2/p + x3**2/q)/2.d0
+*      z = REAL(x1 + c1*t)
+*     .. radiant of the output ray
+      rayhis(4,nray) = x1
+      rayhis(5,nray) = x2
+      rayhis(6,nray) = x3
+*
+*  Gets directrix cosines o of nornal to paraboloid in the point ray1(4:6)
+*
+*  Rewrite paraboloid equation x**2/p + y**2/q - 2*z = 0 in form
+*  F(z,x,y)=0. Becouse paraboloid reflect by its inner surface,
+*  F(z,x,y) = 2*z - x**2/p + y**2/q
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  1.d0
+      o2 = -x2/p
+      o3 = -x3/q
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+*     .. include factor 2 to oray
+      oray = 2.d0*(o1*c1 + o2*c2 + o3*c3)/oo
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      c1 = c1 - oray*o1
+      c2 = c2 - oray*o2
+      c3 = c3 - oray*o3
+*     .. assign to output ray
+      rayhis(1,nray) = c1
+      rayhis(2,nray) = c2
+      rayhis(3,nray) = c3
+
+       if (nray.GT.maxray) then
+*         .. history overflow
+          goto 1001
+       endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. here c1,c2,c3 is cosines and x1,x2,x3 is radiant of reflected ray
+*     .. coeffs. of square equation
+      a = c2**2/p + c3**2/q
+      b = 2.*(c2*x2/p + c3*x3/q - c1)
+ 
+*      c = x2**2/p + x3**2/q - 2.*x1
+*      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, 'Compare: roots:', t1,t2
+
+      if (a .NE. 0.d0) then
+         t1 = -b/a
+*         print*, 'by Viete t1=', t1
+*         print*, 'Compare: eq.:', a*t1**2 + b*t1 + c
+      else
+*        .. the other root=0 too
+*           there is no intersection point downstream the ray
+         nray = nray+1
+         goto 1001
+      endif
+*     .. to use the same code
+      t2 = t1
+
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the paraboloid
+      if (nray.EQ.1) ierr = -1
+      nray = nray-1
+      goto 1000
+*      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of paraboloid
+      ierr = 1
+      goto 1000
+*      RETURN
+ 1000 continue
+*      print*, 'PARAB: nray =', nray, '   rays for nray-1, nray:'
+*      print*, (rayhis(j,nray-1), j=1,6)
+*      print*, (rayhis(j,nray), j=1,6)
+      RETURN
+      END
+
+
+*                                         @METAGS CONEpar
+*                                         07-10-98 04:28pm
+*--------------- CONEpar ---------------
+*
+      SUBROUTINE CONEpar(r1,r2,dh, tgcone,h1,h2)
+      tgcone = (r2-r1)/dh
+      h1 = r1/tgcone
+      h2 = r2/tgcone
+      END
+
+*                                         @METAGS CONE
+*                                         06-02-98 01:17pm
+*--------------- CONE ---------------
+*
+      SUBROUTINE CONE(tgcone,zmin,zmax,ray,ray1,nref,ierr)
+*
+*     Reflection from conical mirror (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     Note: ray,ray1 in frame of cone
+*           (i.e. normal in the plane of cutted cone top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of cone (x**2 + y**2)/tgcone**2 - z**2 = 0
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of cone
+*     -1: ray have missed the cone
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |__  |
+*            /  |  \)  | <-- tgcone
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer ierr,nref
+      real tgcone,zmin,zmax, ray(6),ray1(6)
+*     .. cone ray history for 100 rays
+*        rayhis(i,1)          contains the input ray
+*        rayhis(i,nrayhis+1)  contains the output ray
+      integer nrayhis
+      real rayhis
+      common /rayhis/ nrayhis,rayhis(6,100)
+      double precision tg2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z,x,y
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+
+      ierr = 0
+      nrayhis = 1
+
+      do i=1,6
+         rayhis(i,nrayhis) = ray(i)
+         rayhis(i,nrayhis+1) = ray(i)
+      enddo
+
+      tg2 = tgcone**2
+*     .. cone boundaries along the z
+      z1 = zmin
+      z2 = zmax
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nrayhis)
+      c2 = rayhis(2,nrayhis)
+      c3 = rayhis(3,nrayhis)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nrayhis)
+      x2 = rayhis(5,nrayhis)
+      x3 = rayhis(6,nrayhis)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     .. coeffs. of square equation
+      a = (c2**2 + c3**2)/tg2 - c1**2
+      b = 2.d0*((c2*x2 + c3*x3)/tg2 - c1*x1)
+      c = (x2**2 + x3**2)/tg2 - x1**2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, a,b,c
+*      print*, t1,t2
+      if (idroot.NE.0) then
+         if (idroot.EQ.2) then
+            call MESS('CONE: Complex roots: no intersection')
+            goto 1001
+         endif
+         if (idroot.LT.0) call MESS('ERROR CONE: No roots')
+         if (idroot.EQ.1) call MESS('CONE: Any roots')
+         if (x1.GT.z2) then
+            z = 0.
+         elseif (x1.LT.z1) then
+            z = z1-z2
+         else
+            z = x1
+         endif
+         t = (z-x1)/c1
+         rayhis(5,nrayhis) = x2 + c2*t
+         rayhis(6,nrayhis) = x3 + c3*t
+*        .. z precisely on cone: ray is absorbed at the back side of cone
+         rayhis(4,nrayhis) = REAL(sqrt(x2**2 + x3**2)/tgcone)
+         goto 1002
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of cone. Change to MAX root ---'
+*         print*, z
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of cone. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nrayhis = nrayhis+1
+
+*     .. adjust point on cone
+      x = REAL(x2 + c2*t)
+      y = REAL(x3 + c3*t)
+      z = REAL(sqrt(x**2 + y**2)/DBLE(tgcone))
+*     .. radiant of the output ray
+      rayhis(4,nrayhis) = z
+      rayhis(5,nrayhis) = x
+      rayhis(6,nrayhis) = y
+*
+*  Gets directrix cosines o of nornal to cone in the point ray1(4:6)
+*
+*  Rewrite cone equation (x**2 + y**2)/tg**2 - z**2 = 0 in form
+*  F(z,x,y)=0. Becouse cone reflect by its inner surface,
+*  F(z,x,y) = z**2 - (x**2 + y**2)/tg**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*  For cone (o*o) = 4*(z**2 + (x**2+y**2)/tg**2) = 4*2*z**2
+*  is only function of z.
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  z
+      o2 = -x/tg2
+      o3 = -y/tg2
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+      oray = o1*c1 + o2*c2 + o3*c3
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      rayhis(1,nrayhis) = c1 - 2.d0*oray*o1/oo
+      rayhis(2,nrayhis) = c2 - 2.d0*oray*o2/oo
+      rayhis(3,nrayhis) = c3 - 2.d0*oray*o3/oo
+
+       if (nrayhis.GT.100) then
+*         .. history overflow
+          goto 1002
+       endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. cosines of incident ray
+      c1 = rayhis(1,nrayhis)
+      c2 = rayhis(2,nrayhis)
+      c3 = rayhis(3,nrayhis)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nrayhis)
+      x2 = rayhis(5,nrayhis)
+      x3 = rayhis(6,nrayhis)
+*     .. coeffs. of square equation
+      a = (c2**2 + c3**2)/tg2 - c1**2
+      b = 2.d0*((c2*x2 + c3*x3)/tg2 - c1*x1)
+*     .. becouse a.NE.0.
+      t1 = -b/a
+*     .. to use the same code
+      t2 = t1
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the cone
+      if (nrayhis.EQ.1) ierr = -1
+      nrayhis = nrayhis-1
+      goto 1000
+ 1002 continue
+*     .. ray is absorbed at the back side of cone
+      ierr = 1
+      goto 1000
+ 1000 continue
+      nref = nrayhis
+      do i=1,6
+         ray1(i) = rayhis(i,nrayhis+1)
+      enddo
+*      print*, 'CONE: nrayhis =', nrayhis, ' rayhis:'
+*      do i=1, nrayhis+1
+*         print*, (rayhis(j,i), j=1,6)
+*      enddo
+*      call WAIT(' ')
+      RETURN
+      END
+
+*                                         @METAGS CONE0
+*                                         06-02-98 01:17pm
+*--------------- CONE0 ---------------
+*
+      SUBROUTINE CONE0(tgcone,zmin,zmax,maxray,rayhis,nray,ierr)
+*
+*     Reflection from conical mirror (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     Note: ray,ray1 in frame of cone
+*           (i.e. normal in the plane of cutted cone top is (1,0,0))
+*
+*  Intersection point ray1(4:6) of cone (x**2 + y**2)/tgcone**2 - z**2 = 0
+*  and ray with radiant ray(4:6) and directrix cosines ray(1:3)
+*  Notation: ray(cos1,cos2,cos3,x1,x2,x3) == ray(cosz,cosx,cosy,z,x,y)
+*
+*     Returns error code:
+*      0: normal reflection
+*      1: ray is absorbed at the back side of cone
+*     -1: ray have missed the cone
+*
+*              x|       
+*               |      .
+*               |     /|
+*           ray1(4:6)/ |   ray(1:3) ray(4:6)
+*               |   *-------<--------*-----
+*               |  /   |
+*               | |    |
+*              0| |zmin|zmax  
+*            ---+-+----+-----------------------------
+*              /| |    |                            z
+*             / | |__  |
+*            /  |  \)  | <-- tgcone
+*           /   |   \  |
+*          /    |    \ |
+*        y/     |     \|
+*               |      `
+*
+      IMPLICIT NONE
+      integer maxray,nray,ierr
+      real tgcone,zmin,zmax,rayhis(6,maxray+1)
+      double precision tg2,z1,z2
+      double precision c1,c2,c3,x1,x2,x3
+      double precision a,b,c,t,t1,t2
+      double precision o1,o2,o3,oo,oray
+      double precision z,x,y
+      double precision wavel2,vlen2
+*     .. square of wave length (in cm) used as an epsilon
+      parameter (wavel2 = 4.d-10)
+      integer i,idroot
+
+      ierr = 0
+      nray = 1
+
+      do i=1,6
+         rayhis(i,nray+1) = rayhis(i,nray)
+      enddo
+
+      tg2 = tgcone**2
+*     .. cone boundaries along the z
+      z1 = zmin
+      z2 = zmax
+
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nray)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+
+*
+*     Rewrite line equation (z-z0)/cosz=(x-x0)/cosx=(y-y0)/cosz
+*     in parametric form:
+*     z = z0 + cosz*t
+*     x = x0 + cosx*t
+*     y = y0 + cosy*t
+*     here t - parameter. t=0 corresponds to radiant,
+*     t > 0 corresponds going downstream the directrix vector
+*     t < 0 - going in backward direction.
+*     To find t solve the equation (x**2 + y**2)/tgcone**2 - z**2 = 0
+*
+*     .. coeffs. of square equation
+      a = (c2**2 + c3**2)/tg2 - c1**2
+      b = 2.d0*((c2*x2 + c3*x3)/tg2 - c1*x1)
+      c = (x2**2 + x3**2)/tg2 - x1**2
+      call DROOT(a,b,c,t1,t2,idroot)
+*      print*, a,b,c
+*      print*, t1,t2
+      if (idroot.NE.0) then
+         if (idroot.EQ.2) then
+            call MESS('CONE0: Complex roots: no intersection')
+            goto 1001
+         endif
+         if (idroot.LT.0) call MESS('ERROR CONE0: No roots')
+         if (idroot.EQ.1) call MESS('CONE0: Any roots')
+         if (x1.GT.z2) then
+            z = 0.
+         elseif (x1.LT.z1) then
+            z = z1-z2
+         else
+            z = x1
+         endif
+         t = (z-x1)/c1
+         rayhis(5,nray) = x2 + c2*t
+         rayhis(6,nray) = x3 + c3*t
+*        .. z precisely on cone
+         rayhis(4,nray) = REAL(sqrt(x2**2 + x3**2)/tgcone)
+         goto 1002
+      endif
+
+*     .. start test from MIN root becouse both roots may be positive
+      t = MIN(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- Point out of cone. Change to MAX root ---'
+*         print*, z
+         goto 100
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- vlen too small. Change to MAX root ---'
+*         print*, 'vlen2 =', vlen2
+         goto 100
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MIN root. Change to MAX root ---'
+         goto 100
+      endif
+      goto 200
+
+  100 continue
+      t = MAX(t1,t2)
+      z = x1 + c1*t
+      if ((z.LT.z1).OR.(z.GT.z2)) then
+*        .. miss
+*         print*, '--- MAX out of cone. Exit ---'
+         goto 1001
+      endif
+*     .. test vector length before the sign: if t ~ 0 may be any sign     
+      vlen2 = (c1**2 + c2**2 + c3**2)*t**2
+      if (vlen2.LT.wavel2) then
+*         print*, '--- MAX vlen too small. Exit ---'
+*         print*, 'vlen2 =', vlen2
+         goto 1001
+      endif
+      if (t .LT. 0.d0) then
+*         print*, '--- Negative MAX root. Exit ---'
+         goto 1001
+      endif
+  200 continue
+
+*      print*, 't1,t2,t:'
+*      print*, t1,t2,t
+*      print*, 'eq.:', a*t**2 + b*t + c
+
+      nray = nray+1
+
+*     .. adjust point on cone
+      x = REAL(x2 + c2*t)
+      y = REAL(x3 + c3*t)
+      z = REAL(sqrt(x**2 + y**2)/DBLE(tgcone))
+*     .. radiant of the output ray
+      rayhis(4,nray) = z
+      rayhis(5,nray) = x
+      rayhis(6,nray) = y
+*
+*  Gets directrix cosines o of nornal to cone in the point ray1(4:6)
+*
+*  Rewrite cone equation (x**2 + y**2)/tg**2 - z**2 = 0 in form
+*  F(z,x,y)=0. Becouse cone reflect by its inner surface,
+*  F(z,x,y) = z**2 - (x**2 + y**2)/tg**2
+*  Surface normal in the point r=(z0,x0,y0) is grad(F(z,x,y)) in this point.
+*  Direct normal vector along the z-axis: F = z**2 - (x**2 + y**2)/tg**2
+*  Normalized normal vector o=((1/|o|)*dF/dz, (1/|o|)*dF/dx, (1/|o|)*dF/dy),
+*  here |o| = sqrt((dF/dz)**2 + (dF/dx)**2 + (dF/dy)**2)
+*
+*  For cone (o*o) = 4*(z**2 + (x**2+y**2)/tg**2) = 4*2*z**2
+*  is only function of z.
+*
+*     .. omit 2 in o(i) and 2*2 in oo
+      o1 =  z
+      o2 = -x/tg2
+      o3 = -y/tg2
+      oo = o1**2 + o2**2 + o3**2
+*
+*     Directrix cosines of the reflected ray.
+*     Vectorize reflection law: ray1 = ray - 2*(o*ray)*o
+*                            or ray1 = ray - 2*(o*ray)*o/(o*o)
+*     here ray,ray1 - input and output rays (directrix cosines),
+*          o - surface normal, (o*ray) - scalar product. Note: (o*ray) < 0.
+*
+      oray = o1*c1 + o2*c2 + o3*c3
+      if (oray .GE. 0.d0) then
+*         print*, '--- Positive oray =', oray
+         goto 1002
+      endif
+*     .. directrix cosines of the output ray
+      rayhis(1,nray) = c1 - 2.d0*oray*o1/oo
+      rayhis(2,nray) = c2 - 2.d0*oray*o2/oo
+      rayhis(3,nray) = c3 - 2.d0*oray*o3/oo
+
+       if (nray.GT.maxray) then
+*         .. history overflow
+          goto 1002
+       endif
+
+*
+*     Reflect reflected ray if possible
+*
+*     .. one root=0. Use Viete formula for the other root.
+*     .. cosines of incident ray
+      c1 = rayhis(1,nray)
+      c2 = rayhis(2,nray)
+      c3 = rayhis(3,nray)
+*     .. radiant of incident ray
+      x1 = rayhis(4,nray)
+      x2 = rayhis(5,nray)
+      x3 = rayhis(6,nray)
+*     .. coeffs. of square equation
+      a = (c2**2 + c3**2)/tg2 - c1**2
+      b = 2.d0*((c2*x2 + c3*x3)/tg2 - c1*x1)
+*     .. becouse a.NE.0.
+      t1 = -b/a
+*     .. to use the same code
+      t2 = t1
+*     .. repeat
+      goto 100
+
+ 1001 continue
+*     .. ray have missed the cone
+      if (nray.EQ.1) ierr = -1
+      nray = nray-1
+      goto 1000
+*      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of cone
+      ierr = 1
+      goto 1000
+*      RETURN
+ 1000 continue
+*      print*, 'CONE0: nray =', nray, '   rays for nray-1, nray:'
+*      print*, (rayhis(j,nray-1), j=1,6)
+*      print*, (rayhis(j,nray), j=1,6)
+      RETURN
+      END
+
+*                                         @METAGS PMT
+*                                         07-08-98 10:10pm
+*--------------- PMT ---------------
+*
+      SUBROUTINE PMT(Rpmt,ray,ray1,ierr)
+      IMPLICIT NONE
+      real Rpmt,ray(6),ray1(6)
+      integer ierr
+      real t
+      integer i
+
+      do i=1,6
+         ray1(i) = ray(i)
+      enddo
+*
+*     Intersection point of line and plane z=0
+*     Line: direcrix cosines ray(3) and point aray(3)
+*     Solve system of linear equations:
+*     Ray: dir.cosines=(cosz,cosx,cosy), point aray=(z0,x0,y0)
+*     eq.: (x-x0)/cosx = (y-y0)/cosy = (z-z0)/cosz
+*     Plane: z=0
+*
+      if (ray(1) .NE. 0.) then
+         t = -ray(4)/ray(1)
+      else
+*        .. ray is parallel to PM plane
+         goto 1001
+      endif
+*      print*, 'PMT: t=', t
+      if (t .LT. 0.) then
+*        .. ray have missed the plane
+         goto 1001
+      endif
+
+*     .. intersection point ray1(3+i) = ray(3+i) + ray(i)*t
+      ray1(5) = ray(5) + ray(2)*t
+      ray1(6) = ray(6) + ray(3)*t
+*     .. z precisely on plane
+      ray1(4) = 0.
+
+*     .. test to hit
+      if (ray1(5)**2 + ray1(6)**2 .GT. Rpmt**2) then
+*        .. miss
+         goto 1001
+      endif
+
+*     .. hit the PM
+      ierr = 0
+      goto 1000
+*      RETURN
+ 1001 continue
+*     .. ray have missed the PM
+      ierr = -1
+      goto 1000
+*      RETURN
+ 1002 continue
+*     .. ray is absorbed at the back side of PM
+      ierr = 1
+      goto 1000
+*      RETURN
+ 1000 continue
+*      print*, 'PMT: ray,ray1:'
+*      print*, ray
+*      print*, ray1
+      RETURN
+      END
+
+*                                            May 31, 2024
+*     ranbag: a replacement for RANBAG w/o ENTRY statement
+*
+      REAL FUNCTION RANBAG(idummy)
+      RANBAG = RNDM(1.*idummy)
+      RETURN
+      END
+
+      REAL FUNCTION BAGINT(iseed)
+      call RDMIN(iseed)
+      BAGINT = 1.*iseed
+      RETURN
+      END
+
+      SUBROUTINE ranset(iseed)
+      call RDMIN(iseed)
+      END
+
+      integer function BAGREP(n)
+      integer n
+*     Dummy function
+      BAGREP = n
+      END
+
+      INTEGER FUNCTION RANGET()
+*     .. NB empty parenthesis. Call it like that: i = ranget()
+*     .. declare the function in calling unit: integer ranget
+      INTEGER ISEED
+      call RDMOUT(iseed)
+*     print*, 'RANGET: iseed = ', iseed
+      RANGET = iseed
+      RETURN
+      END
+
+      subroutine ranmain(idummy)
+      real r
+      integer iseed
+      real RANBAG
+      real BAGINT
+      integer ranget
+
+      r = RANBAG(idummy)
+      iseed = RANGET()
+      print*, 'iseed from RANGET = ', iseed
+      call RDMOUT(iseed)
+      print*, 'random value = ', r, ' iseed from RDMOUT = ', iseed
+      END
+
+*                                         @METAGS FPARSE
+*                                         01-20-98 02:53pm
+*--------------- FPARSE ---------------
+*
+      SUBROUTINE FPARSE(fstr,fname,file,ext)
+      character*(*) fstr,fname,file,ext
+      character f*32, point
+      data point /'.'/
+      f = fstr
+      lenf = LENOCC(f)
+      lene = LENOCC(ext)
+      ipoint = INDEX(f,'.')
+      if (ipoint.EQ.0) then
+         fname = f
+         file  = f(1:lenf)//point//ext(1:lene)
+      else
+         fname = f(1:ipoint-1)
+         file  = f
+      endif
+      call CUTOL(file)
+      END
+
+*                                         @METAGS LUNFREE
+*                                         01-20-98 02:25pm
+*--------------- LUNFREE ---------------
+*
+      integer function LUNFREE(lunstart)
+      logical used
+      lun = lunstart-1
+      if (lun.LT.0) lun=0
+  100 lun = lun+1
+      inquire (UNIT=lun, OPENED=used)
+      if (used) goto 100
+      LUNFREE = lun
+      END
+
+*                                         @METAGS FILELUN
+*                                         04-07-98 01:01pm
+*--------------- FILELUN ---------------
+*
+      SUBROUTINE FILELUN(lun,file)
+      character*(*) file
+      inquire (UNIT=lun, NAME=file)
+      call CUTOL(file)
+      END
+
+
+*                                         @METAGS MESS.COMIS
+*                                         01-22-98 02:11pm
+*--------------- MESS ---------------
+*
+      SUBROUTINE MESS(line)
+      character line*(*)
+      length = LENOCC(line)
+      if (length.GT.0) print 1, line(1:length)
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS WAIT
+*                                         11-15-96 09:45pm
+*--------------- WAIT ---------------
+*
+      SUBROUTINE WAIT(mess)
+      character mess*(*), ch*1
+      if ((LEN(mess).GT.0) .AND. (mess.NE.' ')) print*, mess
+      print*, '<CR>=Continue, Q=Quit'
+      read 1, ch
+      if ((ch.EQ.'q') .OR. (ch.EQ.'Q')) STOP
+      RETURN
+    1 FORMAT(A)
+      END
+
+*                                         @METAGS alpcol
+*                                         10-02-98 00:31am
+*--------------- alpcol ---------------
+*
+      function alpcol(Rbox,Dcol)
+*     .. initial value of optimum focus for collector
+      f = Dcol
+*     .. works in term of R further
+      R = 2.*f
+*     .. accuracy
+      eps = 0.001*Dcol
+      iter = 0
+  100 continue
+      delta = sqrt(R**2 + Rbox**2) - R
+      alpha = atan(Rbox/(Dcol-delta))
+      R1 = Rbox/tan(alpha/2.)
+      dif = abs(R1-R)
+      R = R1
+      iter = iter+1
+*      print*, 'iter =', iter
+      if (iter.EQ.10) then
+         print*, 'ERROR alpcol: Iteration limit is exceeded'
+         STOP
+      endif
+      if (dif.GT.eps) goto 100
+      f = R/2.
+      alpcol = acos(Rbox/f)
+      END
+
+*
+*  Dummy routines: HBOOK routines unaccessable from PAW
+*
+
+      subroutine GETARG(id,thisf) ! GNU Fortran compiler
+      integer id
+      character*8 thisf
+*     GNU routine that assigns to thisf commmand line argument
+*     were argument 0 is the executable name
+      print*, 'Dummy GETARG'
+      END
+
+      subroutine HLIMIT(n)
+*     HBOOK routine unavailable from PAW
+      print*, 'Dummy HLIMIT'
+      END
+
+      subroutine TIMEST(tlim)
+*     Dummy routine for absend GNU routine
+      print*, 'Dummy TIMEST'
+      END
+
+      subroutine TIMEX(time)
+*     Dummy routine for absend GNU routine
+      print*, 'Dummy TIMEX'
+      time = 0
+      END
+
+      subroutine HPRNT(id)
+*     HBOOK routine unaccessible from PAW
+      print*, 'Dummy HPRNT'
+      END
+
+      subroutine IMESS(mess, n)
+*     Simplified absent subroutine
+      character*(*) mess
+      integer n
+      print*, mess, n
+      END
+
+**********************************************************
+*
+*  subroutine half
+*
+**********************************************************
+
+*     program half
+      subroutine half
+*      IMPLICIT NONE
+      PARAMETER (NWPAWC = 300000)
+      PARAMETER (LRECL  = 1024)
+      PARAMETER (id = 1)
+      COMMON /PAWC/ IPAW(NWPAWC)
+      
+      real sysmir(5),syscol(5),syspmt(5), systst(5),syscap(5)
+      character*127 CHPATH
+
+      character CHTOP*8, CHFILE*32
+      character*80 chtitl, titbuf
+      
+      character c
+*
+*     Store in Ntuple:
+*     iref     - flag hit to reflector
+*     ireg     - flag hit to PM
+*     part(6)  - vector of incident particle
+*     ray0(6)  - vector of initial photon
+*     ray(6)   - vector of photon after the reflector
+*     xypmt(2) - x,y coordinates of intersection with PM in PM system
+*
+*                                   @METAGS NTcommon
+      COMMON /OPTIC/ ireg,ip,npart,part(6),ray0(6),raycap(6),
+     &               m,raymir(6),raytst(6),intref,raypmt(6)
+      common /PARAM/ Dbox, Rbox, f, Rpmt, Dcol, Rcol2, dhcol,
+     &               alpha, pere, perpi
+
+      real raylab(6),rayloc(6),rayref(6)
+
+      character*32 thisf,thisn,ifile,bfile,pfile, afile
+      double precision betan
+      logical pion
+
+      data CHTOP /'NTDIR'/ ! CHBLOCK
+      data CHFILE/' '/
+      data afile /'unknown'/
+
+      call GETARG(0,thisf) ! GETARG is GNU routine, not in PAW
+      thisf = 'half.x'
+      call FPARSE(thisf,thisn,thisf,'x')
+      lename = LENOCC(thisn)
+      CHFILE = thisn(1:lename)//'.hbook'
+*     ifile  = thisn(1:lename)//'.f'
+      ifile  = 'main_half.kumac'
+      bfile  = thisn(1:lename)//'_t.f'
+      pfile  = thisn(1:lename)//'_p.for'
+
+      print*, ' '
+      print*, 'This file ', thisf
+      print*, 'Ini file  ', ifile
+      print*, 'HBOOK file with Ntuple id =', id, '   ', CHFILE
+      print*, 'Batch file for stand alone usage  ', bfile
+      print*, 'Batch file for PAW usage          ', pfile
+      print*, ' '
+
+      lun = LUNFREE(1)
+      open (lun, FILE=ifile, STATUS='OLD', ERR=10000)
+      read (lun,*) c,nran
+      print*, 'nran: ', nran
+      read (lun,*) c,init
+      print*, 'init: ', init
+      read (lun,*) c,Dbox
+      print*, 'Dbox: ', Dbox
+      read (lun,*) c,Rbox
+      print*, 'Rbox: ', Rbox
+      read (lun,*) c,Rbeam
+      print*, 'Rbeam: ', Rbeam
+      read (lun,*) c,f
+      print*, 'f: ', f
+      read (lun,*) c,Rpmt
+      print*, 'Rpmt = ', Rpmt
+      read (lun,*) c,Dcol
+      read (lun,*) c,Rcol2
+      read (lun,*) c,dhcol
+      read (lun,*) c,Rref
+      read (lun,*) c,rindex
+      read (lun,*) c,PMconst
+      read (lun,*) c,PMconv
+      read (lun,*) c,angmax
+      read (lun,*) c,Ppi
+      read (lun,*) c,iparax
+
+      close(lun)
+
+      print*, 'Ini file data:'
+      print*, 'N randoms =', nran
+      print*, 'Dbox =', Dbox, ' cm'
+      print*, 'Rbox  =', Rbox, ' cm'
+      print*, 'Rbeam  =', Rbeam, ' cm'
+      print*, 'f =', f, ' cm'
+      print*, 'Rpmt =', Rpmt, ' cm'
+      print*, 'Dcol =', Dcol, ' cm'
+      print*, 'Rcol2  =', Rcol2, ' cm'
+      print*, 'dhcol  =', dhcol, ' cm'
+      print*, 'Rref =', Rref, ' cm'
+      print*, 'rindex =', rindex, ' (n-1)*1e6'
+      print*, 'PMconst =', PMconst, ' 1/cm'
+      print*, 'PMconv =', PMconv
+      print*, 'angmax  =', angmax, ' mrad'
+      print*, 'Ppi  =', Ppi, ' GeV'
+      print*, 'iparax  =', iparax, ' flag of paraxial photon rays'
+      call WAIT(' ')
+
+c     .. convert
+      pi = ACOS(-1.)
+      torad = pi/180.
+      todeg = 180./pi
+      
+      angrad = angmax/1000.
+      
+*                                         @METAGS Geometry
+*     Geometry
+*      
+*     x|   /                
+*      |  / <-- unused                       
+*      | /      mirror
+*      |/       surface   cone   PM
+*      |                +------+----+
+*  Rbox+----------------|      |    |----+
+*      |                +------+----+    |
+*      |\                                |
+*     0+-\- - - - - - - - - -  + - - - - + - - - - - -
+*     /|  \                    Dcol      |          z
+*   y/ |   \                             |
+*      +---------------------------------+
+* -Rbox                                  Dbox
+
+*                                         @METAGS mirror_frame
+*     .. define focus distance
+      if     (f .GT. 0.) then
+*        .. explicit focus
+      elseif (f .EQ. 0.) then
+         f = Dcol
+      elseif (f .LT. 0.) then
+         print*, 'Error in f'
+         STOP
+      endif
+
+*     .. collector and PM angle, rad
+*     .. mirror with Rmir = 2f
+      Rmir = 2.*f
+*     .. z-coord. of the point of mirror at x=0,y=0
+      delta = Rmir - sqrt(Rmir**2 - Rbox**2)
+      alpha = atan2(Rbox, (Dcol-delta))
+      print*, 'Collector/PM angle', todeg*alpha, ' degrees'
+
+*     .. cap frame
+      Rcap = Rbox
+      iaxis = 3
+      thcap = 0.
+      zcap = 0.
+      xcap = 0.
+      call mkframe(iaxis,thcap,zcap,xcap, syscap)
+
+*     .. mirror frame
+      iaxis = 3
+      thmir = 0.
+      zmir = 0.
+      xmir = Rbox
+      call mkframe(iaxis,thmir,zmir,xmir, sysmir)
+
+*                                         @METAGS pmt_frame
+*     .. PM in focus
+*     .. pmt frame
+      iaxis = 3
+      thpmt = 180. + todeg*alpha
+      zpmt = f
+      xpmt = Rbox
+      call mkframe(iaxis,thpmt,zpmt,xpmt, syspmt)
+      
+      print*, 'Distance to PM is', zpmt, ' cm from counter box back'
+      print*, 'Distance to PM is', xpmt, ' cm from counter axis'
+
+*                                         @METAGS collector_frame
+*     .. collector before PM
+      Rcol1 = Rpmt
+      call CONEpar(Rcol1,Rcol2,dhcol, tgcone,h1col,h2col)
+*     .. collector frame
+      iaxis = 3
+      thcol = 180. + todeg*alpha
+      zcol = Dcol + h1col*cos(alpha)
+      xcol = Rbox + h1col*sin(alpha)
+      call mkframe(iaxis,thcol,zcol,xcol, syscol)
+
+*                                         @METAGS tst_frame
+*     .. test plane at the collector input window
+      Rtst = 2.*Rbox
+      iaxis = 3
+      thtst = 180. + todeg*alpha
+      ztst = zcol - h2col*cos(alpha)
+      xtst = xcol - h2col*sin(alpha)
+      call mkframe(iaxis,thtst,ztst,xtst, systst)
+
+*--   .. electron
+*     .. Cherenkov angle
+      thetae = ACOS(1.D0/(1.D0 + rindex*1.D-6))
+*     .. the number of photoelectrons
+      pee = Dbox*PMconst*(SIN(thetae))**2
+*     .. the number of photons
+      phote = pee/PMconv
+*     .. mean free path length between emitances
+      alame = Dbox/phote
+*--   .. pion
+      betapi = 1.D0/(1.D0 + (0.140D0/Ppi)**2)
+      betan = betapi*(1.D0 + rindex*1.D-6)
+      if (betan .GT. 1.D0) then
+         thetapi = ACOS(1.D0/(betan))
+*        .. the number of photoelectrons
+         pepi = Dbox*PMconst*(SIN(thetapi))**2
+*        .. the number of photons
+         photpi = pepi/PMconv
+*        .. mean free path length between emitances
+         alampi = Dbox/photpi
+      else
+         pepi = 0.
+         photpi = 0.
+         alampi = 2.*Dbox
+      endif
+      print*, ' '
+      print*, 'electron Cherenkov angle', thetae, ' rad'
+      print*, 'electron the average number of photoelectrons', pee
+      print*, 'electron the average number of photons', phote
+      print*, 'electron mean free path length', alame
+      print*, 'pion     Cherenkov angle', thetapi, ' rad'
+      print*, 'pion     the average number of photoelectrons', pepi
+      print*, 'pion     the average number of photons', photpi
+      print*, 'pion     mean free path length', alampi
+      print*, ' '
+
+      dummy = BAGINT(init)
+
+*     .. Some tests
+*      call WAIT('fot test aim set particle angular spreading to 0')
+*      angrad = 0.
+*      call WAIT('fot test aim set photon angle to 0')
+*      thetae  = 0.
+*      thetapi = 0.
+
+*
+*     Ntuple
+*      
+      write(chtitl,20) Rcol2,dhcol, f
+   20 format ('Half mirror. Rcol2,dhcol=', 2F5.0, ' f=', F4.0, ' cm')
+
+      if (iparax.NE.0) then
+         print*, ' '
+         print*, '*****************************************'
+         print*, 'Test for paraxial photon rays!'
+         print*, 'Photon angle with respect to particle = 0'
+         print*, 'Particle angular spreading = 0'
+         print*, '*****************************************'
+         call WAIT(' ')
+         thetae  = 0.
+         thetapi = 0.
+         angrad = 0.
+         titbuf = chtitl
+         len = LENOCC(titbuf)
+         chtitl = titbuf(1:len)//'. Paraxial test for [Q]?[g]!=0'
+      endif
+
+      call MESS('Ntuple title:')
+      call MESS(chtitl)
+
+      print*, ' '
+      call WAIT('Begin the calculation')
+
+      CALL HLIMIT(NWPAWC) ! dummy routine unaccessible in PAW
+*     .. open a new RZ file
+      ntlun = LUNFREE(1)
+      CALL HROPEN(ntlun,CHTOP,CHFILE,'N',LRECL,ISTAT)
+*     .. book Ntuple
+      CALL HBNT(id,chtitl,' ')
+*     .. define Ntuple
+*                                         @METAGS HBNAME
+      CALL HBNAME(id,'OPTIC', ireg,
+     &           'ireg[0,1]:U, ip[0,1]:U, npart:U,
+     '            part(6):R,ray0(6):R,raycap(6):R,m[0,1]:U,raymir(6):R,
+     '            raytst(6):R, intref[0,10]:U, raypmt(6):R')
+
+      call FILELUN(ntlun,afile)
+      print*, 'With unit', ntlun, ' connected file ', afile
+      print*, 'Running ..'
+
+      tlim = 10000.
+      call TIMEST(tlim)
+      
+*
+*--   MAIN PART
+*
+      npart = 0
+      nemite = 0
+      nrege  = 0
+      nemitpi = 0
+      nregpi  = 0
+      print*, 'Total particles', nran
+
+      idummy = 0
+*                                      @METAGS MAINloop
+*------------------------------------- main loop begin
+      DO np=1,nran
+*     .. electron flag
+      pion = .FALSE.
+      ip = 0
+      theta = thetae
+      alam = alame
+*     .. particle radiant in circle with radius Rbox
+  100 continue
+      idummy = idummy+1
+      xp = Rbeam*2.*(.5 - RANBAG(idummy))
+      idummy = idummy+1
+      yp = Rbeam*2.*(.5 - RANBAG(idummy))
+      if (xp**2 + yp**2 .GT. Rbeam**2) goto 100
+      zp = Dbox
+*     .. particle direction
+      idummy = idummy+1
+      thp = pi - angrad*RANBAG(idummy)
+      idummy = idummy+1
+      php = 2.*pi*RANBAG(idummy)
+
+      part(4) = zp
+      part(5) = xp
+      part(6) = yp
+      part(1) = cos(thp)
+      part(2) = sin(thp)*cos(php)
+      part(3) = sin(thp)*sin(php)
+      npart = npart+1
+
+*     .. consts for coordinates transformations
+      sinthp = sin(thp)
+      costhp = cos(thp)
+      sinphp = sin(php)
+      cosphp = cos(php)
+      
+ 1001 continue
+*     .. initialize particle current position
+      z = zp
+      x = xp
+      y = yp
+
+ 1000 continue      
+*     .. current range
+      idummy = idummy+1
+      range = -alam*LOG(RANBAG(idummy))
+*     .. current position
+      z = z + range*part(1)
+      x = x + range*part(2)
+      y = y + range*part(3)
+      if (z.LE.0.) goto 1999
+      
+*     .. emit the photon in the particle frame
+      if (pion) then
+         nemitpi = nemitpi+1
+      else
+         nemite = nemite+1
+      endif
+
+*     .. photon radiant
+      ray0(4) = z
+      ray0(5) = x
+      ray0(6) = y      
+*     .. photon direction
+      thg = theta
+      idummy = idummy+1
+      phg = 2.*pi*RANBAG(idummy)
+
+*     .. photon dir.cosines in particle system
+      cz = cos(thg)
+      cx = sin(thg)*cos(phg)
+      cy = sin(thg)*sin(phg)	  
+*      print*, 'photon dir.cos. in particle sys.:', cz,cx,cy
+
+*     .. convert photon dir.cosines to lab
+*     	 step 1: rotate round y by thp
+*     	 step 2: rotate round z by php
+*     	 Result:
+      ray0(1) = cz*costhp        - cx*sinthp
+      ray0(2) = cz*sinthp*cosphp + cx*costhp*cosphp - cy*sinphp
+      ray0(3) = cz*sinthp*sinphp + cx*costhp*sinphp + cy*cosphp
+
+*                                         @METAGS RunRay
+*     Ray runs
+*
+*     .. clear registration flag
+      ireg = 0
+*     .. clear reflection-from-mirror flag
+      m = 0
+*     .. clear the number of reflection in the collector
+      intref = 0
+*     .. clear arrays
+      do i=1,6
+         raytst(i) = 100.
+         raypmt(i) = 100.
+      enddo
+
+*                                         @METAGS cap_ref
+*     .. cap plane
+      call toloc(syscap,ray0,rayloc)
+*     .. use routine PMT for hit cap plane
+      call PMT(Rcap,rayloc,rayref,iercap)
+      call tolab(syscap,rayref,raycap)
+      if (iercap.NE.0) then
+*        .. lost ray
+         print*, 'Error in hit of cap plane'
+      endif
+
+*                                         @METAGS mirror_ref
+*     .. reflection from mirror
+      call toloc(sysmir,ray0,rayloc)
+      iermir = MISPH(Rmir,rayloc,rayref)
+*     .. return to lab
+      call tolab(sysmir,rayref,raylab)
+      do i=1,6
+         raymir(i) = raylab(i)
+      enddo
+      if (iermir.NE.0) then
+*        .. absorbed at the mirror (iermir=1) or missed the mir. (iermir=-1)
+         goto 2000
+      endif
+      if (raylab(5)**2+raylab(6)**2 .GT. Rbox**2) then
+*        .. photon hit mirror out the box
+         goto 2000
+      endif
+      m = 1
+
+*                                         @METAGS tst_ref
+*     .. look at test plane
+      call toloc(systst,raylab,rayloc)
+*     .. use routine PMT for hit test plane
+      call PMT(Rtst,rayloc,raytst,iertst)
+      if (iertst.NE.0) then
+*        .. lost ray
+         print*, 'Error in hit of test plane'
+      endif
+      
+*                                         @METAGS collector_ref
+*--   Reflection from collector
+*     .. ray in collector local frame
+      call toloc(syscol,raylab,rayloc)
+      call CONE(tgcone,h1col,h2col,rayloc,rayref,npro,iercol)
+*     .. return to lab
+      call tolab(syscol,rayref,raylab)
+      if (iercol.EQ.0) ncol=ncol+1
+      intref = npro
+      if (iercol.GT.0) then
+*        .. absorbed at the collector. Store event.
+         goto 2000
+      endif
+
+*                                         @METAGS pmt_ref
+*--   Intersection with PM
+*     .. ray in PM local frame
+      call toloc(syspmt,raylab,rayloc)
+      call PMT(Rpmt,rayloc, raypmt,ierpmt)
+      if (ierpmt.GE.0) then
+         if (ierpmt.EQ.0) then
+*           .. absorbed at the PMT.
+            ireg = 1
+            npmt = npmt+1
+
+            if (pion) then
+               nregpi = nregpi+1
+            else
+               nrege = nrege+1
+            endif
+          else
+*     	    .. lost
+             print*, 'Ray is absorbed at PM back'
+         endif
+      endif
+
+*     .. goto store      
+      goto 3000
+      
+ 2000 continue
+      ireg = 0
+      do i=1,6
+          raypmt(i) = 100.
+      enddo
+
+ 3000 continue
+*     .. store raw
+      call HFNT(id)
+      
+*     .. for the next photon
+      goto 1000
+
+ 1999 continue
+      if ((.NOT.pion) .AND. (photpi .GT. 0.)) then
+*        .. pion flag
+         pion = .TRUE.
+         ip = 1
+         theta = thetapi
+         alam = alampi
+*        .. run pion by the same way
+         goto 1001
+      endif
+      if (MOD(np,100).EQ.0) then
+          call IMESS('processed particles: ', np)
+      endif
+      ENDDO
+*------------------------------------- main loop end
+*
+*--   MAIN PART END
+*
+
+      print*, ' '
+      print*, '--- electrons:'
+      print*, 'There are', nemite, ' photons were emitted'
+      print*, 'There are', nrege, ' photons were registrated'
+      phpart = REAL(nemite)/REAL(nran)
+      print*, 'The average number of emitted photons/particle', phpart
+      pere = 100.*REAL(nrege)/REAL(nemite)
+      print*, 'Registration efficiency is', pere, '%'
+      print*, '--- pions:'
+      print*, 'There are', nemitpi, ' photons were emitted'
+      print*, 'There are', nregpi, ' photons were registrated'
+      phpart = REAL(nemitpi)/REAL(nran)
+      print*, 'The average number of emitted photons/particle', phpart
+      perpi = 100.*REAL(nregpi)/REAL(nemitpi)
+      print*, 'Registration efficiency is', perpi, '%'
+
+***** *                                            @METAGS PARAM_HBNAME
+***** *     .. Store some parameters at block PARAM
+*****       call HBNAME(id,'PARAM', Dbox,
+*****      &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
+*****      '            Dcol:R, Rcol2:R, dhcol:R,
+*****      '            alpha:R, pere:R, perpi:R')
+*****       call HFNTB(id,'PARAM')
+
+      dummy = BAGREP(iused)
+      
+      print*, ' '
+      call TIMEX(time)
+      print*,'Job time', time, ' seconds'
+      call WAIT('End of calculation. Close files')
+
+      CALL HPRNT(id)
+
+***   *
+***   *-- write batch version of analisys routine to file
+***   *
+***         lunb = LUNFREE(1)
+***         OPEN(lunb, FILE=bfile, STATUS='UNKNOWN')
+***         CALL HUWFUN(lunb, id, thisn(1:lename), 0, 'B')
+***         close(lunb)
+***   *     .. paw routine
+***         lunp = LUNFREE(1)
+***         open (lunp, FILE=pfile, STATUS='UNKNOWN')
+***         CALL HUWFUN(lunp, id, thisn(1:lename), 0, 'P')
+***         close(lunp)
+
+*
+*-- write Ntuple buffer to disk and close RZ file
+*
+      CALL HROUT(0,ICYCLE,' ')
+*      print*, 'After HROUT(0,ICYCLE,'' '') ICYCLE =', ICYCLE
+
+      goto 99999
+      CHPATH = ' '
+      call HCDIR(CHPATH,'R')
+      print*, ' '
+      call HLDIR('//PAWC','T')
+      print*, ' '
+*     print '('' Current directory is '', A)', CHPATH(1:LENOCC(CHPATH))
+*     print*, ' Current directory is ', CHPATH(1:LENOCC(CHPATH))
+      print*, 'Current directory is ', CHPATH
+      call HLDIR(' ','T')
+
+99999 CALL HREND(CHTOP)
+      STOP
+*10000 print*, 'Ini file ', ifile(1:LENOCC(ifile)), ' did not found'
+10000 print*, 'Ini file was not found: ', ifile
+      END
+QUIT
