@@ -12,6 +12,7 @@ exec $ENV(HOME)/paw/pawlogon#Win 40 40
 exec $ENV(HOME)/paw/pawlogon#XARGS
 
 hname = half
+* hname = center
 read hname 'Enter hname'
 g/cr hname   [hname]
 g/cr panfile [hname]
@@ -24,8 +25,16 @@ g/cr panfile [hname]
 opt stat
 csel nbc
 
-*set mtyp 20
-*set mscf .1
+* set red the default marker color
+set pmci 2
+
+* set red cross as the default marker
+* set mtyp 2
+
+* set small filled circle as a default marker
+set mtyp 20
+* set mscf .1
+set mscf .2
 
 *h/file 1 [hfile]
 *exec pan#for
