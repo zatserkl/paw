@@ -1,4 +1,4 @@
-MACRO cern
+MACRO cernpop
 APPL COMIS QUIT
 *                                         @METAGS LUNFREE
 *                                         01-20-98 02:25pm
@@ -20,6 +20,7 @@ APPL COMIS QUIT
       subroutine cernpop
       integer category, flag, age, service, children, grade, step,
      +        hrweek, cost
+*     .. you may comment out declaration of common cern: it's not in use
       common /cern/ category, flag, age, service, children, grade,
      +              step, hrweek, cost
       character*4 division, nation
@@ -41,24 +42,25 @@ APPL COMIS QUIT
       chblock = 'CERN'
 
       lun = LUNFREE(1)
-      call hropen(lun, chblock, 'cernpop.hbook', 'N', 1024, istat)
+      call HROPEN(lun, chblock, 'cernpop.hbook', 'N', 1024, istat)
+      print*, 'opened output file cernpop.hbook at LUN', lun
 
-      print*, 'after hropen istat = ', istat
+*     print*, 'after HROPEN istat = ', istat
 
 *     1) declare id and title
 
       id = 11
-      call hbnt(id, 'CERN Population (CWN)', ' ')
+      call HBNT(id, 'CERN Population (CWN)', ' ')
 
-*     2) use hbname, hbnamc to describe the variables
+*     2) use HBNAME, HBNAMC to describe the variables
 
       chform = ' CATEGORY[100,600]:I, FLAG:U:6, AGE[1,100]:I,'//
      +         ' SERVICE[0,60]:I, CHILDREN[0,10]:I, GRADE[3,14]:I,'//
      +         ' STEP[0,15]:I, HRWEEK:I, COST:I'
-      call hbname(id, chblock, category, chform)
+      call HBNAME(id, chblock, category, chform)
 
       chform = 'DIVISION:C,           NATION:C'
-      call hbnamc(id, chblock, division, chform)
+      call HBNAMC(id, chblock, division, chform)
 
       open(unit=41, file='aptuple.dat', status='old')
 
@@ -79,7 +81,8 @@ APPL COMIS QUIT
 
    20 close(41)
 
-      call hrout(id, icycle, ' ')
+*     .. HROUT(0, icycle) stores all the histrograms in memory
+      call HROUT(0, icycle, ' ')
       call HREND(chblock)
       end
 QUIT
