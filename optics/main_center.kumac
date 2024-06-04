@@ -1410,6 +1410,12 @@ APPL COMIS QUIT
       call RDMIN(iseed)
       END
 
+      integer function BAGREP(n)
+      integer n
+*     Dummy function
+      BAGREP = n
+      END
+
       INTEGER FUNCTION RANGET()
 *     .. NB empty parenthesis. Call it like that: i = ranget()
 *     .. declare the function in calling unit: integer ranget
@@ -1975,6 +1981,46 @@ APPL COMIS QUIT
     1 FORMAT(A)
       END
 
+*
+*  Dummy routines: HBOOK routines unaccessable from PAW
+*
+
+      subroutine GETARG(id,thisf) ! GNU Fortran compiler
+      integer id
+      character*8 thisf
+*     GNU routine that assigns to thisf commmand line argument
+*     were argument 0 is the executable name
+      print*, 'Dummy GETARG'
+      END
+
+      subroutine HLIMIT(n)
+*     HBOOK routine unavailable from PAW
+      print*, 'Dummy HLIMIT'
+      END
+
+      subroutine TIMEST(tlim)
+*     Dummy routine for absend GNU routine
+      print*, 'Dummy TIMEST'
+      END
+
+      subroutine TIMEX(time)
+*     Dummy routine for absend GNU routine
+      print*, 'Dummy TIMEX'
+      time = 0
+      END
+
+      subroutine HPRNT(id)
+*     HBOOK routine unaccessible from PAW
+      print*, 'Dummy HPRNT'
+      END
+
+      subroutine IMESS(mess, n)
+*     Simplified absent subroutine
+      character*(*) mess
+      integer n
+      print*, mess, n
+      END
+
 *******************************
 *
 *     subroutine center
@@ -2034,12 +2080,13 @@ APPL COMIS QUIT
 
       print*, '-- begin!'
 
-*--AZ      call GETARG(0,thisf) ! GNU Fortran compiler
+      call GETARG(0,thisf) ! GNU Fortran compiler
       thisf = 'center.x'
       call FPARSE(thisf,thisn,thisf,'x')
       lename = LENOCC(thisn)
       CHFILE = thisn(1:lename)//'.hbook'
-      ifile  = thisn(1:lename)//'.f'
+*     ifile  = thisn(1:lename)//'.f'
+      ifile  = 'main_center.kumac'
       bfile  = thisn(1:lename)//'_b.f'
       pfile  = thisn(1:lename)//'_p.for'
 
@@ -2268,7 +2315,7 @@ c     .. convert
       print*, ' '
       call WAIT('Begin the calculation')
 
-******      CALL HLIMIT(NWPAWC)
+      CALL HLIMIT(NWPAWC)
       print*, '-- after call HLIMIT'
 *     .. open a new RZ file
       ntlun = LUNFREE(1)
@@ -2605,8 +2652,7 @@ c     .. convert
 *
 *-- write Ntuple buffer to disk and close RZ file
 *
-*     CALL HROUT(0,ICYCLE,' ')
-      CALL HROUT(id,ICYCLE,' ')
+      CALL HROUT(0,ICYCLE,' ')
 *      print*, 'After HROUT(0,ICYCLE,'' '') ICYCLE =', ICYCLE
 
       goto 99999
