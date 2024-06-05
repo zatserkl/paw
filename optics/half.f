@@ -3,9 +3,9 @@
 * 500.   Dbox, cm
 * 30.    Rbox, cm
 * 15.    Rbeam
-* 0      f, cm. f=0 means f=Dcol
+* 0.      f, cm. f=0 means f=Dcol
 * 2.5    Rpmt, cm
-* 200    75.    100    200.   Dcol, cm
+* 200.    75.    100    200.   Dcol, cm
 * 4.     6.    Rcol2, cm
 * .1     20.    dhcol, cm
 * 0.     Rref, cm
