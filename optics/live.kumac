@@ -1,0 +1,33 @@
+*** Begin of history file: Tue Jun  4 19:18:20 2024
+h/file 20 half.hbook
+nt/print 1
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1
+opt grid
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=0
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=0
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=0
+set pmci 7
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1
+set pmci 6
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1
+set pmci 5
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1
+set pmci 4
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=0
+set pmci 2
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1 same
+set pmci 4
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=0
+set pmci 2
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1 option=s
+p/cr pic
+set pmci 4
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=0
+set pmci 2
+nt/plot 1.raypmt(6)%raypmt(5) raypmt(5)<40&&ip=1 option=s
+pic/print pion-electron.ps
+qu
+*** End   of history file: Tue Jun  4 19:37:09 2024

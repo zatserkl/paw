@@ -1600,6 +1600,8 @@ APPL COMIS QUIT
 
       character CHTOP*8, CHFILE*32
       character*80 chtitl, titbuf
+
+      character*8 opticbl, parambl
       
       character c
 *
@@ -1622,6 +1624,9 @@ APPL COMIS QUIT
       character*32 thisf,thisn,ifile,bfile,pfile, afile
       double precision betan
       logical pion
+
+      data opticbl /'OPTIC'/
+      data parambl /'PARAM'/
 
       data CHTOP /'NTDIR'/ ! CHBLOCK
       data CHFILE/' '/
@@ -1648,19 +1653,12 @@ APPL COMIS QUIT
       lun = LUNFREE(1)
       open (lun, FILE=ifile, STATUS='OLD', ERR=10000)
       read (lun,*) c,nran
-      print*, 'nran: ', nran
       read (lun,*) c,init
-      print*, 'init: ', init
       read (lun,*) c,Dbox
-      print*, 'Dbox: ', Dbox
       read (lun,*) c,Rbox
-      print*, 'Rbox: ', Rbox
       read (lun,*) c,Rbeam
-      print*, 'Rbeam: ', Rbeam
       read (lun,*) c,f
-      print*, 'f: ', f
       read (lun,*) c,Rpmt
-      print*, 'Rpmt = ', Rpmt
       read (lun,*) c,Dcol
       read (lun,*) c,Rcol2
       read (lun,*) c,dhcol
@@ -1857,17 +1855,28 @@ c     .. convert
       call WAIT('Begin the calculation')
 
       CALL HLIMIT(NWPAWC) ! dummy routine unaccessible in PAW
+
 *     .. open a new RZ file
       ntlun = LUNFREE(1)
       CALL HROPEN(ntlun,CHTOP,CHFILE,'N',LRECL,ISTAT)
+
 *     .. book Ntuple
       CALL HBNT(id,chtitl,' ')
+
 *     .. define Ntuple
-*                                         @METAGS HBNAME
-      CALL HBNAME(id,'OPTIC', ireg,
+
+      CALL HBNAME(id,opticbl, ireg,
      &           'ireg[0,1]:U, ip[0,1]:U, npart:U,
      '            part(6):R,ray0(6):R,raycap(6):R,m[0,1]:U,raymir(6):R,
      '            raytst(6):R, intref[0,10]:U, raypmt(6):R')
+
+*                                         @METAGS HBNAME
+      call HBNAME(id,parambl, Dbox,
+     &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
+     '            Dcol:R, Rcol2:R, dhcol:R,
+     '            alpha:R, pere:R, perpi:R')
+*     .. fill the parameter block
+*     call HFNTB(id,parambl)
 
       call FILELUN(ntlun,afile)
       print*, 'With unit', ntlun, ' connected file ', afile
@@ -2071,7 +2080,9 @@ c     .. convert
 
  3000 continue
 *     .. store raw
-      call HFNT(id)
+*     call HFNT(id)
+      call HFNTB(id,opticbl)
+      call HFNTB(id,parambl)
       
 *     .. for the next photon
       goto 1000
@@ -2094,7 +2105,6 @@ c     .. convert
 *
 *--   MAIN PART END
 *
-
       print*, ' '
       print*, '--- electrons:'
       print*, 'There are', nemite, ' photons were emitted'
@@ -2111,13 +2121,13 @@ c     .. convert
       perpi = 100.*REAL(nregpi)/REAL(nemitpi)
       print*, 'Registration efficiency is', perpi, '%'
 
-***** *                                            @METAGS PARAM_HBNAME
-***** *     .. Store some parameters at block PARAM
-*****       call HBNAME(id,'PARAM', Dbox,
-*****      &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
-*****      '            Dcol:R, Rcol2:R, dhcol:R,
-*****      '            alpha:R, pere:R, perpi:R')
-*****       call HFNTB(id,'PARAM')
+*** *                                            @METAGS PARAM_HBNAME
+*** *     .. Store some parameters at block PARAM
+***       call HBNAME(id,'PARAM', Dbox,
+***      &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
+***      '            Dcol:R, Rcol2:R, dhcol:R,
+***      '            alpha:R, pere:R, perpi:R')
+***       call HFNTB(id,parambl)
 
       dummy = BAGREP(iused)
       
