@@ -1416,7 +1416,7 @@ c
       data first/.TRUE./
       data nhit,miss /0,0/
 c
-      assign 2000 to label
+*--AZ      assign 2000 to label
  1000 ncur = ncur+1
       if (ncur.GT.LEN) then
          if (first) then
@@ -1436,7 +1436,7 @@ c        .. save int vector to restart
       endif
       ranbag = bag(ncur)
       irused = irused+1
-      goto label
+*--AZ      goto label
  2000 RETURN
 c
 c---     @METAGS BAGINT_ENTRY
@@ -1447,7 +1447,7 @@ c
       ncur  = LEN
       first = .TRUE.
 *     .. bring the random to initialize RANLUX
-      assign 4000 to label
+*--AZ      assign 4000 to label
       goto 1000
  4000 BAGINT = 0.
       RETURN
@@ -1486,11 +1486,11 @@ C   since the pair (0.0, 0.5) provokes a floating point exception.
 C         generate pair of uniform deviates
    49 continue
 *     .. bring the random
-      assign 50 to label
+*--AZ      assign 50 to label
       goto 1000
    50 U(1) = bag(ncur)
 *     .. bring the random
-      assign 51 to label
+*--AZ      assign 51 to label
       goto 1000
    51 U(2) = bag(ncur)
       V = 1.7156 * (U(2) - 0.5)
@@ -1692,7 +1692,9 @@ C           Entry to input and float integer seeds from previous run
          TWOM24 = 1.
          DO 195 I= 1, 24
          NEXT(I) = I-1
-  195    TWOM24 = TWOM24 * 0.5
+*  195    TWOM24 = TWOM24 * 0.5 -- AZ May 2024
+         TWOM24 = TWOM24 * 0.5
+  195    continue
          NEXT(1) = 24
          TWOM12 = TWOM24 * 4096.
 ***      WRITE(6,'(A)') ' FULL INITIALIZATION OF RANLUX WITH 25 INTEGERS:'
