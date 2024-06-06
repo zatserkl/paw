@@ -55,7 +55,7 @@ panel 1 'ed half.f' 'setname-' 'fopen' 'fclose' 'hplot-' 'hcop-' 'pion [p]^"A#!'
 panel 2 'mir' 'mir1' 'mir0' 'tst' 'tst1' 'tst0' 'NrCAP'
 panel 3 'intref' 'intref1' 'intref0' 'parax' 'pmt' 'NrPM'
 panel 4 'alp' 'set-' 'p/pr-' 'GNU-' 'par' 'RvsZ-' 'RvsZpl'
-panel 5 'edp' 'xp' 'opt grid' 'win-' 'sh' 'edit-' 'x-' '$; wait' 'me'
+panel 5 'edp' 'xp' 'opt grid' 'win-' 'sh' 'edit-' 'x-' '$; wait' 'style alp'
 *style gps ! ! .12
 *style gp ! ! .12
 *style gp ! ! 0.10
@@ -102,12 +102,17 @@ endif
 h/file 1 [hname].hbook
 nt/pri 1
 
-* clear file include.inc
-call FCLEAR('include.inc')
-* write file include.inc
-uwfun 1 include.inc
+* * clear file include.inc
+* call FCLEAR('include.inc')
+* * write file include.inc
+* uwfun 1 include.inc
 
-* precompile COMIS routines with include.inc
+* clear file half.inc
+call FCLEAR('half.inc')
+* write file half.inc
+uwfun 1 half.inc
+
+* precompile COMIS routines with half.inc
 exec RvsZfor
 
 call GTITNT(1)
@@ -205,7 +210,8 @@ APPL COMIS QUIT
 *--------------- VPARAM ---------------
 *
       SUBROUTINE VPARAM(id)
-      include 'include.inc'
+*     include 'include.inc'
+      include 'half.inc'
 *     .. read Ntuple block PARAM
       nevent = 1
       call HGNTB(id,'PARAM',nevent,ier)
@@ -239,7 +245,8 @@ APPL COMIS QUIT
 *
       parameter (id=1)
       
-      include 'include.inc'
+*     include 'include.inc'
+      include 'half.inc'
 *
 *--   Enter user code here
 *
@@ -299,7 +306,8 @@ APPL COMIS QUIT
 *--------------- focus ---------------
 *
       REAL FUNCTION focus(id)
-      include 'include.inc'
+*     include 'include.inc'
+      include 'half.inc'
 *     .. read Ntuple block PARAM for f
       ievent = 1
       call HGNTB(id,'PARAM',ievent,ier)

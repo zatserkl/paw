@@ -1827,7 +1827,7 @@ c     .. convert
 *      thetapi = 0.
 
 *
-*     Ntuple
+*     Ntuple title
 *      
       write(chtitl,20) Rcol2,dhcol, f
    20 format ('Half mirror. Rcol2,dhcol=', 2F5.0, ' f=', F4.0, ' cm')

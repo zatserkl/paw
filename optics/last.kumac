@@ -1,7 +1,9 @@
-*** Begin of history file: Thu May 23 17:49:37 2024
-x H30x30 100
-x H30x30.kumac 100
-x H30x30
-x H30X30
+*** Begin of history file: Wed Jun  5 17:39:58 2024
+x main_half
+call half
+uwfun 1 half.inc
+h/file 20 half.hbook
+nt/print 1
+uwfun 1 half.inc
 qu
-*** End   of history file: Thu May 23 17:52:35 2024
+*** End   of history file: Thu Jun  6 10:41:46 2024

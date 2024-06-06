@@ -1,21 +1,6 @@
-*** Begin of history file: Thu May 23 15:24:45 2024
-xp
-opt grid
-ed half.f
-mir 
-setname XXX
-pmt 
-fopen 
-x 
-; wait
-q; wait
-pion [p]^"A#!
-pion [p]^"A#!
-elec e^"A#!
-parax 
-pmt 
-RvsZpl 
-fclose 
-sh 
-quit; wait
-*** End   of history file: Thu May 23 16:45:25 2024
+*** Begin of history file: Wed Jun  5 17:38:49 2024
+x main_half
+x main_half
+x main_half
+qu
+*** End   of history file: Wed Jun  5 17:39:56 2024
