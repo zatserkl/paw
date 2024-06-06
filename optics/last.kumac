@@ -1,9 +1,18 @@
-*** Begin of history file: Wed Jun  5 17:39:58 2024
-x main_half
-call half
-uwfun 1 half.inc
+*** Begin of history file: Thu Jun  6 15:58:31 2024
 h/file 20 half.hbook
+h/li
 nt/print 1
-uwfun 1 half.inc
-qu
-*** End   of history file: Thu Jun  6 10:41:46 2024
+nt/plot 1.raymir(6)%raymir(5) ip=0
+opt grid
+nt/plot 1.raymir(6)%raymir(5) ip=0
+nt/plot 1.raytst(6)%raytst(5) ip=0
+nt/plot 1.raytst(6)%raytst(5) ip=0&&raytst(5)<100
+nt/plot 1.raytst(6)%raytst(5) ip=1&&raytst(5)<100
+help p/cr
+help p/pr
+p/cr
+nt/plot 1.raytst(6)%raytst(5) ip=0&&raytst(5)<100
+p/print cherenkov_ring
+p/print cherenkov_ring_e.ps
+quit
+*** End   of history file: Thu Jun  6 16:12:31 2024
