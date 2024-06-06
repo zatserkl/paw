@@ -377,7 +377,7 @@ c     .. convert
 *     .. photon dir.cosines in particle system
       cz = cos(thg)
       cx = sin(thg)*cos(phg)
-      cy = sin(thg)*sin(phg)	  
+      cy = sin(thg)*sin(phg)
 *      print*, 'photon dir.cos. in particle sys.:', cz,cx,cy
 
 *     .. convert photon dir.cosines to lab
