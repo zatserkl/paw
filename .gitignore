@@ -14,3 +14,6 @@
 
 !JupyterImages/
 !JupyterImages/*
+
+!optics/
+!optics/*
