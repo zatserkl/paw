@@ -290,6 +290,7 @@ c     .. convert
       call WAIT('Begin the calculation')
 
       CALL HLIMIT(NWPAWC)
+      print*, '-- after call HLIMIT'
 *     .. open a new RZ file
       ntlun = LUNFREE(1)
       CALL HROPEN(ntlun,CHTOP,CHFILE,'N',LRECL,ISTAT)
@@ -558,7 +559,8 @@ c     .. convert
          goto 1001
       endif
       if (MOD(np,100).EQ.0) then
-          call IMESS('processed particles: ', np)
+*AZ*          call IMESS('processed particles: ', np)
+          print*, 'processed particles: ', np
       endif
       ENDDO
 *------------------------------------- main loop end
