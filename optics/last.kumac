@@ -1,18 +1,41 @@
-*** Begin of history file: Thu Jun  6 15:58:31 2024
-h/file 20 half.hbook
+*** Begin of history file: Thu Jun  6 18:08:28 2024
+x main_center
+call center
+h/li
+ld //
+h/file 20 center.hbook
 h/li
 nt/print 1
-nt/plot 1.raymir(6)%raymir(5) ip=0
+uwfun 1 center.inc
+uwfun 1 center_gen.for
+nt/plot 1.raypmt(6)%raypmt(5) ip=0&&raypmt(5)<100
+nt/plot 1.raypmt(6)%raypmt(5) ip=1&&raypmt(5)<100
+set pmci 4
+nt/plot 1.raypmt(6)%raypmt(5) ip=0&&raypmt(5)<100
+set pmci 2
+nt/plot 1.raypmt(6)%raypmt(5) ip=1&&raypmt(5)<100 option=s
 opt grid
-nt/plot 1.raymir(6)%raymir(5) ip=0
-nt/plot 1.raytst(6)%raytst(5) ip=0
-nt/plot 1.raytst(6)%raytst(5) ip=0&&raytst(5)<100
-nt/plot 1.raytst(6)%raytst(5) ip=1&&raytst(5)<100
-help p/cr
-help p/pr
-p/cr
-nt/plot 1.raytst(6)%raytst(5) ip=0&&raytst(5)<100
-p/print cherenkov_ring
-p/print cherenkov_ring_e.ps
+set pmci 4
+nt/plot 1.raypmt(6)%raypmt(5) ip=0&&raypmt(5)<100
+set pmci 2
+nt/plot 1.raypmt(6)%raypmt(5) ip=1&&raypmt(5)<100 option=s
+p/cr center
+p/pr center.ps
+p/cr center
+set pmci 4
+nt/plot 1.raypmt(6)%raypmt(5) ip=0&&raypmt(5)<100
+set pmci 2
+nt/plot 1.raypmt(6)%raypmt(5) ip=1&&raypmt(5)<100 option=s
+p/pr center.ps
+h/file 21 half.hbook
+h/li
+nt/print 1
+p/cr half
+set pmci 4
+nt/plot 1.raypmt(6)%raypmt(5) ip=0&&raypmt(5)<100
+set pmci 2
+nt/plot 1.raypmt(6)%raypmt(5) ip=1&&raypmt(5)<100 option=s
+p/print half.ps
+ld //
 quit
-*** End   of history file: Thu Jun  6 16:12:31 2024
+*** End   of history file: Thu Jun  6 18:32:56 2024

@@ -1440,474 +1440,6 @@ APPL COMIS QUIT
       print*, 'random value = ', r, ' iseed from RDMOUT = ', iseed
       END
 
-*--AZ c                                      @METAGS RANBAG
-*--AZ c---------- RANBAG ----------
-*--AZ c
-*--AZ       real function ranbag(idummy)
-*--AZ c
-*--AZ c     Uniform random generator. Uses RANLUX.
-*--AZ c     Adjusting parameters:
-*--AZ c     LEN - bag size
-*--AZ c     LUX - RANLUX luxury level
-*--AZ c
-*--AZ       IMPLICIT NONE
-*--AZ       integer LEN,LUX
-*--AZ       parameter (LEN=10000)
-*--AZ       parameter (LUX=3)
-*--AZ       real bag(LEN)
-*--AZ       integer ibuf(25)
-*--AZ       integer label, iniran,irused,ncur,idummy
-*--AZ       logical first
-*--AZ       save bag,ibuf, first, iniran,irused, ncur
-*--AZ *     .. entry BAGINT
-*--AZ       real BAGINT
-*--AZ       integer init
-*--AZ *     .. entry BAGREP
-*--AZ       real BAGREP
-*--AZ       integer iused
-*--AZ *     .. entry RNOR
-*--AZ       real RNOR
-*--AZ       real amean,sigma
-*--AZ       real  S, T, A, B, R1, R2
-*--AZ       SAVE  S, T, A, B, R1, R2
-*--AZ       real U(2),V,X,Y,Q,DEVIAT
-*--AZ *     .. entry RNORINT
-*--AZ       real RNORINT
-*--AZ *     .. entry RNOREP
-*--AZ       real RNOREP
-*--AZ       integer nhit,miss, nhit1,miss1
-*--AZ       save    nhit,miss
-*--AZ       real ratio
-*--AZ c
-*--AZ       data iniran/1/
-*--AZ       data irused/0/
-*--AZ       data ncur/LEN/
-*--AZ       data first/.TRUE./
-*--AZ       data nhit,miss /0,0/
-*--AZ c
-*--AZ *--AZ      assign 2000 to label
-*--AZ  1000 ncur = ncur+1
-*--AZ       if (ncur.GT.LEN) then
-*--AZ          if (first) then
-*--AZ c           .. initialization
-*--AZ             first=.FALSE.
-*--AZ             irused = 0
-*--AZ             call RLUXGO(LUX,iniran,0,0)
-*--AZ          else
-*--AZ c           .. restart from saved int vector
-*--AZ             call RLUXIN(ibuf)         
-*--AZ          endif
-*--AZ c        .. create new bag
-*--AZ          call RANLUX(bag,LEN)
-*--AZ c        .. save int vector to restart
-*--AZ          call RLUXUT(ibuf)
-*--AZ          ncur=1
-*--AZ       endif
-*--AZ       ranbag = bag(ncur)
-*--AZ       irused = irused+1
-*--AZ *--AZ      goto label
-*--AZ  2000 RETURN
-*--AZ c
-*--AZ c---     @METAGS BAGINT_ENTRY
-*--AZ c
-*--AZ       ENTRY BAGINT(init)
-*--AZ *     .. Entry to initialize RANBAG
-*--AZ  3000 iniran = init
-*--AZ       ncur  = LEN
-*--AZ       first = .TRUE.
-*--AZ *     .. bring the random to initialize RANLUX
-*--AZ *--AZ      assign 4000 to label
-*--AZ       goto 1000
-*--AZ  4000 BAGINT = 0.
-*--AZ       RETURN
-*--AZ c
-*--AZ c---     @METAGS BAGREP_ENTRY
-*--AZ c
-*--AZ       ENTRY BAGREP(iused)
-*--AZ *     .. Entry to report RANBAG
-*--AZ       print*, '*** RANBAG: There are', irused, ' randoms were used ***'
-*--AZ       iused = irused
-*--AZ       BAGREP = 0.
-*--AZ       RETURN
-*--AZ c                                   @METAGS RNOR_ENTRY
-*--AZ c------------- RNOR ---------------
-*--AZ c
-*--AZ       ENTRY RNOR(idummy,amean,sigma)
-*--AZ *     .. Entry to get normal random
-*--AZ *
-*--AZ *     Changed form of RNORMX to use RANBAG
-*--AZ *
-*--AZ C        Generator of a vector of independent Gaussian-distributed 
-*--AZ C        (pseudo-)random numbers, of mean zero and variance one,
-*--AZ C        making use of a uniform pseudo-random generator (RANMAR).
-*--AZ C        The algorithm for converting uniform numbers to Gaussian
-*--AZ C        is that of "Ratio of Uniforms with Quadratic Bounds."  The
-*--AZ C        method is in principle exact (apart from rounding errors),
-*--AZ C        and is based on the variant published by Joseph Leva in
-*--AZ C        ACM TOMS vol. 18(1992), page 449 for the method and 454 for
-*--AZ C        the Fortran algorithm (ACM No. 712).
-*--AZ C        It requires at least 2 and on average 2.74 uniform deviates
-*--AZ C        per Gaussian (normal) deviate.
-*--AZ C   WARNING -- The uniform generator should not produce exact zeroes,
-*--AZ C   since the pair (0.0, 0.5) provokes a floating point exception.
-*--AZ       DATA  S, T, A, B / 0.449871, -0.386595, 0.19600, 0.25472/
-*--AZ       DATA  R1, R2/ 0.27597, 0.27846/
-*--AZ C         generate pair of uniform deviates
-*--AZ    49 continue
-*--AZ *     .. bring the random
-*--AZ *--AZ      assign 50 to label
-*--AZ       goto 1000
-*--AZ    50 U(1) = bag(ncur)
-*--AZ *     .. bring the random
-*--AZ *--AZ      assign 51 to label
-*--AZ       goto 1000
-*--AZ    51 U(2) = bag(ncur)
-*--AZ       V = 1.7156 * (U(2) - 0.5)
-*--AZ       X = U(1) - S
-*--AZ       Y = ABS(V) - T
-*--AZ       Q = X**2 + Y*(A*Y - B*X)
-*--AZ C           accept P if inside inner ellipse
-*--AZ       IF (Q .LT. R1) THEN
-*--AZ          miss = miss+1
-*--AZ          GO TO 100
-*--AZ       ENDIF
-*--AZ C           reject P if outside outer ellipse
-*--AZ       IF (Q .GT. R2) THEN
-*--AZ          miss = miss+1
-*--AZ          GO TO 49
-*--AZ       ENDIF
-*--AZ C           reject P if outside acceptance region
-*--AZ       IF (V**2 .GT. -4.0 *ALOG(U(1)) *U(1)**2)  GO TO 49
-*--AZ C           ratio of P's coordinates is normal deviate
-*--AZ   100 DEVIAT = V/U(1)
-*--AZ       nhit = nhit+1
-*--AZ       RNOR = amean + sigma*DEVIAT
-*--AZ       RETURN
-*--AZ *
-*--AZ *---     @METAGS RNORINT_ENTRY
-*--AZ *
-*--AZ       ENTRY RNORINT(init)
-*--AZ *     .. Entry to initialize RNOR
-*--AZ       nhit = 0
-*--AZ       miss = 0
-*--AZ       goto 3000
-*--AZ *
-*--AZ *---     @METAGS RNOREP
-*--AZ *
-*--AZ       ENTRY RNOREP(nhit1,miss1)
-*--AZ *     .. Entry to report RNOR
-*--AZ       ratio = REAL(miss)/REAL(nhit)
-*--AZ       print*, '*** RNOR report to genrated randoms:'
-*--AZ       print*, 'Generated ', nhit, ' points, missing shots =', miss
-*--AZ       print*, 'There are ', ratio, ' missings per hit'
-*--AZ       print*, '***'
-*--AZ       nhit1 = nhit
-*--AZ       miss1 = miss
-*--AZ       RNOREP = ratio
-*--AZ       END
-*--AZ 
-*--AZ C
-*--AZ C                                   @METAGS RANLUX
-*--AZ C
-*--AZ       SUBROUTINE RANLUX(RVEC,LENV)
-*--AZ C         Subtract-and-borrow random number generator proposed by
-*--AZ C         Marsaglia and Zaman, implemented by F. James with the name
-*--AZ C         RCARRY in 1991, and later improved by Martin Luescher
-*--AZ C         in 1993 to produce "Luxury Pseudorandom Numbers".
-*--AZ C     Fortran 77 coded by F. James, 1993
-*--AZ C
-*--AZ C   LUXURY LEVELS.
-*--AZ C   ------ ------      The available luxury levels are:
-*--AZ C
-*--AZ C  level 0  (p=24): equivalent to the original RCARRY of Marsaglia
-*--AZ C           and Zaman, very long period, but fails many tests.
-*--AZ C  level 1  (p=48): considerable improvement in quality over level 0,
-*--AZ C           now passes the gap test, but still fails spectral test.
-*--AZ C  level 2  (p=97): passes all known tests, but theoretically still
-*--AZ C           defective.
-*--AZ C  level 3  (p=223): DEFAULT VALUE.  Any theoretically possible
-*--AZ C           correlations have very small chance of being observed.
-*--AZ C  level 4  (p=389): highest possible luxury, all 24 bits chaotic.
-*--AZ C
-*--AZ C!!! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-*--AZ C!!!  Calling sequences for RANLUX:                                  ++
-*--AZ C!!!      CALL RANLUX (RVEC, LEN)   returns a vector RVEC of LEN     ++
-*--AZ C!!!                   32-bit random floating point numbers between  ++
-*--AZ C!!!                   zero (not included) and one (also not incl.). ++
-*--AZ C!!!      CALL RLUXGO(LUX,INT,K1,K2) initializes the generator from  ++
-*--AZ C!!!               one 32-bit integer INT and sets Luxury Level LUX  ++
-*--AZ C!!!               which is integer between zero and MAXLEV, or if   ++
-*--AZ C!!!               LUX .GT. 24, it sets p=LUX directly.  K1 and K2   ++
-*--AZ C!!!               should be set to zero unless restarting at a break++ 
-*--AZ C!!!               point given by output of RLUXAT (see RLUXAT).     ++
-*--AZ C!!!      CALL RLUXAT(LUX,INT,K1,K2) gets the values of four integers++
-*--AZ C!!!               which can be used to restart the RANLUX generator ++
-*--AZ C!!!               at the current point by calling RLUXGO.  K1 and K2++
-*--AZ C!!!               specify how many numbers were generated since the ++
-*--AZ C!!!               initialization with LUX and INT.  The restarting  ++
-*--AZ C!!!               skips over  K1+K2*E9   numbers, so it can be long.++
-*--AZ C!!!   A more efficient but less convenient way of restarting is by: ++
-*--AZ C!!!      CALL RLUXIN(ISVEC)    restarts the generator from vector   ++
-*--AZ C!!!                   ISVEC of 25 32-bit integers (see RLUXUT)      ++
-*--AZ C!!!      CALL RLUXUT(ISVEC)    outputs the current values of the 25 ++
-*--AZ C!!!                 32-bit integer seeds, to be used for restarting ++
-*--AZ C!!!      ISVEC must be dimensioned 25 in the calling program        ++
-*--AZ C!!! ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-*--AZ       DIMENSION RVEC(LENV)
-*--AZ       DIMENSION SEEDS(24), ISEEDS(24), ISDEXT(25)
-*--AZ       PARAMETER (MAXLEV=4, LXDFLT=3)
-*--AZ       DIMENSION NDSKIP(0:MAXLEV)
-*--AZ       DIMENSION NEXT(24)
-*--AZ       PARAMETER (TWOP12=4096., IGIGA=1000000000,JSDFLT=314159265)
-*--AZ       PARAMETER (ITWO24=2**24, ICONS=2147483563)
-*--AZ       SAVE NOTYET, I24, J24, CARRY, SEEDS, TWOM24, TWOM12, LUXLEV
-*--AZ       SAVE NSKIP, NDSKIP, IN24, NEXT, KOUNT, MKOUNT, INSEED
-*--AZ       INTEGER LUXLEV
-*--AZ       LOGICAL NOTYET
-*--AZ       DATA NOTYET, LUXLEV, IN24, KOUNT, MKOUNT /.TRUE., LXDFLT, 0,0,0/
-*--AZ       DATA I24,J24,CARRY/24,10,0./
-*--AZ C                               default
-*--AZ C  Luxury Level   0     1     2   *3*    4
-*--AZ       DATA NDSKIP/0,   24,   73,  199,  365 /
-*--AZ Corresponds to p=24    48    97   223   389
-*--AZ C     time factor 1     2     3     6    10   on slow workstation
-*--AZ C                 1    1.5    2     3     5   on fast mainframe
-*--AZ C
-*--AZ C  NOTYET is .TRUE. if no initialization has been performed yet.
-*--AZ C              Default Initialization by Multiplicative Congruential
-*--AZ       IF (NOTYET) THEN
-*--AZ          NOTYET = .FALSE.
-*--AZ          JSEED = JSDFLT  
-*--AZ          INSEED = JSEED
-*--AZ          WRITE(6,'(A,I12)') ' RANLUX DEFAULT INITIALIZATION: ',JSEED
-*--AZ          LUXLEV = LXDFLT
-*--AZ          NSKIP = NDSKIP(LUXLEV)
-*--AZ          LP = NSKIP + 24
-*--AZ          IN24 = 0
-*--AZ          KOUNT = 0
-*--AZ          MKOUNT = 0
-*--AZ          WRITE(6,'(A,I2,A,I4)')  ' RANLUX DEFAULT LUXURY LEVEL =  ',
-*--AZ      +        LUXLEV,'      p =',LP
-*--AZ             TWOM24 = 1.
-*--AZ          DO 25 I= 1, 24
-*--AZ             TWOM24 = TWOM24 * 0.5
-*--AZ          K = JSEED/53668
-*--AZ          JSEED = 40014*(JSEED-K*53668) -K*12211
-*--AZ          IF (JSEED .LT. 0)  JSEED = JSEED+ICONS
-*--AZ          ISEEDS(I) = MOD(JSEED,ITWO24)
-*--AZ    25    CONTINUE
-*--AZ          TWOM12 = TWOM24 * 4096.
-*--AZ          DO 50 I= 1,24
-*--AZ          SEEDS(I) = REAL(ISEEDS(I))*TWOM24
-*--AZ          NEXT(I) = I-1
-*--AZ    50    CONTINUE
-*--AZ          NEXT(1) = 24
-*--AZ          I24 = 24
-*--AZ          J24 = 10
-*--AZ          CARRY = 0.
-*--AZ          IF (SEEDS(24) .EQ. 0.) CARRY = TWOM24
-*--AZ       ENDIF
-*--AZ C
-*--AZ C          The Generator proper: "Subtract-with-borrow",
-*--AZ C          as proposed by Marsaglia and Zaman,
-*--AZ C          Florida State University, March, 1989
-*--AZ C
-*--AZ       DO 100 IVEC= 1, LENV
-*--AZ       UNI = SEEDS(J24) - SEEDS(I24) - CARRY 
-*--AZ       IF (UNI .LT. 0.)  THEN
-*--AZ          UNI = UNI + 1.0
-*--AZ          CARRY = TWOM24
-*--AZ       ELSE
-*--AZ          CARRY = 0.
-*--AZ       ENDIF
-*--AZ       SEEDS(I24) = UNI
-*--AZ       I24 = NEXT(I24)
-*--AZ       J24 = NEXT(J24)
-*--AZ       RVEC(IVEC) = UNI
-*--AZ C  small numbers (with less than 12 "significant" bits) are "padded".
-*--AZ       IF (UNI .LT. TWOM12)  THEN
-*--AZ          RVEC(IVEC) = RVEC(IVEC) + TWOM24*SEEDS(J24)
-*--AZ C        and zero is forbidden in case someone takes a logarithm
-*--AZ          IF (RVEC(IVEC) .EQ. 0.)  RVEC(IVEC) = TWOM24*TWOM24
-*--AZ       ENDIF
-*--AZ C        Skipping to luxury.  As proposed by Martin Luscher.
-*--AZ       IN24 = IN24 + 1
-*--AZ       IF (IN24 .EQ. 24)  THEN
-*--AZ          IN24 = 0
-*--AZ          KOUNT = KOUNT + NSKIP
-*--AZ          DO 90 ISK= 1, NSKIP
-*--AZ          UNI = SEEDS(J24) - SEEDS(I24) - CARRY
-*--AZ          IF (UNI .LT. 0.)  THEN
-*--AZ             UNI = UNI + 1.0
-*--AZ             CARRY = TWOM24
-*--AZ          ELSE
-*--AZ             CARRY = 0.
-*--AZ          ENDIF
-*--AZ          SEEDS(I24) = UNI
-*--AZ          I24 = NEXT(I24)
-*--AZ          J24 = NEXT(J24)
-*--AZ    90    CONTINUE
-*--AZ       ENDIF
-*--AZ   100 CONTINUE
-*--AZ       KOUNT = KOUNT + LENV
-*--AZ       IF (KOUNT .GE. IGIGA)  THEN
-*--AZ          MKOUNT = MKOUNT + 1
-*--AZ          KOUNT = KOUNT - IGIGA
-*--AZ       ENDIF
-*--AZ       RETURN
-*--AZ C
-*--AZ C           Entry to input and float integer seeds from previous run
-*--AZ       ENTRY RLUXIN(ISDEXT)
-*--AZ          TWOM24 = 1.
-*--AZ          DO 195 I= 1, 24
-*--AZ          NEXT(I) = I-1
-*--AZ *  195    TWOM24 = TWOM24 * 0.5 -- AZ May 2024
-*--AZ          TWOM24 = TWOM24 * 0.5
-*--AZ   195    continue
-*--AZ          NEXT(1) = 24
-*--AZ          TWOM12 = TWOM24 * 4096.
-*--AZ ***      WRITE(6,'(A)') ' FULL INITIALIZATION OF RANLUX WITH 25 INTEGERS:'
-*--AZ ***      WRITE(6,'(5X,5I12)') ISDEXT
-*--AZ       DO 200 I= 1, 24
-*--AZ       SEEDS(I) = REAL(ISDEXT(I))*TWOM24
-*--AZ   200 CONTINUE
-*--AZ       CARRY = 0.
-*--AZ       IF (ISDEXT(25) .LT. 0)  CARRY = TWOM24
-*--AZ       ISD = IABS(ISDEXT(25))
-*--AZ       I24 = MOD(ISD,100)
-*--AZ       ISD = ISD/100
-*--AZ       J24 = MOD(ISD,100)
-*--AZ       ISD = ISD/100
-*--AZ       IN24 = MOD(ISD,100)
-*--AZ       ISD = ISD/100
-*--AZ       LUXLEV = ISD
-*--AZ         IF (LUXLEV .LE. MAXLEV) THEN
-*--AZ           NSKIP = NDSKIP(LUXLEV)
-*--AZ ***          WRITE (6,'(A,I2)') ' RANLUX LUXURY LEVEL SET BY RLUXIN TO: ',
-*--AZ ***     +                         LUXLEV
-*--AZ         ELSE  IF (LUXLEV .GE. 24) THEN
-*--AZ           NSKIP = LUXLEV - 24
-*--AZ           WRITE (6,'(A,I5)') ' RANLUX P-VALUE SET BY RLUXIN TO:',LUXLEV
-*--AZ         ELSE
-*--AZ           NSKIP = NDSKIP(MAXLEV)
-*--AZ           WRITE (6,'(A,I5)') ' RANLUX ILLEGAL LUXURY RLUXIN: ',LUXLEV
-*--AZ           LUXLEV = MAXLEV
-*--AZ         ENDIF
-*--AZ       INSEED = -1
-*--AZ       RETURN
-*--AZ C
-*--AZ C                    Entry to ouput seeds as integers
-*--AZ       ENTRY RLUXUT(ISDEXT)
-*--AZ       DO 300 I= 1, 24
-*--AZ          ISDEXT(I) = INT(SEEDS(I)*TWOP12*TWOP12)
-*--AZ   300 CONTINUE
-*--AZ       ISDEXT(25) = I24 + 100*J24 + 10000*IN24 + 1000000*LUXLEV
-*--AZ       IF (CARRY .GT. 0.)  ISDEXT(25) = -ISDEXT(25)
-*--AZ       RETURN
-*--AZ C
-*--AZ C                    Entry to output the "convenient" restart point
-*--AZ       ENTRY RLUXAT(LOUT,INOUT,K1,K2)
-*--AZ       LOUT = LUXLEV
-*--AZ       INOUT = INSEED
-*--AZ       K1 = KOUNT
-*--AZ       K2 = MKOUNT
-*--AZ       RETURN
-*--AZ C
-*--AZ C                    Entry to initialize from one or three integers
-*--AZ       ENTRY RLUXGO(LUX,INS,K1,K2)
-*--AZ          IF (LUX .LT. 0) THEN
-*--AZ             LUXLEV = LXDFLT
-*--AZ          ELSE IF (LUX .LE. MAXLEV) THEN
-*--AZ             LUXLEV = LUX
-*--AZ          ELSE IF (LUX .LT. 24 .OR. LUX .GT. 2000) THEN
-*--AZ             LUXLEV = MAXLEV
-*--AZ             WRITE (6,'(A,I7)') ' RANLUX ILLEGAL LUXURY RLUXGO: ',LUX
-*--AZ          ELSE
-*--AZ             LUXLEV = LUX
-*--AZ             DO 310 ILX= 0, MAXLEV
-*--AZ               IF (LUX .EQ. NDSKIP(ILX)+24)  LUXLEV = ILX
-*--AZ   310       CONTINUE
-*--AZ          ENDIF
-*--AZ       IF (LUXLEV .LE. MAXLEV)  THEN
-*--AZ          NSKIP = NDSKIP(LUXLEV)
-*--AZ ***         WRITE(6,'(A,I2,A,I4)') ' RANLUX LUXURY LEVEL SET BY RLUXGO :',
-*--AZ ***     +        LUXLEV,'     P=', NSKIP+24
-*--AZ       ELSE
-*--AZ           NSKIP = LUXLEV - 24
-*--AZ           WRITE (6,'(A,I5)') ' RANLUX P-VALUE SET BY RLUXGO TO:',LUXLEV
-*--AZ       ENDIF
-*--AZ       IN24 = 0
-*--AZ       IF (INS .LT. 0)  WRITE (6,'(A)')   
-*--AZ      +   ' Illegal initialization by RLUXGO, negative input seed'
-*--AZ       IF (INS .GT. 0)  THEN
-*--AZ         JSEED = INS
-*--AZ ***        WRITE(6,'(A,3I12)') ' RANLUX INITIALIZED BY RLUXGO FROM SEEDS',
-*--AZ ***     +      JSEED, K1,K2
-*--AZ       ELSE
-*--AZ         JSEED = JSDFLT
-*--AZ         WRITE(6,'(A)')' RANLUX INITIALIZED BY RLUXGO FROM DEFAULT SEED'
-*--AZ       ENDIF
-*--AZ       INSEED = JSEED
-*--AZ       NOTYET = .FALSE.
-*--AZ       TWOM24 = 1.
-*--AZ          DO 325 I= 1, 24
-*--AZ            TWOM24 = TWOM24 * 0.5
-*--AZ          K = JSEED/53668
-*--AZ          JSEED = 40014*(JSEED-K*53668) -K*12211
-*--AZ          IF (JSEED .LT. 0)  JSEED = JSEED+ICONS
-*--AZ          ISEEDS(I) = MOD(JSEED,ITWO24)
-*--AZ   325    CONTINUE
-*--AZ       TWOM12 = TWOM24 * 4096.
-*--AZ          DO 350 I= 1,24
-*--AZ          SEEDS(I) = REAL(ISEEDS(I))*TWOM24
-*--AZ          NEXT(I) = I-1
-*--AZ   350    CONTINUE
-*--AZ       NEXT(1) = 24
-*--AZ       I24 = 24
-*--AZ       J24 = 10
-*--AZ       CARRY = 0.
-*--AZ       IF (SEEDS(24) .EQ. 0.) CARRY = TWOM24
-*--AZ C        If restarting at a break point, skip K1 + IGIGA*K2
-*--AZ C        Note that this is the number of numbers delivered to
-*--AZ C        the user PLUS the number skipped (if luxury .GT. 0).
-*--AZ       KOUNT = K1
-*--AZ       MKOUNT = K2
-*--AZ       IF (K1+K2 .NE. 0)  THEN
-*--AZ         DO 500 IOUTER= 1, K2+1
-*--AZ           INNER = IGIGA
-*--AZ           IF (IOUTER .EQ. K2+1)  INNER = K1
-*--AZ           DO 450 ISK= 1, INNER
-*--AZ             UNI = SEEDS(J24) - SEEDS(I24) - CARRY 
-*--AZ             IF (UNI .LT. 0.)  THEN
-*--AZ                UNI = UNI + 1.0
-*--AZ                CARRY = TWOM24
-*--AZ             ELSE
-*--AZ                CARRY = 0.
-*--AZ             ENDIF
-*--AZ             SEEDS(I24) = UNI
-*--AZ             I24 = NEXT(I24)
-*--AZ             J24 = NEXT(J24)
-*--AZ   450     CONTINUE
-*--AZ   500   CONTINUE
-*--AZ C         Get the right value of IN24 by direct calculation
-*--AZ         IN24 = MOD(KOUNT, NSKIP+24)
-*--AZ         IF (MKOUNT .GT. 0)  THEN
-*--AZ            IZIP = MOD(IGIGA, NSKIP+24)
-*--AZ            IZIP2 = MKOUNT*IZIP + IN24
-*--AZ            IN24 = MOD(IZIP2, NSKIP+24)
-*--AZ         ENDIF
-*--AZ C       Now IN24 had better be between zero and 23 inclusive
-*--AZ         IF (IN24 .GT. 23) THEN
-*--AZ            WRITE (6,'(A/A,3I11,A,I5)')  
-*--AZ      +    '  Error in RESTARTING with RLUXGO:','  The values', INS,
-*--AZ      +     K1, K2, ' cannot occur at luxury level', LUXLEV
-*--AZ            IN24 = 0
-*--AZ         ENDIF
-*--AZ       ENDIF
-*--AZ       RETURN
-*--AZ       END
-
-
 *                                         @METAGS FPARSE
 *                                         01-20-98 02:53pm
 *--------------- FPARSE ---------------
@@ -1981,6 +1513,35 @@ APPL COMIS QUIT
     1 FORMAT(A)
       END
 
+*                                         @METAGS alpcol
+*                                         10-02-98 00:31am
+*--------------- alpcol ---------------
+*
+      function alpcol(Rbox,Dcol)
+*     .. initial value of optimum focus for collector
+      f = Dcol
+*     .. works in term of R further
+      R = 2.*f
+*     .. accuracy
+      eps = 0.001*Dcol
+      iter = 0
+  100 continue
+      delta = sqrt(R**2 + Rbox**2) - R
+      alpha = atan(Rbox/(Dcol-delta))
+      R1 = Rbox/tan(alpha/2.)
+      dif = abs(R1-R)
+      R = R1
+      iter = iter+1
+*      print*, 'iter =', iter
+      if (iter.EQ.10) then
+         print*, 'ERROR alpcol: Iteration limit is exceeded'
+         STOP
+      endif
+      if (dif.GT.eps) goto 100
+      f = R/2.
+      alpcol = acos(Rbox/f)
+      END
+
 *
 *  Dummy routines: HBOOK routines unaccessable from PAW
 *
@@ -2021,19 +1582,19 @@ APPL COMIS QUIT
       print*, mess, n
       END
 
-*******************************
+**********************************************************
 *
 *     subroutine center
 *
-*******************************
+**********************************************************
 
 *      program center
       subroutine center
 *      IMPLICIT NONE
-*--AZ PARAMETER (NWPAWC = 300000)
+      PARAMETER (NWPAWC = 300000)
       PARAMETER (LRECL  = 1024)
       PARAMETER (id = 1)
-*--AZ COMMON /PAWC/ IPAW(NWPAWC)
+      COMMON /PAWC/ IPAW(NWPAWC)
       
       real sysmir(5),syscol(5),syspmt(5),sysref(5),
      &     syscap(5), systst(5), systop(5)
@@ -2041,6 +1602,8 @@ APPL COMIS QUIT
 
       character CHTOP*8, CHFILE*32
       character*80 chtitl, titbuf
+
+      character*8 opticbl, parambl
       
       character c
 *
@@ -2064,23 +1627,14 @@ APPL COMIS QUIT
       double precision betan
       logical pion
 
-*     p.27: read about CHBLOCK in the description of HBNAME, HBNAMC
-      character*8 chblock
-      chblock = 'OPTIC'
+      data opticbl /'OPTIC'/
+      data parambl /'PARAM'/
 
-      print*, '-- before data statements'
+      data CHTOP /'NTDIR'/ ! CHBLOCK
+      data CHFILE/' '/
+      data afile /'unknown'/
 
-*--AZ       data CHTOP /'NTDIR'/
-*--AZ       data CHFILE/' '/
-*--AZ       data afile /'unknown'/
-
-      CHTOP = 'NTDIR'
-      CHFILE = ' '
-      afile = 'unknown'
-
-      print*, '-- begin!'
-
-      call GETARG(0,thisf) ! GNU Fortran compiler
+      call GETARG(0,thisf) ! GETARG is GNU routine, not in PAW
       thisf = 'center.x'
       call FPARSE(thisf,thisn,thisf,'x')
       lename = LENOCC(thisn)
@@ -2225,7 +1779,6 @@ c     .. convert
       xpmt = Rbox + (h2col-h1col)
       call mkframe(iaxis,thpmt,zpmt,xpmt, syspmt)
       
-*      print*, ' '
       print*, 'Distance to PM is', zpmt, ' cm from counter box back'
       print*, 'Distance to PM is', xpmt, ' cm from counter axis'
 
@@ -2288,7 +1841,7 @@ c     .. convert
       dummy = BAGINT(init)
 
 *
-*     Ntuple
+*     Ntuple title
 *      
       write(chtitl,20) Rcol2,dhcol, f
    20 format ('Center mirror. Rcol2,dhcol=', 2F5.0, ' f=', F4.0, ' cm')
@@ -2315,34 +1868,36 @@ c     .. convert
       print*, ' '
       call WAIT('Begin the calculation')
 
-      CALL HLIMIT(NWPAWC)
-      print*, '-- after call HLIMIT'
+      CALL HLIMIT(NWPAWC) ! dummy routine unaccessible in PAW
+
 *     .. open a new RZ file
       ntlun = LUNFREE(1)
       CALL HROPEN(ntlun,CHTOP,CHFILE,'N',LRECL,ISTAT)
 
-***** *     .. Store some parameters at block PARAM
-*****       call HBNAME(id,'PARAM', Dbox,
-*****      &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
-*****      '            Dcol:R, Rcol2:R, dhcol:R,
-*****      '            alpha:R, pere:R, perpi:R')
-*****       call HFNTB(id,'PARAM')
-
 *     .. book Ntuple
       CALL HBNT(id,chtitl,' ')
+
 *     .. define Ntuple
 *                                         @METAGS HBNAME
-      CALL HBNAME(id,chblock, ireg,
+      CALL HBNAME(id,opticbl, ireg,
      &            'ireg[0,1]:U, ip[0,1]:U, npart:U,
      '             part(6):R,ray0(6):R,raycap(6):R,m[0,1]:U,raymir(6):R,
      '             raytst(6):R,raytop(6):R,intref[0,10]:U,raypmt(6):R')
+
+*                                         @METAGS HBNAME
+      call HBNAME(id,parambl, Dbox,
+     &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
+     '            Dcol:R, Rcol2:R, dhcol:R,
+     '            alpha:R, pere:R, perpi:R')
+*     .. fill the parameter block
+*     call HFNTB(id,parambl)
 
       call FILELUN(ntlun,afile)
       print*, 'With unit', ntlun, ' connected file ', afile
       print*, 'Running ..'
 
       tlim = 10000.
-******      call TIMEST(tlim)
+      call TIMEST(tlim)
       
 *
 *--   MAIN PART
@@ -2603,13 +2158,6 @@ c     .. convert
 *--   MAIN PART END
 *
 
-***** *     .. Store some parameters at block PARAM
-*****       call HBNAME(id,'PARAM', Dbox,
-*****      &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
-*****      '            Dcol:R, Rcol2:R, dhcol:R,
-*****      '            alpha:R, pere:R, perpi:R')
-*****       call HFNTB(id,'PARAM')
-
       print*, ' '
       print*, '--- electrons:'
       print*, 'There are', nemite, ' photons were emitted'
@@ -2626,28 +2174,36 @@ c     .. convert
       percent = 100.*REAL(nregpi)/REAL(nemitpi)
       print*, 'Registration efficiency is', percent, '%'
 
-*--AZ       dummy = BAGREP(iused)
+*** *                                            @METAGS PARAM_HBNAME
+*** *     .. Store some parameters at block PARAM
+***       call HBNAME(id,'PARAM', Dbox,
+***      &           'Dbox:R, Rbox:R, f:R, Rpmt:R,
+***      '            Dcol:R, Rcol2:R, dhcol:R,
+***      '            alpha:R, pere:R, perpi:R')
+***       call HFNTB(id,parambl)
+
+      dummy = BAGREP(iused)
       
       print*, ' '
-*--AZ       call TIMEX(time)
+      call TIMEX(time)
       time = 0
       print*,'Job time', time, ' seconds'
       call WAIT('End of calculation. Close files')
 
-*--AZ       CALL HPRNT(id)
+      CALL HPRNT(id)
 
-*--AZ *
-*--AZ *-- write batch version of analisys routine to file
-*--AZ *
-*--AZ       lunb = LUNFREE(1)
-*--AZ       open (lunb, FILE=bfile, STATUS='UNKNOWN')
-*--AZ       CALL HUWFUN(lunb, id, thisn(1:lename), 0, 'B')
-*--AZ       close(lunb)
-*--AZ *     .. paw routine
-*--AZ       lunp = LUNFREE(1)
-*--AZ       open (lunp, FILE=pfile, STATUS='UNKNOWN')
-*--AZ       CALL HUWFUN(lunp, id, thisn(1:lename), 0, 'P')
-*--AZ       close(lunp)
+***   *
+***   *-- write batch version of analisys routine to file
+***   *
+***         lunb = LUNFREE(1)
+***         OPEN(lunb, FILE=bfile, STATUS='UNKNOWN')
+***         CALL HUWFUN(lunb, id, thisn(1:lename), 0, 'B')
+***         close(lunb)
+***   *     .. paw routine
+***         lunp = LUNFREE(1)
+***         open (lunp, FILE=pfile, STATUS='UNKNOWN')
+***         CALL HUWFUN(lunp, id, thisn(1:lename), 0, 'P')
+***         close(lunp)
 
 *
 *-- write Ntuple buffer to disk and close RZ file
@@ -2661,17 +2217,14 @@ c     .. convert
       print*, ' '
       call HLDIR('//PAWC','T')
       print*, ' '
-*     print '('' Current directory is '')', CHPATH(1:LENOCC(CHPATH))
-      len = LENOCC(CHPATH) 
-      print '('' Current directory is '')', CHPATH(1:len)
-*     print 'Current directory is ', CHPATH(1:LENOCC(CHPATH))
-*     print 'Current directory is ', CHPATH
+*     print '('' Current directory is '', A)', CHPATH(1:LENOCC(CHPATH))
+*     print*, ' Current directory is ', CHPATH(1:LENOCC(CHPATH))
+      print*, 'Current directory is ', CHPATH
       call HLDIR(' ','T')
 
-*--AZ 99999 CALL HREND(CHTOP)
-99999 CALL HREND(chblock)
+99999 CALL HREND(CHTOP)
       STOP
-*--AZ 10000 print*, 'Ini file ', ifile(1:LENOCC(ifile)), ' did not found'
-10000 print*, 'Ini file did not found: ', ifile
+*10000 print*, 'Ini file ', ifile(1:LENOCC(ifile)), ' did not found'
+10000 print*, 'Ini file was not found: ', ifile
       END
 QUIT

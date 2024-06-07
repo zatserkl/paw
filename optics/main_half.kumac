@@ -1640,15 +1640,15 @@ APPL COMIS QUIT
       CHFILE = thisn(1:lename)//'.hbook'
 *     ifile  = thisn(1:lename)//'.f'
       ifile  = 'main_half.kumac'
-      bfile  = thisn(1:lename)//'_t.f'
+      bfile  = thisn(1:lename)//'_b.f'
       pfile  = thisn(1:lename)//'_p.for'
 
       print*, ' '
       print*, 'This file ', thisf
       print*, 'Ini file  ', ifile
       print*, 'HBOOK file with Ntuple id =', id, '   ', CHFILE
-      print*, 'Batch file for stand alone usage  ', bfile
-      print*, 'Batch file for PAW usage          ', pfile
+      print*, 'Batch file for stand alone usage ', bfile
+      print*, 'Batch file for PAW usage         ', pfile
       print*, ' '
 
       lun = LUNFREE(1)
@@ -1968,7 +1968,7 @@ c     .. convert
 *     .. photon dir.cosines in particle system
       cz = cos(thg)
       cx = sin(thg)*cos(phg)
-      cy = sin(thg)*sin(phg)	  
+      cy = sin(thg)*sin(phg)  
 *      print*, 'photon dir.cos. in particle sys.:', cz,cx,cy
 
 *     .. convert photon dir.cosines to lab

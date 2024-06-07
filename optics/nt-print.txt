@@ -1,0 +1,138 @@
+---------------> half.hbook
+
+===> Directory : 
+          1 (N)   Half mirror. Rcol2,dhcol=   4.   0. f=200. cm
+. nt/print 1
+
+
+ ******************************************************************
+ * Ntuple ID = 1      Entries = 8837      Half mirror. Rcol2,dhcol=   4.   0. f=200. cm
+ ******************************************************************
+ * Var numb * Type * Packing *    Range     *  Block   *  Name    *
+ ******************************************************************
+ *      1   * U*4  *    1    * [0,1]        * OPTIC    * IREG
+ *      2   * U*4  *    1    * [0,1]        * OPTIC    * IP
+ *      3   * U*4  *         *              * OPTIC    * NPART
+ *      4   * R*4  *         *              * OPTIC    * PART(6)
+ *      5   * R*4  *         *              * OPTIC    * RAY0(6)
+ *      6   * R*4  *         *              * OPTIC    * RAYCAP(6)
+ *      7   * U*4  *    1    * [0,1]        * OPTIC    * M
+ *      8   * R*4  *         *              * OPTIC    * RAYMIR(6)
+ *      9   * R*4  *         *              * OPTIC    * raytst(6)
+ *     10   * U*4  *    4    * [0,10]       * OPTIC    * intref
+ *     11   * R*4  *         *              * OPTIC    * raypmt(6)
+ *      1   * R*4  *         *              * PARAM    * DBOX
+ *      2   * R*4  *         *              * PARAM    * RBOX
+ *      3   * R*4  *         *              * PARAM    * F
+ *      4   * R*4  *         *              * PARAM    * RPMT
+ *      5   * R*4  *         *              * PARAM    * DCOL
+ *      6   * R*4  *         *              * PARAM    * RCOL2
+ *      7   * R*4  *         *              * PARAM    * DHCOL
+ *      8   * R*4  *         *              * PARAM    * alpha
+ *      9   * R*4  *         *              * PARAM    * pere
+ *     10   * R*4  *         *              * PARAM    * perpi
+ ******************************************************************
+ *  Block   *  Entries  * Unpacked * Packed *   Packing Factor    *
+ ******************************************************************
+ * OPTIC    *  8837     * 164      * 149    *       1.101         *
+ * PARAM    *  8837     * 40       * 40     *       1.000         *
+ * Total    *    ---    * 204      * 189    *       1.079         *
+ ******************************************************************
+ * Blocks = 2            Variables = 21           Columns = 51    *
+ ******************************************************************
+
+. nt/plot 1.raymir(6)%raymir(5) ip=0
+. opt grid
+. nt/plot 1.raymir(6)%raymir(5) ip=0
+. nt/plot 1.raytst(6)%raytst(5) ip=0
+. nt/plot 1.raytst(6)%raytst(5) ip=0&&raytst(5)<100
+. nt/plot 1.raytst(6)%raytst(5) ip=1&&raytst(5)<100
+.                                                  
+. help p/cr
+
+Command "/PICTURE/CREATE" :
+. help p/pr
+
+Command "/PICTURE/PRINT" :
+. p/cr
+Picture name (<CR>=) ring
+. nt/plot 1.raytst(6)%raytst(5) ip=0&&raytst(5)<100
+. p/print cherenkov_ring 
+. p/print cherenkov_ring_e.ps 
+
+------------> More command history
+
+. p/cr half 
+. set pmci 4                                                
+. nt/plot 1.raypmt(6)%raypmt(5) ip=0&&raypmt(5)<100         
+. set pmci 2                                       
+. nt/plot 1.raypmt(6)%raypmt(5) ip=1&&raypmt(5)<100 option=s
+. p/print half.ps
+. 
+. ld //
+ //PAWC            COMMON /PAWC/ in memory
+ //LUN20           center.hbook
+ //LUN21           half.hbook
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----------> center.hbook
+===> Directory : 
+          1 (N)   Center mirror. Rcol2,dhcol=  15.  80. f=530. cm
+. 
+. nt/print 1
+
+
+ ******************************************************************
+ * Ntuple ID = 1      Entries = 8837      Center mirror. Rcol2,dhcol=  15.  80. f=530. cm
+ ******************************************************************
+ * Var numb * Type * Packing *    Range     *  Block   *  Name    *
+ ******************************************************************
+ *      1   * U*4  *    1    * [0,1]        * OPTIC    * IREG
+ *      2   * U*4  *    1    * [0,1]        * OPTIC    * IP
+ *      3   * U*4  *         *              * OPTIC    * NPART
+ *      4   * R*4  *         *              * OPTIC    * PART(6)
+ *      5   * R*4  *         *              * OPTIC    * RAY0(6)
+ *      6   * R*4  *         *              * OPTIC    * RAYCAP(6)
+ *      7   * U*4  *    1    * [0,1]        * OPTIC    * M
+ *      8   * R*4  *         *              * OPTIC    * RAYMIR(6)
+ *      9   * R*4  *         *              * OPTIC    * raytst(6)
+ *     10   * R*4  *         *              * OPTIC    * raytop(6)
+ *     11   * U*4  *    4    * [0,10]       * OPTIC    * intref
+ *     12   * R*4  *         *              * OPTIC    * raypmt(6)
+ *      1   * R*4  *         *              * PARAM    * DBOX
+ *      2   * R*4  *         *              * PARAM    * RBOX
+ *      3   * R*4  *         *              * PARAM    * F
+ *      4   * R*4  *         *              * PARAM    * RPMT
+ *      5   * R*4  *         *              * PARAM    * DCOL
+ *      6   * R*4  *         *              * PARAM    * RCOL2
+ *      7   * R*4  *         *              * PARAM    * DHCOL
+ *      8   * R*4  *         *              * PARAM    * alpha
+ *      9   * R*4  *         *              * PARAM    * pere
+ *     10   * R*4  *         *              * PARAM    * perpi
+ ******************************************************************
+ *  Block   *  Entries  * Unpacked * Packed *   Packing Factor    *
+ ******************************************************************
+ * OPTIC    *  8837     * 188      * 173    *       1.087         *
+ * PARAM    *  8837     * 40       * 40     *       1.000         *
+ * Total    *    ---    * 228      * 213    *       1.070         *
+ ******************************************************************
+ * Blocks = 2            Variables = 22           Columns = 57    *
+ ******************************************************************
+

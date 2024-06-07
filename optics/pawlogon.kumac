@@ -11,8 +11,8 @@ mess Hello, folks!
 exec $ENV(HOME)/paw/pawlogon#Win 40 40
 exec $ENV(HOME)/paw/pawlogon#XARGS
 
-hname = half
-* hname = center
+* hname = half
+hname = center
 read hname 'Enter hname'
 g/cr hname   [hname]
 g/cr panfile [hname]
