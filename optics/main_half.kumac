@@ -17,6 +17,7 @@
 * 0      1   flag of paraxial photon rays (particle angular spreading=0 too)
 *
 
+MACRO main_half
 APPL COMIS QUIT
 *                                         @METAGS LOOK
 *                                         03-26-98 01:30am
